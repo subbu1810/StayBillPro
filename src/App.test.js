@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders application title', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  const header = screen.getByRole('banner');
+  const headingElement = within(header).getByText(/ServiceHub/i);
+  expect(headingElement).toBeInTheDocument();
 });

@@ -1,0 +1,1115 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import '../styles/CustomersScreen.css';
+import CustomerFormModal from './CustomersForm';
+
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+/* ─────────────────────────────────────────────────────────────
+   LedgerTab — full customer ledger with running balance
+───────────────────────────────────────────────────────────── */
+function LedgerTab({ customers }) {
+  const [customerId, setCustomerId] = useState('');
+  const [ledgerData, setLedgerData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+  const loadLedger = useCallback(async (cid, f, t) => {
+    if (!cid) { setLedgerData(null); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (f) params.append('from', f);
+      if (t) params.append('to', t);
+      const res = await fetch(`${API_BASE}/customers/${cid}/ledger?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch ledger');
+      setLedgerData(await res.json());
+    } catch (err) {
+      setError('Could not load ledger. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleCustomerChange = (e) => {
+    setCustomerId(e.target.value);
+    loadLedger(e.target.value, from, to);
+  };
+
+  const handleFilter = () => loadLedger(customerId, from, to);
+
+  const rowStyle = (type) => {
+    if (type === 'opening')  return { background: '#eff6ff' };
+    if (type === 'payment')  return { background: '#f0fdf4' };
+    if (type === 'cancelled') return { background: '#fafafa', opacity: 0.6 };
+    return {};
+  };
+
+  const s = ledgerData?.summary;
+
+  return (
+    <div>
+      {/* ── Filters bar ── */}
+      <div className="crm-toolbar" style={{ marginBottom: 8, gap: 6 }}>
+        <select className="crm-filter-select" style={{ minWidth: 160, fontSize: '0.78rem', padding: '5px 10px' }} value={customerId} onChange={handleCustomerChange}>
+          <option value="">Select Customer…</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <span className="crm-filter-label" style={{ fontSize: '0.72rem' }}>From:</span>
+        <input type="date" className="crm-filter-date" style={{ fontSize: '0.78rem', padding: '5px 8px' }} value={from} onChange={(e) => setFrom(e.target.value)} />
+        <span className="crm-filter-label" style={{ fontSize: '0.72rem' }}>To:</span>
+        <input type="date" className="crm-filter-date" style={{ fontSize: '0.78rem', padding: '5px 8px' }} value={to} onChange={(e) => setTo(e.target.value)} />
+        <button className="btn-primary" style={{ padding: '5px 12px', fontSize: '0.78rem' }} onClick={handleFilter} disabled={!customerId}>Apply</button>
+        {from || to ? (
+          <button className="btn-primary" style={{ background: '#6b7280', padding: '5px 10px', fontSize: '0.78rem' }} onClick={() => { setFrom(''); setTo(''); loadLedger(customerId, '', ''); }}>
+            Clear
+          </button>
+        ) : null}
+        
+        {/* Action Buttons */}
+        {ledgerData && (
+          <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+            <button 
+              className="btn-primary" 
+              style={{ background: '#3b82f6', padding: '5px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }} 
+              onClick={() => {
+                const customerName = ledgerData.customer.name;
+                const printWindow = window.open('', '_blank');
+                const rowsHtml = ledgerData.ledgerRows.map(row => `
+                  <tr style="${row.type === 'opening' ? 'background-color: #eff6ff;' : row.type === 'payment' ? 'background-color: #f0fdf4;' : row.type === 'cancelled' ? 'background-color: #fafafa; opacity: 0.6;' : ''}">
+                    <td>${new Date(row.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                    <td style="font-weight: bold;">${row.type.toUpperCase()}</td>
+                    <td>${row.description || ''}</td>
+                    <td>${row.invoiceNo || '—'}</td>
+                    <td>${row.paymentMethod || '—'}</td>
+                    <td style="text-align: right; color: #c2410c;">${row.debit > 0 ? fmt(row.debit) : '—'}</td>
+                    <td style="text-align: right; color: #15803d;">${row.credit > 0 ? fmt(row.credit) : '—'}</td>
+                    <td style="text-align: right; font-weight: bold; color: ${row.balance > 0 ? '#dc2626' : '#10b981'};">${fmt(row.balance)}</td>
+                    <td>${row.status ? row.status.toUpperCase() : '—'}</td>
+                  </tr>
+                `).join('');
+                
+                printWindow.document.write(`
+                  <html>
+                    <head>
+                      <title>Ledger Statement - ${customerName}</title>
+                      <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+                        body { 
+                          font-family: 'Inter', -apple-system, sans-serif; 
+                          padding: 40px; 
+                          color: #1f2937; 
+                          background-color: #fff;
+                          line-height: 1.5;
+                        }
+                        .header-container {
+                          display: flex;
+                          justify-content: space-between;
+                          align-items: flex-start;
+                          border-bottom: 2px solid #f3f4f6;
+                          padding-bottom: 20px;
+                          margin-bottom: 25px;
+                        }
+                        .brand-title {
+                          font-size: 1.8rem;
+                          font-weight: 800;
+                          color: #111827;
+                          letter-spacing: -0.025em;
+                          margin: 0;
+                        }
+                        .brand-subtitle {
+                          font-size: 0.85rem;
+                          color: #6b7280;
+                          margin: 2px 0 0 0;
+                        }
+                        .info-grid { 
+                          display: grid; 
+                          grid-template-columns: repeat(4, 1fr); 
+                          gap: 16px; 
+                          margin-bottom: 25px; 
+                          background-color: #f9fafb;
+                          border: 1px solid #e5e7eb; 
+                          padding: 16px; 
+                          border-radius: 8px; 
+                        }
+                        .info-item { }
+                        .info-label { 
+                          color: #9ca3af; 
+                          text-transform: uppercase; 
+                          font-weight: 700; 
+                          font-size: 0.65rem; 
+                          letter-spacing: 0.05em;
+                          margin-bottom: 4px;
+                        }
+                        .info-value {
+                          font-size: 0.9rem;
+                          font-weight: 600;
+                          color: #1f2937;
+                        }
+                        .summary-grid { 
+                          display: grid; 
+                          grid-template-columns: repeat(6, 1fr); 
+                          gap: 12px; 
+                          margin-bottom: 30px; 
+                        }
+                        .card { 
+                          border: 1px solid #e5e7eb;
+                          border-left: 4px solid #ddd; 
+                          padding: 12px 14px; 
+                          background: #fff; 
+                          border-radius: 6px;
+                          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                        }
+                        .card-label {
+                          font-size: 0.68rem;
+                          font-weight: 700;
+                          color: #6b7280;
+                          text-transform: uppercase;
+                          letter-spacing: 0.025em;
+                          margin-bottom: 4px;
+                        }
+                        .card-value {
+                          font-size: 1.05rem;
+                          font-weight: 700;
+                        }
+                        table { 
+                          width: 100%; 
+                          border-collapse: collapse; 
+                          margin-top: 10px; 
+                          font-size: 0.85rem; 
+                        }
+                        th, td { 
+                          border-bottom: 1px solid #e5e7eb; 
+                          padding: 12px 14px; 
+                          text-align: left; 
+                        }
+                        th { 
+                          background-color: #f8fafc; 
+                          font-weight: 600; 
+                          color: #475569;
+                          font-size: 0.75rem;
+                          text-transform: uppercase;
+                          letter-spacing: 0.05em;
+                          border-top: 1px solid #e5e7eb;
+                        }
+                        .amount {
+                          font-family: 'Courier New', Courier, monospace;
+                          font-weight: 600;
+                        }
+                        @media print {
+                          .no-print { display: none !important; }
+                          body { padding: 0; }
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="header-container">
+                        <div>
+                          <h1 class="brand-title">${ledgerData.admin?.business_name || 'Ledger Statement'}</h1>
+                          <p class="brand-subtitle">Financial Account Statement</p>
+                        </div>
+                        <div style="text-align: right;">
+                          <button class="no-print" onclick="window.print()" style="padding: 8px 18px; background: #111827; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">Print Statement</button>
+                          <p style="font-size: 0.78rem; margin: 8px 0 0 0; color: #6b7280;">Statement Date: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        </div>
+                      </div>
+                      
+                      <!-- Two Column Info Section: Our Profile vs Customer Profile -->
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                        <!-- Our Business Details -->
+                        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; background-color: #fcfcfc;">
+                          <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; margin-bottom: 8px;">Statement From (Our Details)</div>
+                          <div style="font-size: 0.95rem; font-weight: 700; color: #111827;">${ledgerData.admin?.business_name || 'StayBillPro'}</div>
+                          <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+                            ${ledgerData.admin?.address ? ledgerData.admin.address + ', ' : ''}
+                            ${ledgerData.admin?.city ? ledgerData.admin.city + ' - ' : ''}${ledgerData.admin?.pincode || ''}<br/>
+                            ${ledgerData.admin?.state || ''}<br/>
+                            <strong>Mobile:</strong> ${ledgerData.admin?.phone || '—'}<br/>
+                            <strong>Email:</strong> ${ledgerData.admin?.email || '—'}<br/>
+                            <strong>GSTIN:</strong> ${ledgerData.admin?.gst_number || '—'}
+                          </div>
+                        </div>
+
+                        <!-- Customer Details -->
+                        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; background-color: #fcfcfc;">
+                          <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; margin-bottom: 8px;">Statement To (Customer Details)</div>
+                          <div style="font-size: 0.95rem; font-weight: 700; color: #111827;">${ledgerData.customer.name}</div>
+                          <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+                            ${ledgerData.customer.billingAddress || '—'}<br/>
+                            <strong>Billing State:</strong> ${ledgerData.customer.state || '—'}<br/>
+                            <strong>Mobile:</strong> ${ledgerData.customer.mobile || '—'}<br/>
+                            <strong>Email:</strong> ${ledgerData.customer.email || '—'}<br/>
+                            <strong>GSTIN:</strong> ${ledgerData.customer.gstin || '—'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="summary-grid">
+                        <div class="card" style="border-left-color: #6366f1;"><div class="card-label">Opening Bal.</div><div class="card-value" style="color: #6366f1;">${fmt(s.openingBalance)}</div></div>
+                        <div class="card" style="border-left-color: #0ea5e9;"><div class="card-label">Total Sales</div><div class="card-value" style="color: #0ea5e9;">${fmt(s.totalSales)}</div></div>
+                        <div class="card" style="border-left-color: #10b981;"><div class="card-label">Total Paid</div><div class="card-value" style="color: #10b981;">${fmt(s.totalPaid)}</div></div>
+                        <div class="card" style="border-left-color: #f59e0b;"><div class="card-label">Pending</div><div class="card-value" style="color: #f59e0b;">${fmt(s.totalPending)}</div></div>
+                        <div class="card" style="border-left-color: #8b5cf6;"><div class="card-label">Discount</div><div class="card-value" style="color: #8b5cf6;">${fmt(s.totalDiscount)}</div></div>
+                        <div class="card" style="border-left-color: ${s.currentDues > 0 ? '#ef4444' : '#10b981'};"><div class="card-label">Current Dues</div><div class="card-value" style="color: ${s.currentDues > 0 ? '#ef4444' : '#10b981'};">${fmt(s.currentDues)}</div></div>
+                      </div>
+
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Invoice #</th>
+                            <th>Payment</th>
+                            <th style="text-align: right;">Debit (Dr)</th>
+                            <th style="text-align: right;">Credit (Cr)</th>
+                            <th style="text-align: right;">Balance</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${rowsHtml}
+                        </tbody>
+                        <tfoot>
+                          <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e5e7eb;">
+                            <td colspan="5" style="color: #1e293b;">Closing Statement Balance</td>
+                            <td style="text-align: right; color: #c2410c;" class="amount">${fmt(ledgerData.summary.totalSales)}</td>
+                            <td style="text-align: right; color: #15803d;" class="amount">${fmt(ledgerData.summary.totalPaid)}</td>
+                            <td style="text-align: right; color: ${s.currentDues > 0 ? '#dc2626' : '#10b981'};" class="amount">${fmt(s.currentDues)}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </body>
+                  </html>
+                `);
+                printWindow.document.close();
+              }}
+            >
+              📥 PDF
+            </button>
+            
+            <button 
+              className="btn-primary" 
+              style={{ background: '#25d366', padding: '5px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              onClick={() => {
+                const phone = ledgerData.customer.mobile ? ledgerData.customer.mobile.replace(/\D/g, '') : '';
+                // Pre-formatted international prefix if missing (assuming 91 for standard Indian numbers or direct use)
+                const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
+                const message = `Hello ${ledgerData.customer.name},\nHere is your ledger summary statement:\n*Opening Balance:* ${fmt(s.openingBalance)}\n*Total Sales:* ${fmt(s.totalSales)}\n*Total Paid:* ${fmt(s.totalPaid)}\n*Current Dues:* ${fmt(s.currentDues)}\nThank you!`;
+                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, '_blank');
+              }}
+              disabled={!ledgerData.customer.mobile}
+            >
+              💬 WhatsApp
+            </button>
+            
+            <button 
+              className="btn-primary" 
+              style={{ background: '#ea4335', padding: '5px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              onClick={async () => {
+                if (!ledgerData.customer.email) {
+                  alert('This customer does not have an email address configured.');
+                  return;
+                }
+                const confirmSend = window.confirm(`Send ledger statement email directly to ${ledgerData.customer.email}?`);
+                if (!confirmSend) return;
+
+                try {
+                  const token = localStorage.getItem('token');
+                  const res = await fetch(`${API_BASE}/customers/${customerId}/ledger/email`, {
+                    method: 'POST',
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify({ from, to })
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    alert('Email sent successfully directly to the customer!');
+                  } else {
+                    alert(`Failed to send email: ${data.message || 'Unknown error'}`);
+                  }
+                } catch (err) {
+                  console.error(err);
+                  alert('Error sending email. Please verify backend configurations.');
+                }
+              }}
+            >
+              ✉ Direct Email
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Error ── */}
+      {error && <div className="crm-error" style={{ marginBottom: 12 }}>⚠ {error}</div>}
+
+      {/* ── No customer selected ── */}
+      {!customerId && (
+        <div className="crm-content">
+          <div className="crm-empty">
+            <div className="crm-empty-icon">📒</div>
+            <p>Select a customer above to view their ledger statement.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Loading ── */}
+      {loading && <div className="crm-content"><div className="crm-loading">Loading ledger…</div></div>}
+
+      {/* ── Ledger content ── */}
+      {!loading && ledgerData && (
+        <>
+          {/* Customer info strip */}
+          <div style={{
+            background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
+            padding: '7px 14px', marginBottom: 8,
+            display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 1 }}>Customer</div>
+              <div style={{ fontWeight: 700, color: '#111827', fontSize: '0.82rem' }}>{ledgerData.customer.name}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 1 }}>Mobile</div>
+              <div style={{ fontWeight: 500, fontSize: '0.78rem' }}>{ledgerData.customer.mobile || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 1 }}>GSTIN</div>
+              <div style={{ fontWeight: 500, fontSize: '0.78rem' }}>{ledgerData.customer.gstin || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700, marginBottom: 1 }}>State</div>
+              <div style={{ fontWeight: 500, fontSize: '0.78rem' }}>{ledgerData.customer.state || '—'}</div>
+            </div>
+          </div>
+
+          {/* Summary cards */}
+          <div className="summary-cards-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', marginBottom: 8, gap: 8 }}>
+            {[
+              { label: 'Opening Bal.', value: fmt(s.openingBalance), color: '#6366f1' },
+              { label: 'Total Sales',  value: fmt(s.totalSales),      color: '#0ea5e9' },
+              { label: 'Total Paid',   value: fmt(s.totalPaid),       color: '#10b981' },
+              { label: 'Pending',      value: fmt(s.totalPending),    color: '#f59e0b' },
+              { label: 'Discount',     value: fmt(s.totalDiscount),   color: '#8b5cf6' },
+              { label: 'Current Dues', value: fmt(s.currentDues),     color: s.currentDues > 0 ? '#ef4444' : '#10b981' },
+            ].map((card) => (
+              <div key={card.label} className="summary-card" style={{ borderLeft: `3px solid ${card.color}`, padding: '8px 10px' }}>
+                <p className="summary-card-label" style={{ fontSize: '0.62rem', marginBottom: 3 }}>{card.label}</p>
+                <p className="summary-card-value" style={{ color: card.color, fontSize: '0.85rem' }}>{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Invoice counts */}
+          <div style={{ fontSize: '0.72rem', color: '#6b7280', marginBottom: 8 }}>
+            <strong>{s.totalInvoices}</strong> invoices &nbsp;·&nbsp;
+            <strong style={{ color: '#10b981' }}>{s.paidInvoices}</strong> paid &nbsp;·&nbsp;
+            <strong style={{ color: '#f59e0b' }}>{s.pendingInvoices}</strong> pending
+          </div>
+
+          {/* Ledger table */}
+          <div className="crm-content">
+            {ledgerData.ledgerRows.length === 0 ? (
+              <div className="crm-empty">
+                <div className="crm-empty-icon">📄</div>
+                <p>No transactions found{from || to ? ' for the selected date range' : ''}.</p>
+              </div>
+            ) : (
+              <div className="crm-table-wrap">
+                <table className="crm-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Description</th>
+                      <th>Invoice #</th>
+                      <th>Payment</th>
+                      <th style={{ textAlign: 'right' }}>Debit (Dr)</th>
+                      <th style={{ textAlign: 'right' }}>Credit (Cr)</th>
+                      <th style={{ textAlign: 'right' }}>Balance</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledgerData.ledgerRows.map((row, idx) => (
+                      <tr key={idx} style={rowStyle(row.type)}>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                          {new Date(row.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td>
+                          <span style={{
+                            padding: '2px 7px', borderRadius: 20, fontSize: '0.68rem', fontWeight: 700,
+                            background: row.type === 'opening' ? '#eff6ff'
+                              : row.type === 'payment'  ? '#f0fdf4'
+                              : row.type === 'sale'     ? '#fff7ed'
+                              : '#f3f4f6',
+                            color: row.type === 'opening' ? '#1d4ed8'
+                              : row.type === 'payment'  ? '#15803d'
+                              : row.type === 'sale'     ? '#c2410c'
+                              : '#6b7280',
+                          }}>
+                            {row.type === 'opening'   ? 'Opening'
+                              : row.type === 'payment' ? 'Payment'
+                              : row.type === 'sale'    ? 'Sale'
+                              : 'Cancelled'}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '0.82rem', color: '#374151', maxWidth: 220 }}>{row.description}</td>
+                        <td style={{ fontSize: '0.78rem', color: '#6366f1', fontWeight: 600 }}>
+                          {row.invoiceNo || '—'}
+                        </td>
+                        <td style={{ fontSize: '0.78rem', textTransform: 'capitalize', color: '#6b7280' }}>
+                          {row.paymentMethod || '—'}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#c2410c', fontSize: '0.85rem' }}>
+                          {row.debit > 0 ? fmt(row.debit) : '—'}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#15803d', fontSize: '0.85rem' }}>
+                          {row.credit > 0 ? fmt(row.credit) : '—'}
+                        </td>
+                        <td style={{
+                          textAlign: 'right', fontWeight: 700, fontSize: '0.88rem',
+                          color: row.balance > 0 ? '#dc2626' : '#10b981',
+                        }}>
+                          {fmt(row.balance)}
+                        </td>
+                        <td>
+                          {row.status ? (
+                            <span style={{
+                              padding: '2px 7px', borderRadius: 20, fontSize: '0.68rem', fontWeight: 700,
+                              background: row.status === 'paid' ? '#dcfce7' : row.status === 'pending' ? '#fef9c3' : '#f3f4f6',
+                              color: row.status === 'paid' ? '#15803d' : row.status === 'pending' ? '#a16207' : '#6b7280',
+                            }}>
+                              {row.status.toUpperCase()}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {/* Closing balance row */}
+                  <tfoot>
+                    <tr style={{ background: '#f9fafb', fontWeight: 700 }}>
+                      <td colSpan={5} style={{ fontWeight: 700, fontSize: '0.82rem', color: '#111827', padding: '8px 10px' }}>
+                        Closing Balance
+                      </td>
+                      <td style={{ textAlign: 'right', color: '#c2410c', fontSize: '0.85rem', padding: '8px 10px' }}>
+                        {fmt(ledgerData.summary.totalSales)}
+                      </td>
+                      <td style={{ textAlign: 'right', color: '#15803d', fontSize: '0.85rem', padding: '8px 10px' }}>
+                        {fmt(ledgerData.summary.totalPaid)}
+                      </td>
+                      <td style={{
+                        textAlign: 'right', fontSize: '0.9rem', fontWeight: 800, padding: '8px 10px',
+                        color: s.currentDues > 0 ? '#dc2626' : '#10b981',
+                      }}>
+                        {fmt(s.currentDues)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function CustomersScreen({ defaultTab }) {
+  const [viewMode, setViewMode] = useState(defaultTab || 'manage');
+  const [search, setSearch] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // Ledger state
+  const [selectedLedgerCustomerId, setSelectedLedgerCustomerId] = useState('');
+  const [ledgerData, setLedgerData] = useState(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+
+  const fetchLedgerData = useCallback(async (customerId) => {
+    if (!customerId) { setLedgerData(null); return; }
+    setLedgerLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/customers/${customerId}/ledger`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch ledger');
+      setLedgerData(await res.json());
+    } catch (err) {
+      console.error(err);
+      alert('Could not load ledger. Please try again.');
+    } finally {
+      setLedgerLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (defaultTab) setViewMode(defaultTab);
+  }, [defaultTab]);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/customers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch customers');
+      setCustomers(await res.json());
+    } catch {
+      setError('Could not load customers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Payments state
+  const [payments, setPayments] = useState([]);
+  const [payFilterCustomer, setPayFilterCustomer] = useState('');
+  const [payFilterFrom, setPayFilterFrom] = useState('');
+  const [payFilterTo, setPayFilterTo] = useState('');
+  const [payLoading, setPayLoading] = useState(false);
+
+  const fetchPayments = useCallback(async () => {
+    setPayLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (payFilterCustomer) params.append('customerId', payFilterCustomer);
+      if (payFilterFrom) params.append('from', payFilterFrom);
+      if (payFilterTo) params.append('to', payFilterTo);
+
+      const res = await fetch(`${API_BASE}/customers/payments?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch payments');
+      setPayments(await res.json());
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPayLoading(false);
+    }
+  }, [payFilterCustomer, payFilterFrom, payFilterTo]);
+
+  useEffect(() => {
+    if (viewMode === 'payments') {
+      fetchPayments();
+    }
+  }, [viewMode, fetchPayments]);
+
+  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+  const openAdd = () => { setEditData(null); setShowModal(true); };
+  const openEdit = (c) => { setEditData(c); setShowModal(true); };
+
+  const handleFormSuccess = () => {
+    setShowModal(false);
+    setEditData(null);
+    setSuccessMsg('Customer saved successfully!');
+    fetchCustomers();
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this customer? This cannot be undone.')) return;
+    setDeletingId(id);
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${API_BASE}/customers/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+    } catch {
+      alert('Failed to delete customer.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const filtered = customers.filter((c) => {
+    const q = search.toLowerCase();
+    return (
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.mobile || '').includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.state || '').toLowerCase().includes(q) ||
+      (c.gstin || '').toLowerCase().includes(q)
+    );
+  });
+
+  const typeBadgeClass = (type) => {
+    if (!type) return 'default';
+    const t = type.toLowerCase();
+    if (t === 'consumer') return 'consumer';
+    if (t === 'business') return 'business';
+    if (t === 'distributor') return 'distributor';
+    return 'default';
+  };
+
+  const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+  const pageTitle = {
+    manage: 'Manage Customers',
+    ledger: 'Customer Ledger',
+    dues: 'Outstanding Dues',
+    payments: 'Payment History',
+    orders: 'Order History',
+    returns: 'Return History',
+  }[viewMode] || 'Customers';
+
+  return (
+    <div className="customers-screen">
+
+      {showModal && (
+        <CustomerFormModal
+          onClose={() => { setShowModal(false); setEditData(null); }}
+          onSuccess={handleFormSuccess}
+          editData={editData}
+        />
+      )}
+
+      {/* ── Page Header ── */}
+      <div className="crm-header">
+        <h1 className="crm-page-title">{pageTitle}</h1>
+        <p className="crm-page-sub">
+          {viewMode === 'manage' && `${customers.length} total customer${customers.length !== 1 ? 's' : ''}`}
+        </p>
+      </div>
+
+      {/* ══════════════════════════════════
+          MANAGE TAB
+      ══════════════════════════════════ */}
+      {viewMode === 'manage' && (
+        <>
+          {/* Toast / Error */}
+          {successMsg && (
+            <div className="crm-toast">✓ {successMsg}</div>
+          )}
+          {error && (
+            <div className="crm-error">⚠ {error}</div>
+          )}
+
+          {/* Toolbar */}
+          <div className="crm-toolbar">
+            <input
+              type="text"
+              className="crm-search"
+              placeholder="Search by name, phone, email, state, GSTIN…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button className="btn-add-customer" onClick={openAdd}>
+              + Add Customer
+            </button>
+          </div>
+
+          {/* Table Card */}
+          <div className="crm-content">
+            {loading ? (
+              <div className="crm-loading">Loading customers…</div>
+            ) : (
+              <>
+                <div className="crm-table-wrap">
+                  <table className="crm-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 40 }}>#</th>
+                        <th>Customer</th>
+                        <th>Mobile</th>
+                        <th>Email</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>GSTIN</th>
+                        <th>State</th>
+                        <th>Opening Bal.</th>
+                        <th>Balance Type</th>
+                        <th>Credit Limit</th>
+                        <th>Balance</th>
+                        <th style={{ width: 80 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length === 0 ? (
+                        <tr>
+                          <td colSpan={13}>
+                            <div className="crm-empty">
+                              <div className="crm-empty-icon">
+                                {customers.length === 0 ? '👤' : '🔍'}
+                              </div>
+                              <p>
+                                {customers.length === 0
+                                  ? 'No customers yet. Click "+ Add Customer" to get started.'
+                                  : 'No results match your search.'}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filtered.map((c, idx) => (
+                          <tr key={c.id}>
+                            {/* # */}
+                            <td><span className="cell-num">{idx + 1}</span></td>
+
+                            {/* Customer name */}
+                            <td>
+                              <div className="cell-name">{c.name || '—'}</div>
+                            </td>
+
+                            {/* Mobile */}
+                            <td>
+                              <span className="cell-phone">{c.mobile || c.phone || <span className="cell-muted">—</span>}</span>
+                            </td>
+
+                            {/* Email */}
+                            <td className="cell-email">
+                              {c.email
+                                ? <a href={`mailto:${c.email}`}>{c.email}</a>
+                                : <span className="cell-muted">—</span>}
+                            </td>
+
+                            {/* Category */}
+                            <td>
+                              {c.category
+                                ? <span className="cat-badge">{c.category}</span>
+                                : <span className="cell-muted">—</span>}
+                            </td>
+
+                            {/* Customer Type */}
+                            <td>
+                              <span className={`type-badge ${typeBadgeClass(c.customerType)}`}>
+                                {c.customerType || 'Consumer'}
+                              </span>
+                            </td>
+
+                            {/* GSTIN */}
+                            <td>
+                              {c.gstin
+                                ? <span className="cell-gstin">{c.gstin}</span>
+                                : <span className="cell-muted">—</span>}
+                            </td>
+
+                            {/* State */}
+                            <td style={{ fontSize: '0.85rem', color: '#374151' }}>
+                              {c.state || <span className="cell-muted">—</span>}
+                            </td>
+
+                            {/* Opening Balance */}
+                            <td style={{ fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>
+                              {fmt(c.openingBalance)}
+                            </td>
+
+                            {/* Balance Type */}
+                            <td>
+                              {c.balanceType ? (
+                                <span className="cat-badge" style={{
+                                  background: c.balanceType === 'receivable' ? '#eff6ff' : '#fff7ed',
+                                  color: c.balanceType === 'receivable' ? '#1d4ed8' : '#c2410c',
+                                }}>
+                                  {c.balanceType.charAt(0).toUpperCase() + c.balanceType.slice(1)}
+                                </span>
+                              ) : <span className="cell-muted">—</span>}
+                            </td>
+
+                            {/* Credit Limit */}
+                            <td>
+                              <span className="cell-credit">
+                                {c.creditLimit ? fmt(c.creditLimit) : <span className="cell-muted">—</span>}
+                              </span>
+                            </td>
+
+                            {/* Balance */}
+                            <td>
+                              <span className={`cell-balance ${Number(c.balance) > 0 ? 'positive' : 'zero'}`}>
+                                {fmt(c.balance)}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td>
+                              <div className="cell-actions">
+                                <button
+                                  className="btn-icon-edit"
+                                  title="Edit customer"
+                                  onClick={() => openEdit(c)}
+                                >
+                                  ✏
+                                </button>
+                                <button
+                                  className="btn-icon-del"
+                                  title="Delete customer"
+                                  onClick={() => handleDelete(c.id)}
+                                  disabled={deletingId === c.id}
+                                >
+                                  {deletingId === c.id ? '…' : '🗑'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table footer */}
+                {customers.length > 0 && (
+                  <div className="crm-table-footer">
+                    <span className="crm-count">
+                      Showing <strong>{filtered.length}</strong> of <strong>{customers.length}</strong> customers
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════
+          LEDGER TAB
+      ══════════════════════════════════ */}
+      {viewMode === 'ledger' && (
+        <LedgerTab customers={customers} />
+      )}
+
+      {/* ══════════════════════════════════
+          DUES TAB
+      ══════════════════════════════════ */}
+      {viewMode === 'dues' && (
+        <>
+          <div className="summary-cards-grid">
+            {[
+              { label: 'Total Outstanding', value: fmt(customers.reduce((s, c) => s + Number(c.balance || 0), 0)), color: '#dc2626' },
+              { label: 'Customers with Dues', value: customers.filter((c) => c.balance > 0).length, color: '#f59e0b' },
+              { label: 'Total Customers', value: customers.length, color: '#4f46e5' },
+            ].map((card) => (
+              <div key={card.label} className="summary-card" style={{ borderLeft: `3px solid ${card.color}` }}>
+                <p className="summary-card-label">{card.label}</p>
+                <p className="summary-card-value" style={{ color: card.color }}>{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="crm-content">
+            <div className="crm-table-wrap">
+              <table className="crm-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Mobile</th>
+                    <th>State</th>
+                    <th>Outstanding</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers.filter((c) => c.balance > 0).length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>
+                        <div className="crm-empty">
+                          <div className="crm-empty-icon">✅</div>
+                          <p>No outstanding dues. All customers are settled!</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    customers.filter((c) => c.balance > 0).map((c) => (
+                      <tr key={c.id}>
+                        <td><span className="cell-name">{c.name}</span></td>
+                        <td className="cell-phone">{c.mobile || '—'}</td>
+                        <td>{c.state || <span className="cell-muted">—</span>}</td>
+                        <td><span className="cell-balance positive">{fmt(c.balance)}</span></td>
+                        <td>
+                          <button 
+                            className="btn-primary" 
+                            style={{ padding: '4px 10px', fontSize: '0.72rem', background: '#25d366', border: 'none', cursor: 'pointer' }}
+                            onClick={() => {
+                              const mobileNum = c.mobile || c.phone || '';
+                              const cleanPhone = mobileNum.replace(/\D/g, '');
+                              if (!cleanPhone) {
+                                alert('Customer phone number is invalid.');
+                                return;
+                              }
+                              const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                              const message = `Hello ${c.name},\nThis is a friendly reminder that you have outstanding dues of *${fmt(c.balance)}* in your account statement.\nPlease clear it at your earliest convenience.\nThank you!`;
+                              
+                              // Use api.whatsapp.com which opens robustly on desktop apps, browsers, and mobile devices
+                              const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
+                              window.open(url, '_blank');
+                            }}
+                          >
+                            💬 Send Reminder
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════
+          PAYMENTS TAB
+      ══════════════════════════════════ */}
+      {/* ══════════════════════════════════
+          PAYMENTS TAB
+      ══════════════════════════════════ */}
+      {viewMode === 'payments' && (
+        <>
+          {/* Summary cards for payments */}
+          <div className="summary-cards-grid" style={{ marginBottom: 12 }}>
+            {[
+              { label: 'Total Payments Collected', value: fmt(payments.reduce((s, p) => s + Number(p.total_amount || 0), 0)), color: '#10b981' },
+              { label: 'Total Payments Received Count', value: payments.length, color: '#6366f1' },
+            ].map((card) => (
+              <div key={card.label} className="summary-card" style={{ borderLeft: `3px solid ${card.color}` }}>
+                <p className="summary-card-label">{card.label}</p>
+                <p className="summary-card-value" style={{ color: card.color }}>{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="crm-toolbar" style={{ marginBottom: 12, gap: 8 }}>
+            <span className="crm-filter-label" style={{ fontSize: '0.75rem' }}>From:</span>
+            <input 
+              type="date" 
+              className="crm-filter-date" 
+              value={payFilterFrom} 
+              onChange={(e) => setPayFilterFrom(e.target.value)} 
+              style={{ fontSize: '0.78rem', padding: '5px' }}
+            />
+            <span className="crm-filter-label" style={{ fontSize: '0.75rem' }}>To:</span>
+            <input 
+              type="date" 
+              className="crm-filter-date" 
+              value={payFilterTo} 
+              onChange={(e) => setPayFilterTo(e.target.value)} 
+              style={{ fontSize: '0.78rem', padding: '5px' }}
+            />
+            <select 
+              className="crm-filter-select" 
+              value={payFilterCustomer} 
+              onChange={(e) => setPayFilterCustomer(e.target.value)} 
+              style={{ minWidth: 180, fontSize: '0.78rem', padding: '5px' }}
+            >
+              <option value="">All Customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <button className="btn-primary" onClick={fetchPayments} style={{ padding: '5px 12px', fontSize: '0.78rem' }}>Filter</button>
+            {(payFilterFrom || payFilterTo || payFilterCustomer) && (
+              <button 
+                className="btn-primary" 
+                style={{ background: '#6b7280', padding: '5px 10px', fontSize: '0.78rem' }} 
+                onClick={() => {
+                  setPayFilterCustomer('');
+                  setPayFilterFrom('');
+                  setPayFilterTo('');
+                  // Clear calls dynamically
+                  setTimeout(() => fetchPayments(), 0);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="crm-content">
+            {payLoading ? (
+              <div className="crm-loading">Loading payment history…</div>
+            ) : payments.length === 0 ? (
+              <div className="crm-empty">
+                <div className="crm-empty-icon">💳</div>
+                <p>No payment records found.</p>
+              </div>
+            ) : (
+              <div className="crm-table-wrap">
+                <table className="crm-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Date</th>
+                      <th>Customer</th>
+                      <th>Mobile</th>
+                      <th>Invoice #</th>
+                      <th>Payment Method</th>
+                      <th style={{ textAlign: 'right' }}>Amount Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((pay, idx) => (
+                      <tr key={pay.invoice_id}>
+                        <td><span className="cell-num">{idx + 1}</span></td>
+                        <td>{new Date(pay.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td><span className="cell-name">{pay.customer_name}</span></td>
+                        <td className="cell-phone">{pay.customer_phone || '—'}</td>
+                        <td style={{ color: '#6366f1', fontWeight: 600 }}>INV-{String(pay.invoice_id).padStart(4, '0')}</td>
+                        <td>
+                          <span style={{ 
+                            textTransform: 'capitalize',
+                            background: '#f3f4f6',
+                            color: '#475569',
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            fontSize: '0.72rem',
+                            fontWeight: 600
+                          }}>
+                            {pay.payment_method || 'Cash'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#15803d' }}>{fmt(pay.total_amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════
+          ORDERS / RETURNS TABS
+      ══════════════════════════════════ */}
+      {(viewMode === 'orders' || viewMode === 'returns') && (
+        <div className="crm-content" style={{ padding: 20 }}>
+          <div className="crm-empty">
+            <div className="crm-empty-icon">📦</div>
+            <p>
+              {viewMode === 'orders'
+                ? 'Customer order history & service jobs will appear here.'
+                : 'Product returns and credit notes history.'}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

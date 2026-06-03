@@ -1,24 +1,158 @@
-import logo from './logo.svg';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import { ServiceProvider } from './context/ServiceContext';
+import AdminPanel from './components/AdminPanel';
+import Auth from './components/Auth';
+import LandingPage from './components/LandingPage';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
+import AboutUs from './components/AboutUs';
+import Contact from './components/Contact';
+import TrackTicket from './components/TrackTicket';
+import { PopupProvider } from './components/ui/PopupProvider';
 
 function App() {
+  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'auth', 'register', 'dashboard', 'privacy', 'terms', 'about', 'contact', 'track'
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+
+  // Browser back button functionality
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // Handle browser back button
+      if (event.state && event.state.view) {
+        setCurrentView(event.state.view);
+        setSelectedPlan(event.state.selectedPlan || null);
+        setIsAuthenticated(event.state.isAuthenticated || false);
+      } else {
+        // Default fallback to landing page
+        setCurrentView('landing');
+        setSelectedPlan(null);
+        setIsAuthenticated(false);
+      }
+    };
+
+    // Add event listener for browser back button
+    window.addEventListener('popstate', handlePopState);
+    
+    // Set initial history state
+    window.history.pushState(
+      { view: 'landing', selectedPlan: null, isAuthenticated: false },
+      '',
+      window.location.pathname
+    );
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  const updateHistory = (view, plan = null, auth = false) => {
+    window.history.pushState(
+      { view, selectedPlan: plan, isAuthenticated: auth },
+      '',
+      window.location.pathname
+    );
+  };
+
+  const handleNavigateToAuth = () => {
+    setCurrentView('auth');
+    updateHistory('auth', null, false);
+  };
+
+  const handleNavigateToRegister = (planName) => {
+    setSelectedPlan(planName);
+    setCurrentView('register');
+    updateHistory('register', planName, false);
+  };
+
+  const handleNavigateToPrivacy = () => {
+    setCurrentView('privacy');
+    updateHistory('privacy', null, false);
+  };
+
+  const handleNavigateToTerms = () => {
+    setCurrentView('terms');
+    updateHistory('terms', null, false);
+  };
+
+  const handleNavigateToAbout = () => {
+    setCurrentView('about');
+    updateHistory('about', null, false);
+  };
+
+  const handleNavigateToContact = () => {
+    setCurrentView('contact');
+    updateHistory('contact', null, false);
+  };
+
+  const handleNavigateToTrack = () => {
+    setCurrentView('track');
+    updateHistory('track', null, false);
+  };
+
+  const handleBackToHome = () => {
+    setCurrentView('landing');
+    setSelectedPlan(null);
+    updateHistory('landing', null, false);
+  };
+
+  const handleLogin = (success) => {
+    setIsAuthenticated(success);
+    if (success) {
+      setCurrentView('dashboard');
+      updateHistory('dashboard', null, true);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentView('landing');
+    updateHistory('landing', null, false);
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <PopupProvider>
+      <ServiceProvider>
+        <div className="App">
+          {currentView === 'landing' && (
+            <LandingPage
+              onNavigateToAuth={handleNavigateToAuth}
+              onNavigateToRegister={handleNavigateToRegister}
+              onNavigateToPrivacy={handleNavigateToPrivacy}
+              onNavigateToTerms={handleNavigateToTerms}
+              onNavigateToAbout={handleNavigateToAbout}
+              onNavigateToContact={handleNavigateToContact}
+              onNavigateToTrack={handleNavigateToTrack}
+            />
+          )}
+          {currentView === 'auth' && (
+            <Auth onLogin={handleLogin} onBackToHome={handleBackToHome} mode="login" />
+          )}
+          {currentView === 'register' && (
+            <Auth onLogin={handleLogin} onBackToHome={handleBackToHome} mode="register" selectedPlan={selectedPlan} />
+          )}
+          {currentView === 'dashboard' && isAuthenticated && (
+            <AdminPanel onLogout={handleLogout} />
+          )}
+          {currentView === 'privacy' && (
+            <PrivacyPolicy onBack={handleBackToHome} />
+          )}
+          {currentView === 'terms' && (
+            <TermsOfService onBack={handleBackToHome} />
+          )}
+          {currentView === 'about' && (
+            <AboutUs onBack={handleBackToHome} />
+          )}
+          {currentView === 'contact' && (
+            <Contact onBack={handleBackToHome} />
+          )}
+          {currentView === 'track' && (
+            <TrackTicket onBack={handleBackToHome} />
+          )}
+        </div>
+      </ServiceProvider>
+    </PopupProvider>
   );
 }
 

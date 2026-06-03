@@ -1,0 +1,87 @@
+/* Navigation Tabs Styles */
+
+.nav-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    background: #f8f9fa;
+    padding: 0.4rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e8eaed;
+}
+
+.tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: transparent;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tab:hover {
+    background: #e8eaed;
+    color: #4a5568;
+}
+
+.tab.active {
+    background: var(--primary-orange) !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+    font-weight: 600 !important;
+    border: 1px solid #1d4ed8 !important;
+}
+
+.tab.active .tab-label {
+    color: white !important;
+}
+
+.tab-icon {
+    font-size: 1.25rem;
+    transition: transform 0.3s ease;
+}
+
+.tab.active .tab-icon {
+    transform: scale(1.1);
+}
+
+.tab-label {
+    white-space: nowrap;
+}
+
+/* Responsive Tabs */
+@media (max-width: 768px) {
+    .nav-tabs {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .tab {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: 140px;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .tab-icon {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .tab {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        padding: 0.75rem 1.25rem;
+    }
+}

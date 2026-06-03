@@ -1,0 +1,198 @@
+.track-ticket-page {
+	min-height: 100vh;
+	background: #f8fafc;
+	font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.track-navbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 1.25rem 2rem;
+	background: white;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+
+.track-brand {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	cursor: pointer;
+}
+
+.track-brand h1 {
+	font-size: 1.25rem;
+	font-weight: 800;
+	margin: 0;
+	color: #0f172a;
+}
+
+.track- hero {
+    text-align: center;
+    padding: 60px 20px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: white;
+    border-radius: 0 0 32px 32px;
+}
+
+.track-hero h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+}
+
+.track-hero p {
+    font-size: 1.1rem;
+    opacity: 0.8;
+    max-width: 600px;
+    margin: 0 auto 2.5rem;
+}
+
+.track-search-card {
+    background: white;
+    padding: 8px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+    display: flex;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.track-input {
+    flex: 1;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    outline: none;
+    color: #1e293b;
+}
+
+.track-submit-btn {
+    background: #ff7e36;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.track-submit-btn:hover {
+    background: #ea580c;
+    transform: translateY(-1px);
+}
+
+.track-results {
+    max-width: 800px;
+    margin: -40px auto 40px;
+    background: white;
+    padding: 32px;
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    position: relative;
+    z-index: 10;
+}
+
+.track-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.track-result-header h3 {
+    font-size: 1.25rem;
+    color: #1e293b;
+}
+
+.track-timeline {
+    position: relative;
+    padding-left: 60px;
+}
+
+.timeline-connector {
+    position: absolute;
+    left: 20px;
+    top: 10px;
+    bottom: 40px;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.timeline-step {
+    position: relative;
+    margin-bottom: 40px;
+}
+
+.step-badge {
+    position: absolute;
+    left: -60px;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    z-index: 5;
+    transition: all 0.3s;
+}
+
+.timeline-step.completed .step-badge {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+.timeline-step.active .step-badge {
+    background: #ff7e36;
+    border-color: #ff7e36;
+    color: white;
+    box-shadow: 0 0 0 6px rgba(255, 126, 54, 0.15);
+}
+
+.step-content h4 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.step-content p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.step-date {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.status-pill {
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.status-pill.completed { background: #dcfce7; color: #166534; }
+.status-pill.pending { background: #fee2e2; color: #991b1b; }
+.status-pill.in_progress { background: #fef9c3; color: #854d0e; }

@@ -1,0 +1,230 @@
+.suppliers-screen {
+    padding: 12px;
+}
+
+/* Reusing CRM base styles for consistency */
+.crm-header {
+    margin-bottom: 12px;
+}
+
+.crm-content {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.crm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.single-line-table td {
+    white-space: nowrap;
+    padding: 4px 8px;
+}
+
+.single-line-table th {
+    padding: 6px 8px;
+    font-size: 0.65rem;
+}
+
+.single-line-table th {
+    background: #f8fafc;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.crm-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* Supplier Specific Styles */
+.suppliers-screen .summary-card {
+    background: #f8fafc;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.method-pill {
+    padding: 2px 8px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-right: 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-icon:hover {
+    opacity: 1;
+}
+
+.btn-small-crimson {
+    padding: 4px 10px;
+    background: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fecdd3;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-small-crimson:hover {
+    background: #ffe4e6;
+}
+
+/* Modal System */
+.crm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.crm-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 90%;
+    max-width: 800px;
+    overflow: hidden;
+}
+
+.modal-header {
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: #64748b;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.form-group label {
+    color: #64748b;
+}
+
+.modal-body {
+    background: white;
+    padding: 10px;
+}
+
+.form-section-title {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #6366f1;
+    letter-spacing: 0.05em;
+    margin: 8px 0 4px 0;
+    padding-bottom: 2px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.form-section-title:first-child {
+    margin-top: 0;
+}
+
+.crm-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.crm-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.crm-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #1e293b;
+    transition: border-color 0.2s;
+}
+
+.modal-footer {
+    padding: 8px 12px !important;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #6366f1;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+/* Custom Scrollbar for Horizontal Scroll */
+.crm-content::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.crm-content::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+
+.crm-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

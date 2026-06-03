@@ -1,0 +1,488 @@
+/* Tables and List Components Styling - Match Dashboard Orange Theme */
+
+/* ========== APPLIANCE GRID/LIST ========== */
+.appliance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.appliance-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px 0 rgba(255, 126, 54, 0.05); /* Light orange shadow */
+    border: 1px solid var(--border-color, #fee2d5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInUp 0.5s ease;
+    animation-fill-mode: both;
+}
+
+.appliance-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(255, 126, 54, 0.1), 0 4px 6px -2px rgba(255, 126, 54, 0.05);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.appliance-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.appliance-icon-badge {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-orange-light, #fff2ec);
+    color: var(--primary-orange, #ff7e36);
+    border-radius: 12px;
+}
+
+.appliance-main-info h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--text-dark, #1f2937);
+    font-weight: 600;
+}
+
+.appliance-category {
+    font-size: 0.85rem;
+    color: var(--text-muted, #6b7280);
+    margin-top: 0.25rem;
+}
+
+.warranty-badge {
+    display: inline-block;
+    padding: 0.35rem 0.875rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.warranty-badge.active {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.warranty-badge.expired {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.appliance-details {
+    margin: 1.25rem 0;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.625rem 0;
+    border-bottom: 1px dashed var(--border-color, #fee2d5);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--text-muted, #6b7280);
+    font-size: 0.85rem;
+}
+
+.detail-value {
+    color: var(--text-dark, #1f2937);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.appliance-card-footer {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.card-action-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color, #fee2d5);
+    background: white;
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--text-dark, #1f2937);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.card-action-btn:hover {
+    background: var(--primary-orange, #ff7e36);
+    border-color: var(--primary-orange, #ff7e36);
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* ========== SERVICE REQUEST TABLE ========== */
+.service-table-container {
+    width: 100%;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.table-filters {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: white;
+    border-bottom: 1px solid var(--border-color, #fee2d5);
+    flex-wrap: wrap;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+
+.filter-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--border-color, #fee2d5);
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--text-muted, #6b7280);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+    background: var(--primary-orange-light, #fff2ec);
+    border-color: var(--primary-orange, #ff7e36);
+    color: var(--primary-orange, #ff7e36);
+}
+
+.filter-tab.active {
+    background: var(--primary-orange, #ff7e36);
+    border-color: var(--primary-orange, #ff7e36);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(255, 126, 54, 0.2);
+}
+
+.filter-count {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 0.35rem;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.filter-tab.active .filter-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    padding: 0;
+    background: white;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color, #fee2d5);
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+}
+
+.modern-table thead {
+    background: var(--bg-light, #fffaf7);
+}
+
+.modern-table th {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--border-color, #fee2d5);
+    white-space: nowrap;
+}
+
+.modern-table tbody tr {
+    background: white;
+    border-bottom: 1px solid var(--border-color, #fee2d5);
+    transition: background 0.2s ease;
+}
+
+.modern-table tbody tr:hover {
+    background: var(--primary-orange-light, #fff2ec);
+}
+
+.modern-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modern-table td {
+    padding: 1rem 1.25rem;
+    vertical-align: middle;
+    color: var(--text-dark, #1f2937);
+    border-bottom: 1px solid var(--bg-light, #fffaf7);
+}
+
+/* Table Cell Styles */
+.table-id {
+    font-weight: 600;
+    color: var(--primary-orange, #ff7e36);
+    font-size: 0.85rem;
+}
+
+.table-date {
+    color: var(--text-muted, #6b7280);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.customer-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--text-dark, #1f2937);
+}
+
+.customer-icon {
+    font-size: 1.1rem;
+    color: var(--primary-orange, #ff7e36);
+}
+
+.table-phone {
+    color: var(--text-muted, #6b7280);
+    font-family: 'Inter', monospace;
+}
+
+.appliance-tag {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    background: var(--primary-orange-light, #fff2ec);
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: var(--primary-orange, #ff7e36);
+}
+
+.issue-preview {
+    max-width: 250px;
+    color: var(--text-muted, #6b7280);
+    line-height: 1.4;
+    cursor: help;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.address-preview {
+    max-width: 200px;
+    color: var(--text-muted, #6b7280);
+    font-size: 0.85rem;
+    cursor: help;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Status Select */
+.status-select {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border-color, #fee2d5);
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 130px;
+    background: white;
+}
+
+.status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-orange-light, #fff2ec);
+}
+
+.status-select.status-pending {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #bae6fd;
+}
+
+.status-select.status-in-progress {
+    background: #fef08a;
+    color: #a16207;
+    border-color: #fde047;
+}
+
+.status-select.status-completed {
+    background: #dcfce7;
+    color: #16a34a;
+    border-color: #bbf7d0;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: white;
+    border: 1px solid var(--border-color, #fee2d5);
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-muted, #6b7280);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.view-btn:hover {
+    background: var(--primary-orange, #ff7e36);
+    border-color: var(--primary-orange, #ff7e36);
+    color: white;
+}
+
+.edit-btn:hover {
+    background: var(--text-dark, #1f2937);
+    border-color: var(--text-dark, #1f2937);
+    color: white;
+}
+
+/* Empty State */
+.empty-state-card {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px dashed var(--border-color, #fee2d5);
+}
+
+.empty-state-card .icon {
+    font-size: 4rem;
+    color: var(--border-color, #fee2d5);
+    margin-bottom: 1rem;
+}
+
+.empty-state-card h3 {
+    color: var(--text-dark, #1f2937);
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+}
+
+.empty-state-card p {
+    color: var(--text-muted, #6b7280);
+    font-size: 0.95rem;
+}
+
+/* ========== RESPONSIVE TABLES ========== */
+@media (max-width: 1200px) {
+    .modern-table {
+        font-size: 0.85rem;
+    }
+
+    .modern-table th,
+    .modern-table td {
+        padding: 0.875rem;
+    }
+
+    .issue-preview, .address-preview {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .table-wrapper {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .table-filters {
+        padding: 1rem;
+        flex-direction: column;
+    }
+
+    .filter-tab {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .modern-table {
+        min-width: 900px;
+    }
+
+    .appliance-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .appliance-card-footer {
+        flex-direction: column;
+    }
+}
+
+/* Register Appliance Button in Card Header */
+.register-appliance-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--primary-orange, #ff7e36);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+    box-shadow: 0 4px 6px -1px rgba(255, 126, 54, 0.2);
+}
+
+.register-appliance-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(255, 126, 54, 0.3);
+    background: var(--primary-orange-hover, #e86d2a);
+}
