@@ -254,7 +254,7 @@ function LedgerTab({ customers }) {
                       </div>
 
                       <div class="summary-grid">
-                        <div class="card" style="border-left-color: #6366f1;"><div class="card-label">Opening Bal.</div><div class="card-value" style="color: #6366f1;">${fmt(s.openingBalance)}</div></div>
+                        <div class="card" style="border-left-color: #14b8a6;"><div class="card-label">Opening Bal.</div><div class="card-value" style="color: #14b8a6;">${fmt(s.openingBalance)}</div></div>
                         <div class="card" style="border-left-color: #0ea5e9;"><div class="card-label">Total Sales</div><div class="card-value" style="color: #0ea5e9;">${fmt(s.totalSales)}</div></div>
                         <div class="card" style="border-left-color: #10b981;"><div class="card-label">Total Paid</div><div class="card-value" style="color: #10b981;">${fmt(s.totalPaid)}</div></div>
                         <div class="card" style="border-left-color: #f59e0b;"><div class="card-label">Pending</div><div class="card-value" style="color: #f59e0b;">${fmt(s.totalPending)}</div></div>
@@ -398,7 +398,7 @@ function LedgerTab({ customers }) {
           {/* Summary cards */}
           <div className="summary-cards-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', marginBottom: 8, gap: 8 }}>
             {[
-              { label: 'Opening Bal.', value: fmt(s.openingBalance), color: '#6366f1' },
+              { label: 'Opening Bal.', value: fmt(s.openingBalance), color: '#14b8a6' },
               { label: 'Total Sales',  value: fmt(s.totalSales),      color: '#0ea5e9' },
               { label: 'Total Paid',   value: fmt(s.totalPaid),       color: '#10b981' },
               { label: 'Pending',      value: fmt(s.totalPending),    color: '#f59e0b' },
@@ -467,7 +467,7 @@ function LedgerTab({ customers }) {
                           </span>
                         </td>
                         <td style={{ fontSize: '0.82rem', color: '#374151', maxWidth: 220 }}>{row.description}</td>
-                        <td style={{ fontSize: '0.78rem', color: '#6366f1', fontWeight: 600 }}>
+                        <td style={{ fontSize: '0.78rem', color: '#14b8a6', fontWeight: 600 }}>
                           {row.invoiceNo || '—'}
                         </td>
                         <td style={{ fontSize: '0.78rem', textTransform: 'capitalize', color: '#6b7280' }}>
@@ -618,6 +618,41 @@ export default function CustomersScreen({ defaultTab }) {
       fetchPayments();
     }
   }, [viewMode, fetchPayments]);
+
+  // Returns state
+  const [returnsList, setReturnsList] = useState([]);
+  const [returnsLoading, setReturnsLoading] = useState(false);
+  const [returnFilterCustomer, setReturnFilterCustomer] = useState('');
+  const [returnFilterFrom, setReturnFilterFrom] = useState('');
+  const [returnFilterTo, setReturnFilterTo] = useState('');
+
+  const fetchReturnsHistory = useCallback(async () => {
+    setReturnsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (returnFilterCustomer) params.append('customerId', returnFilterCustomer);
+      if (returnFilterFrom) params.append('startDate', returnFilterFrom);
+      if (returnFilterTo) params.append('endDate', returnFilterTo);
+
+      const res = await fetch(`${API_BASE}/returns?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch returns');
+      const data = await res.json();
+      setReturnsList(data.returns || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReturnsLoading(false);
+    }
+  }, [returnFilterCustomer, returnFilterFrom, returnFilterTo]);
+
+  useEffect(() => {
+    if (viewMode === 'returns') {
+      fetchReturnsHistory();
+    }
+  }, [viewMode, fetchReturnsHistory]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
@@ -904,7 +939,7 @@ export default function CustomersScreen({ defaultTab }) {
             {[
               { label: 'Total Outstanding', value: fmt(customers.reduce((s, c) => s + Number(c.balance || 0), 0)), color: '#dc2626' },
               { label: 'Customers with Dues', value: customers.filter((c) => c.balance > 0).length, color: '#f59e0b' },
-              { label: 'Total Customers', value: customers.length, color: '#4f46e5' },
+              { label: 'Total Customers', value: customers.length, color: '#0f766e' },
             ].map((card) => (
               <div key={card.label} className="summary-card" style={{ borderLeft: `3px solid ${card.color}` }}>
                 <p className="summary-card-label">{card.label}</p>
@@ -986,7 +1021,7 @@ export default function CustomersScreen({ defaultTab }) {
           <div className="summary-cards-grid" style={{ marginBottom: 12 }}>
             {[
               { label: 'Total Payments Collected', value: fmt(payments.reduce((s, p) => s + Number(p.total_amount || 0), 0)), color: '#10b981' },
-              { label: 'Total Payments Received Count', value: payments.length, color: '#6366f1' },
+              { label: 'Total Payments Received Count', value: payments.length, color: '#14b8a6' },
             ].map((card) => (
               <div key={card.label} className="summary-card" style={{ borderLeft: `3px solid ${card.color}` }}>
                 <p className="summary-card-label">{card.label}</p>
@@ -1070,7 +1105,7 @@ export default function CustomersScreen({ defaultTab }) {
                         <td>{new Date(pay.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                         <td><span className="cell-name">{pay.customer_name}</span></td>
                         <td className="cell-phone">{pay.customer_phone || '—'}</td>
-                        <td style={{ color: '#6366f1', fontWeight: 600 }}>INV-{String(pay.invoice_id).padStart(4, '0')}</td>
+                        <td style={{ color: '#14b8a6', fontWeight: 600 }}>INV-{String(pay.invoice_id).padStart(4, '0')}</td>
                         <td>
                           <span style={{ 
                             textTransform: 'capitalize',
@@ -1096,17 +1131,116 @@ export default function CustomersScreen({ defaultTab }) {
       )}
 
       {/* ══════════════════════════════════
-          ORDERS / RETURNS TABS
+          RETURNS TAB
       ══════════════════════════════════ */}
-      {(viewMode === 'orders' || viewMode === 'returns') && (
+      {viewMode === 'returns' && (
+        <>
+          <div className="crm-toolbar" style={{ marginBottom: 12, gap: 8 }}>
+            <span className="crm-filter-label" style={{ fontSize: '0.75rem' }}>From:</span>
+            <input 
+              type="date" 
+              className="crm-filter-date" 
+              value={returnFilterFrom} 
+              onChange={(e) => setReturnFilterFrom(e.target.value)} 
+              style={{ fontSize: '0.78rem', padding: '5px' }}
+            />
+            <span className="crm-filter-label" style={{ fontSize: '0.75rem' }}>To:</span>
+            <input 
+              type="date" 
+              className="crm-filter-date" 
+              value={returnFilterTo} 
+              onChange={(e) => setReturnFilterTo(e.target.value)} 
+              style={{ fontSize: '0.78rem', padding: '5px' }}
+            />
+            <select 
+              className="crm-filter-select" 
+              value={returnFilterCustomer} 
+              onChange={(e) => setReturnFilterCustomer(e.target.value)} 
+              style={{ minWidth: 180, fontSize: '0.78rem', padding: '5px' }}
+            >
+              <option value="">All Customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <button className="btn-primary" onClick={fetchReturnsHistory} style={{ padding: '5px 12px', fontSize: '0.78rem' }}>Filter</button>
+            {(returnFilterFrom || returnFilterTo || returnFilterCustomer) && (
+              <button 
+                className="btn-primary" 
+                style={{ background: '#6b7280', padding: '5px 10px', fontSize: '0.78rem' }} 
+                onClick={() => {
+                  setReturnFilterCustomer('');
+                  setReturnFilterFrom('');
+                  setReturnFilterTo('');
+                  setTimeout(() => fetchReturnsHistory(), 0);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="crm-content">
+          {returnsLoading ? (
+            <div className="crm-loading">Loading return history…</div>
+          ) : returnsList.length === 0 ? (
+            <div className="crm-empty">
+              <div className="crm-empty-icon">🔄</div>
+              <p>No product returns or credit notes found.</p>
+            </div>
+          ) : (
+            <div className="crm-table-wrap">
+              <table className="crm-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Original Invoice</th>
+                    <th>Refund Amount</th>
+                    <th>Payment Method</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {returnsList.map((ret) => (
+                    <tr key={ret.id}>
+                      <td>{new Date(ret.return_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                      <td><span className="cell-name">{ret.customer_name || 'Walk-in'}</span></td>
+                      <td style={{ color: '#14b8a6', fontWeight: 600 }}>INV-{String(ret.invoice_id).padStart(4, '0')}</td>
+                      <td style={{ fontWeight: 700, color: '#dc2626' }}>{fmt(ret.total_refund_amount)}</td>
+                      <td style={{ textTransform: 'capitalize' }}>
+                         <span style={{ 
+                            background: '#f3f4f6',
+                            color: '#475569',
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            fontSize: '0.72rem',
+                            fontWeight: 600
+                          }}>
+                           {ret.payment_method}
+                         </span>
+                      </td>
+                      <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ret.reason || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════
+          ORDERS TAB
+      ══════════════════════════════════ */}
+      {viewMode === 'orders' && (
         <div className="crm-content" style={{ padding: 20 }}>
           <div className="crm-empty">
             <div className="crm-empty-icon">📦</div>
-            <p>
-              {viewMode === 'orders'
-                ? 'Customer order history & service jobs will appear here.'
-                : 'Product returns and credit notes history.'}
-            </p>
+            <p>Customer order history & service jobs will appear here.</p>
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ import API_BASE_URL from './serverConfig';
 
 // ========== API ENDPOINTS ==========
 export const API_ENDPOINTS = {
+  BASE_URL: API_BASE_URL,
   // Users
   USERS: {
     LIST: `${API_BASE_URL}/staff`,
@@ -16,6 +17,14 @@ export const API_ENDPOINTS = {
     GET: (id) => `${API_BASE_URL}/staff/${id}`,
     UPDATE: (id) => `${API_BASE_URL}/staff/${id}`,
     DELETE: (id) => `${API_BASE_URL}/staff/${id}`,
+  },
+
+  // Staff Management (Attendance & Payroll)
+  STAFF_MGMT: {
+    ATTENDANCE: `${API_BASE_URL}/staff-mgmt/attendance`,
+    ATTENDANCE_BULK: `${API_BASE_URL}/staff-mgmt/attendance/bulk`,
+    PAYROLL: `${API_BASE_URL}/staff-mgmt/payroll`,
+    PAYROLL_PAY: `${API_BASE_URL}/staff-mgmt/payroll/pay`,
   },
 
   // Appliances
@@ -119,7 +128,18 @@ export const API_ENDPOINTS = {
     LOGIN: `${API_BASE_URL}/admin/login`,
     CHANGE_PASSWORD: `${API_BASE_URL}/admin/change-password`,
     UPDATE_PROFILE: `${API_BASE_URL}/admin/profile`,
+    ACCEPT_EULA: `${API_BASE_URL}/admin/accept-eula`,
   },
+
+  // Admin Users (Permissions)
+  ADMIN_USERS: {
+    LIST: `${API_BASE_URL}/admin/users`,
+    CREATE: `${API_BASE_URL}/staff`,
+    UPDATE: (id) => `${API_BASE_URL}/admin/users/${id}`,
+    DELETE: (id) => `${API_BASE_URL}/staff/${id}`,
+    UPDATE_PERMISSIONS: (id) => `${API_BASE_URL}/admin/users/${id}/permissions`,
+  },
+
 
   // Subscriptions
   SUBSCRIPTIONS: {
@@ -143,6 +163,12 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/branches`,
     UPDATE: (id) => `${API_BASE_URL}/branches/${id}`,
     DELETE: (id) => `${API_BASE_URL}/branches/${id}`,
+  },
+
+  // POS Settings
+  POS_SETTINGS: {
+    GET: (branch_id) => `${API_BASE_URL}/pos-settings?branch_id=${branch_id}`,
+    UPDATE: `${API_BASE_URL}/pos-settings`,
   },
 
   // Staff

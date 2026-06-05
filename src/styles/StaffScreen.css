@@ -33,7 +33,7 @@
 
 .btn-small {
     padding: 2px 8px;
-    background: #6366f1;
+    background: #14b8a6;
     color: white;
     border: none;
     border-radius: 4px;
@@ -42,5 +42,5 @@
 }
 
 .btn-small:hover {
-    background: #4f46e5;
+    background: #0f766e;
 }

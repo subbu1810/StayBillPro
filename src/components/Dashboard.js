@@ -1,9 +1,47 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import '../styles/Dashboard.css';
 import { useService } from '../hooks/useService';
+import EulaScreen from './EulaScreen';
+import { adminAuthAPI } from '../services/api';
 
-function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians, onViewJob, onOpenInventory, onOpenPOS }) {
+function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians, onViewJob, onOpenInventory, onOpenPOS, onLogout }) {
   const { jobs = [], jobsLoaded, technicians = [], customers = [], lowStockSpares = [] } = useService();
+  const [showEula, setShowEula] = useState(false);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        // Show if explicitly false, 0, or undefined (for users who logged in before the update)
+        if (!user.eula_accepted) {
+          setShowEula(true);
+        }
+      } catch (e) {
+        console.error("Error parsing user data", e);
+      }
+    }
+  }, []);
+
+  const handleAcceptEula = async () => {
+    try {
+      await adminAuthAPI.acceptEula();
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        user.eula_accepted = true;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      setShowEula(false);
+    } catch (err) {
+      console.error("Failed to accept EULA:", err);
+      alert("There was an error saving your acceptance. Please try again.");
+    }
+  };
+
+  const handleDeclineEula = () => {
+    if (onLogout) onLogout();
+  };
 
   const normalizeStatus = (value) => {
     const raw = (value || '').toLowerCase().trim();
@@ -100,165 +138,113 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
   }, [jobs, technicians, todayISO]);
 
   return (
-    <div className="sb-dashboard-wrapper" style={{ padding: '8px', background: '#fff', color: '#1a1a1a', fontFamily: 'sans-serif' }}>
+    <div className="os-dashboard">
+      {showEula && <EulaScreen onAccept={handleAcceptEula} onDecline={handleDeclineEula} />}
+
+      {/* Top Metrics Row */}
+      <div className="os-metrics-grid">
+        
+        <div className="os-metric-card">
+          <div className="os-metric-info">
+            <span className="os-metric-label">Total Sales</span>
+            <div className="os-metric-value">₹{dashboardData.pendingPayments.toLocaleString()}</div>
+            <span className="os-metric-trend positive">+8.2%</span>
+          </div>
+          <div className="os-metric-chart placeholder-sparkline">
+            <svg viewBox="0 0 100 40">
+               <path d="M0 30 Q 15 10, 30 20 T 60 10 T 100 5 L 100 40 L 0 40 Z" fill="#ccfbf1" />
+               <path d="M0 30 Q 15 10, 30 20 T 60 10 T 100 5" fill="none" stroke="#14b8a6" strokeWidth="3" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="os-metric-card">
+          <div className="os-metric-info">
+            <span className="os-metric-label">Active Jobs</span>
+            <div className="os-metric-value">{dashboardData.openJobs.length}</div>
+          </div>
+          <div className="os-metric-progress-wrapper">
+             <div className="progress-labels">
+                <span>Progress</span>
+                <span>{dashboardData.completionRate}%</span>
+             </div>
+             <div className="progress-bar-bg">
+                <div className="progress-bar-fill" style={{width: `${dashboardData.completionRate}%`}}></div>
+             </div>
+          </div>
+        </div>
+
+        <div className="os-metric-card">
+          <div className="os-metric-info">
+            <span className="os-metric-label">New Customers</span>
+            <div className="os-metric-value">{customers.length}</div>
+            <span className="os-metric-trend positive">+15%</span>
+          </div>
+        </div>
+
+        <div className="os-metric-card">
+          <div className="os-metric-info">
+            <span className="os-metric-label">Pending Service</span>
+            <div className="os-metric-value">{dashboardData.counts.pending + dashboardData.counts.scheduled}</div>
+            <span className="os-metric-subtext">tickets</span>
+          </div>
+        </div>
+
+        <div className="os-action-stack">
+          <button className="os-btn primary" onClick={onOpenPOS}>
+            + Create Invoice
+          </button>
+          <button className="os-btn outline" onClick={onCreateJob}>
+            + New Service Ticket
+          </button>
+        </div>
+
+      </div>
+
+      {/* Main Chart Section */}
+      <div className="os-chart-section">
+         <div className="os-chart-header">
+            <h2>Weekly Performance (Sales & Jobs)</h2>
+            <select className="os-dropdown">
+               <option>Last 7 Days</option>
+            </select>
+         </div>
+         <div className="os-chart-legend">
+            <span className="legend-item"><span className="dot teal"></span> Sales Revenue</span>
+            <span className="legend-item"><span className="dot grey"></span> Completed Jobs</span>
+         </div>
+         <div className="os-chart-placeholder">
+            {/* Visual representation of the dual line chart using CSS/SVG for demo */}
+            <div className="chart-grid">
+               {[2000, 1500, 1000, 500, 0].map(val => (
+                 <div key={val} className="grid-line">
+                    <span className="y-label">${val}</span>
+                    <div className="line"></div>
+                 </div>
+               ))}
+               <div className="x-labels">
+                  {dashboardData.last7Days.map(d => (
+                     <span key={d.iso}>{d.dayName}</span>
+                  ))}
+               </div>
+            </div>
+            
+            <svg className="chart-lines" viewBox="0 0 800 250" preserveAspectRatio="none">
+               {/* Sales Line - Teal */}
+               <path d="M 0 220 C 150 180, 250 100, 400 150 C 500 200, 600 50, 800 100" fill="none" stroke="#14b8a6" strokeWidth="4" />
+               <path d="M 0 220 C 150 180, 250 100, 400 150 C 500 200, 600 50, 800 100 L 800 250 L 0 250 Z" fill="rgba(20, 184, 166, 0.1)" />
+               
+               {/* Jobs Line - Grey */}
+               <path d="M 0 250 C 150 100, 300 200, 500 150 C 650 50, 750 180, 800 150" fill="none" stroke="#9ca3af" strokeWidth="4" />
+               <path d="M 0 250 C 150 100, 300 200, 500 150 C 650 50, 750 180, 800 150 L 800 250 L 0 250 Z" fill="rgba(156, 163, 175, 0.1)" />
+
+               {/* Data Points */}
+               <circle cx="400" cy="150" r="6" fill="#14b8a6" stroke="white" strokeWidth="3" />
+               <circle cx="500" cy="150" r="6" fill="#9ca3af" stroke="white" strokeWidth="3" />
+            </svg>
+         </div>
+      </div>
       
-      {/* Header - Minimalist */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold' }}>StayBill Pro Dashboard</h1>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#666' }}>Retail & Service Command Center</p>
-        </div>
-        <button onClick={onCreateJob} style={{ background: '#ff7e36', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>
-          + New Job
-        </button>
-      </div>
-
-      {/* Top Stats - Clean Mini-Boxes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '16px' }}>
-        {[
-          { label: 'Today\'s Sales', val: 'Rs 1,45,200', icon: '💰' },
-          { label: 'Service Rev.', val: `Rs ${dashboardData.pendingPayments}`, icon: '📈' },
-          { label: 'Active Jobs', val: dashboardData.openJobs.length, icon: '🛠️' },
-          { label: 'Sales Stock', val: `${dashboardData.salesStockAlerts.length} Alerts`, icon: '📦' },
-          { label: 'Service Parts', val: `${dashboardData.serviceStockAlerts.length} Alerts`, icon: '⚙️' }
-        ].map(s => (
-          <div key={s.label} style={{ background: 'white', border: '1px solid #eee', padding: '8px 12px', borderRadius: '4px' }}>
-            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>{s.label}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-              <span style={{ fontSize: '1rem' }}>{s.icon}</span>
-              <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{s.val}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Grid - High Density */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px', marginBottom: '16px' }}>
-        <div style={{ border: '1px solid #eee', borderRadius: '4px', background: 'white' }}>
-          <div style={{ background: '#f8fafc', padding: '6px 12px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 'bold' }}>Recent POS Invoices</h2>
-            <button style={{ background: 'none', border: 'none', color: '#ff7e36', fontSize: '0.7rem', cursor: 'pointer' }} onClick={() => onOpenPOS()}>POS →</button>
-          </div>
-          <div style={{ padding: '0px' }}>
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-               <thead style={{ background: '#fafafa' }}>
-                 <tr style={{ textAlign: 'left' }}>
-                    <th style={{ padding: '8px', fontWeight: 'bold', color: '#777' }}>ID</th>
-                    <th style={{ padding: '8px', fontWeight: 'bold', color: '#777' }}>Customer</th>
-                    <th style={{ padding: '8px', fontWeight: 'bold', color: '#777' }}>Amount</th>
-                 </tr>
-               </thead>
-               <tbody>
-                  {[
-                    { id: '#9021', name: 'Rahul S.', amt: '₹1,250' },
-                    { id: '#9020', name: 'Walk-in', amt: '₹450' },
-                    { id: '#9019', name: 'Anjali S.', amt: '₹8,900' }
-                  ].map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                      <td style={{ padding: '8px' }}>{r.id}</td>
-                      <td style={{ padding: '8px' }}>{r.name}</td>
-                      <td style={{ padding: '8px', fontWeight: 'bold' }}>{r.amt}</td>
-                    </tr>
-                  ))}
-               </tbody>
-             </table>
-          </div>
-        </div>
-
-        <div style={{ border: '1px solid #eee', borderRadius: '4px', background: 'white' }}>
-          <div style={{ background: '#f8fafc', padding: '6px 12px', borderBottom: '1px solid #eee' }}>
-            <h2 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 'bold' }}>Service Jobs Queue</h2>
-          </div>
-          <div style={{ padding: '0px' }}>
-             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-               <thead>
-                 <tr style={{ textAlign: 'left', background: '#fafafa' }}>
-                    <th style={{ padding: '8px', fontWeight: 'bold', color: '#777' }}>Tkt</th>
-                    <th style={{ padding: '8px', fontWeight: 'bold', color: '#777' }}>Status</th>
-                 </tr>
-               </thead>
-               <tbody>
-                  {dashboardData.recentOpenJobs.slice(0, 3).map(j => (
-                    <tr key={j.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                      <td style={{ padding: '8px', color: '#ff7e36', cursor: 'pointer' }} onClick={() => onViewJob(j.id)}>{j.ticketNo}</td>
-                      <td style={{ padding: '8px' }}>
-                        <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '99px', background: '#eee', fontWeight: 'bold' }}>{j.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-               </tbody>
-             </table>
-          </div>
-        </div>
-      </div>
-
-      {lowStockSpares.length > 0 && (
-        <section className="sb-pro-alerts">
-          <div className="sb-pro-alert-card inventory-alerts" style={{ background: '#fef2f2', border: '1px solid #fee2e2', padding: '0.5rem', borderRadius: '4px' }}>
-            <h2 style={{ fontSize: '0.85rem', margin: '0 0 0.5rem 0' }}>⚠️ Low Stock Alerts</h2>
-            <div className="sb-pro-alert-grid" style={{ display: 'flex', gap: '1rem' }}>
-              {lowStockSpares.map(item => (
-                <div key={item.id} className="sb-pro-mini-alert" style={{ fontSize: '0.8rem' }}>
-                  <strong>{item.name}:</strong> {item.stock} left
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="sb-pro-performance" style={{ background: 'white', border: '1px solid var(--sb-border)', padding: '0.75rem', borderRadius: '4px' }}>
-            <h2 style={{ fontSize: '0.9rem', margin: '0 0 1rem 0' }}>Weekly Performance</h2>
-            <div className="bar-chart-container" style={{ height: '120px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around' }}>
-            {dashboardData.last7Days.map(day => (
-              <div key={day.iso} className="chart-column" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div className="bar-group" style={{ display: 'flex', alignItems: 'flex-end', gap: '2px' }}>
-                  <div className="bar created" style={{ width: '8px', height: `${(day.created / dashboardData.maxChartValue) * 100}%`, background: '#f1f5f9' }}></div>
-                  <div className="bar completed" style={{ width: '8px', height: `${(day.completed / dashboardData.maxChartValue) * 100}%`, background: 'var(--sb-primary)' }}></div>
-                </div>
-                <div className="chart-day" style={{ fontSize: '0.65rem', marginTop: '4px' }}>{day.dayName}</div>
-              </div>
-            ))}
-          </div>
-      </section>
-
-      <section className="sb-pro-actions" style={{ background: 'white', border: '1px solid var(--sb-border)', padding: '0.75rem', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div className="sb-pro-action-group">
-           <h3 style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem' }}>⚡ Sales & Billing</h3>
-           <div className="sb-pro-btns" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button className="sb-pro-btn primary" onClick={onOpenPOS} style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #ff7e36', background: '#ff7e36', color: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>🛒 Start New Bill</button>
-              <button className="sb-pro-btn" onClick={() => onOpenPOS()} style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>📜 View Invoices</button>
-              <button className="sb-pro-btn" onClick={onOpenInventory} style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>📦 Inventory Hub</button>
-           </div>
-        </div>
-        <div className="sb-pro-action-group">
-           <h3 style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🛠️ Service Center</h3>
-           <div className="sb-pro-btns" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button className="sb-pro-btn secondary" onClick={onCreateJob} style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #3b82f6', background: '#eff6ff', color: '#3b82f6', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>➕ New Service Ticket</button>
-              <button className="sb-pro-btn" onClick={onOpenTechnicians} style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>👨‍🔧 Manage Techs</button>
-              <button className="sb-pro-btn" onClick={onOpenCustomers} style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>👥 Customers Hub</button>
-           </div>
-        </div>
-      </section>
-
-      <div className="sb-pro-metrics-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-        <div className="sb-pro-m-card" style={{ background: 'white', border: '1px solid var(--sb-border)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
-            <div className="m-label" style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Total Requests</div>
-            <div className="m-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{jobs.length}</div>
-        </div>
-        <div className="sb-pro-m-card" style={{ background: 'white', border: '1px solid var(--sb-border)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
-            <div className="m-label" style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Pending</div>
-            <div className="m-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{dashboardData.counts.pending + dashboardData.counts.scheduled}</div>
-        </div>
-        <div className="sb-pro-m-card" style={{ background: 'white', border: '1px solid var(--sb-border)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
-            <div className="m-label" style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>In Progress</div>
-            <div className="m-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{dashboardData.counts.in_progress}</div>
-        </div>
-        <div className="sb-pro-m-card" style={{ background: 'white', border: '1px solid var(--sb-border)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
-            <div className="m-label" style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Completed</div>
-            <div className="m-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{dashboardData.counts.completed}</div>
-        </div>
-      </div>
     </div>
   );
 }

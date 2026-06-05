@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/SettingsScreen.css';
 import UsersRolesScreen from './UsersRolesScreen';
+import BarcodeSettingsScreen from './BarcodeSettingsScreen';
 import { adminAuthAPI } from '../services/api';
 
 const SettingsScreen = ({ defaultTab = 'profile' }) => {
@@ -36,13 +37,32 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
         avatar: '👨‍💼'
     });
 
-    const [corporateInfo, setCorporateInfo] = useState({
-        companyName: 'StayBill Electronics Pvt Ltd',
-        gstin: '27AADCB1234F1Z1',
-        address: 'Sector 4, Corporate Park, Mumbai - 400001',
-        email: 'billing@staybill.com',
-        phone: '+91 98765 43210',
-        logo: '🧾'
+    const [corporateInfo, setCorporateInfo] = useState(() => {
+        const userStr = localStorage.getItem('adminUser');
+        if (userStr) {
+            try {
+                const user = JSON.stringify(userStr) ? JSON.parse(userStr) : null;
+                if (user) {
+                    return {
+                        companyName: user.business || 'Company Name',
+                        gstin: user.gst_number || '',
+                        address: user.address || '',
+                        email: user.email || '',
+                        phone: user.phone || '',
+                        logoBase64: user.logo_url || null,
+                        logo: '🧾'
+                    };
+                }
+            } catch(e) {}
+        }
+        return {
+            companyName: 'StayBill Electronics Pvt Ltd',
+            gstin: '27AADCB1234F1Z1',
+            address: 'Sector 4, Corporate Park, Mumbai - 400001',
+            email: 'billing@staybill.com',
+            phone: '+91 98765 43210',
+            logo: '🧾'
+        };
     });
 
     const INDIAN_STATES = [
@@ -91,21 +111,42 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
 
         try {
             const response = await adminAuthAPI.updateProfile({
-                companyName: corporateInfo.companyName,
-                gstin: corporateInfo.gstin,
+                business_name: corporateInfo.companyName,
+                gst_number: corporateInfo.gstin,
                 address: corporateInfo.address,
                 email: corporateInfo.email,
-                phone: corporateInfo.phone
+                phone: corporateInfo.phone,
+                logo_url: corporateInfo.logoBase64 || null
             });
 
-            setCorporateInfo(prev => ({
-                ...prev,
-                companyName: response.business_name || prev.companyName,
-                gstin: response.gst_number || prev.gstin,
-                address: response.address || prev.address,
-                email: response.email || prev.email,
-                phone: response.phone || prev.phone
-            }));
+            setCorporateInfo(prev => {
+                const updated = {
+                    ...prev,
+                    companyName: response.business_name || prev.companyName,
+                    gstin: response.gst_number || prev.gstin,
+                    address: response.address || prev.address,
+                    email: response.email || prev.email,
+                    phone: response.phone || prev.phone,
+                    logoBase64: response.logo_url !== undefined ? response.logo_url : prev.logoBase64
+                };
+                
+                // Update localStorage so it persists across refreshes
+                try {
+                    const userStr = localStorage.getItem('adminUser');
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        user.business = updated.companyName;
+                        user.gst_number = updated.gstin;
+                        user.address = updated.address;
+                        user.email = updated.email;
+                        user.phone = updated.phone;
+                        user.logo_url = updated.logoBase64;
+                        localStorage.setItem('adminUser', JSON.stringify(user));
+                    }
+                } catch(e) { console.error('Error updating localStorage', e); }
+                
+                return updated;
+            });
 
             setCorporateMessage({ type: 'success', text: 'Branding updated successfully!' });
         } catch (err) {
@@ -118,10 +159,25 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
         }
     };
 
+    const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCorporateInfo(prev => ({
+                    ...prev,
+                    logoBase64: reader.result,
+                    logo: '🖼️' // Show a temporary icon or image
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const renderAdminProfile = () => (
         <div className="settings-content-pane">
             <div className="pane-header-actions">
-                <h3 className="pane-title">Personal Admin Profile</h3>
+                <h3 className="pane-title">Account Settings</h3>
                 <div className="action-buttons">
                     {!isEditing ? (
                         <button className="btn-edit-unlock" onClick={() => setIsEditing(true)}>
@@ -130,124 +186,110 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                     ) : (
                         <>
                             <button className="btn-cancel-lock" onClick={() => setIsEditing(false)}>
-                                ❌ Cancel
+                                Cancel
                             </button>
                             <button className="btn-primary" onClick={() => setIsEditing(false)}>
-                                ✅ Save Changes
+                                Save Changes
                             </button>
                         </>
                     )}
                 </div>
             </div>
 
-            <div className="profile-hero-card">
-                <div className="hero-avatar-section">
-                    <div className="profile-avatar-large">{adminProfile.avatar}</div>
-                    <button className="btn-avatar-edit">📸</button>
-                </div>
-                <div className="hero-details">
-                    <h4>{adminProfile.name}</h4>
-                    <p className="hero-designation">{adminProfile.designation} • {adminProfile.businessName}</p>
-                    <div className="hero-badges">
-                        <span className="badge-premium">⭐ Super Admin</span>
-                        <span className="badge-verified">Verified Account</span>
+            <div className="st-profile-layout">
+                {/* Left Sidebar */}
+                <div className="st-profile-sidebar">
+                    <div className="st-avatar-wrapper">
+                        <div className="st-avatar">{adminProfile.avatar}</div>
+                        {isEditing && <button className="st-avatar-edit-btn">📸</button>}
                     </div>
-                </div>
-            </div>
-            
-            <div className="settings-card-grid">
-                <div className="settings-info-card">
-                    <div className="card-header">
-                        <span className="card-icon">🆔</span>
-                        <h5>Identity & Role</h5>
-                    </div>
-                    <div className="card-body multi-col">
-                        <div className="form-group span-2">
-                            <label>Full Name</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.name} onChange={e => setAdminProfile({...adminProfile, name: e.target.value})} />
-                        </div>
-                        <div className="form-group span-2">
-                            <label>Designation</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.designation} onChange={e => setAdminProfile({...adminProfile, designation: e.target.value})} />
-                        </div>
+                    <h2 className="st-profile-name">{adminProfile.name}</h2>
+                    <p className="st-profile-role">{adminProfile.designation}</p>
+                    <div className="st-badges">
+                        <span className="st-badge primary">Super Admin</span>
+                        <span className="st-badge success">Verified</span>
                     </div>
                 </div>
 
-                <div className="settings-info-card">
-                    <div className="card-header">
-                        <span className="card-icon">🏢</span>
-                        <h5>Business Context</h5>
-                    </div>
-                    <div className="card-body multi-col">
-                        <div className="form-group span-2">
-                            <label>Business Name</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.businessName} onChange={e => setAdminProfile({...adminProfile, businessName: e.target.value})} />
-                        </div>
-                        <div className="form-group span-2">
-                            <label>Business Type</label>
-                            <select className="product-input" disabled={!isEditing} value={adminProfile.businessType} onChange={e => setAdminProfile({...adminProfile, businessType: e.target.value})}>
-                                {BUSINESS_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                            </select>
+                {/* Right Main Content */}
+                <div className="st-profile-main">
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Identity & Role</h4>
+                        <div className="st-form-row">
+                            <div className="st-form-group">
+                                <label>Full Name</label>
+                                <input type="text" className="st-input" disabled={!isEditing} value={adminProfile.name} onChange={e => setAdminProfile({...adminProfile, name: e.target.value})} />
+                            </div>
+                            <div className="st-form-group">
+                                <label>Designation</label>
+                                <input type="text" className="st-input" disabled={!isEditing} value={adminProfile.designation} onChange={e => setAdminProfile({...adminProfile, designation: e.target.value})} />
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="settings-info-card">
-                    <div className="card-header">
-                        <span className="card-icon">📞</span>
-                        <h5>Contact Information</h5>
-                    </div>
-                    <div className="card-body multi-col">
-                        <div className="form-group span-2">
-                            <label>Email Address</label>
-                            <input type="email" className="product-input" disabled={!isEditing} value={adminProfile.email} onChange={e => setAdminProfile({...adminProfile, email: e.target.value})} />
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Business Context</h4>
+                        <div className="st-form-row">
+                            <div className="st-form-group">
+                                <label>Business Name</label>
+                                <input type="text" className="st-input" disabled={!isEditing} value={adminProfile.businessName} onChange={e => setAdminProfile({...adminProfile, businessName: e.target.value})} />
+                            </div>
+                            <div className="st-form-group">
+                                <label>Business Type</label>
+                                <select className="st-input" disabled={!isEditing} value={adminProfile.businessType} onChange={e => setAdminProfile({...adminProfile, businessType: e.target.value})}>
+                                    {BUSINESS_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                                </select>
+                            </div>
                         </div>
-                        <div className="form-group span-2">
-                            <label>Phone Number</label>
-                            <input type="tel" className="product-input" disabled={!isEditing} value={adminProfile.phone} onChange={e => setAdminProfile({...adminProfile, phone: e.target.value})} />
-                        </div>
                     </div>
-                </div>
 
-                <div className="settings-info-card full-row">
-                    <div className="card-header">
-                        <span className="card-icon">📍</span>
-                        <h5>Location & Presence</h5>
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Contact Information</h4>
+                        <div className="st-form-row">
+                            <div className="st-form-group">
+                                <label>Email Address</label>
+                                <input type="email" className="st-input" disabled={!isEditing} value={adminProfile.email} onChange={e => setAdminProfile({...adminProfile, email: e.target.value})} />
+                            </div>
+                            <div className="st-form-group">
+                                <label>Phone Number</label>
+                                <input type="tel" className="st-input" disabled={!isEditing} value={adminProfile.phone} onChange={e => setAdminProfile({...adminProfile, phone: e.target.value})} />
+                            </div>
+                        </div>
                     </div>
-                    <div className="card-body multi-col">
-                        <div className="form-group span-2">
+
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Location</h4>
+                        <div className="st-form-group full-width">
                             <label>Office Address</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.address} onChange={e => setAdminProfile({...adminProfile, address: e.target.value})} />
+                            <input type="text" className="st-input" disabled={!isEditing} value={adminProfile.address} onChange={e => setAdminProfile({...adminProfile, address: e.target.value})} />
                         </div>
-                        <div className="form-group span-1">
-                            <label>City</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.city} onChange={e => setAdminProfile({...adminProfile, city: e.target.value})} />
-                        </div>
-                        <div className="form-group span-1">
-                            <label>State</label>
-                            <select className="product-input" disabled={!isEditing} value={adminProfile.state} onChange={e => setAdminProfile({...adminProfile, state: e.target.value})}>
-                                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div className="form-group span-2">
-                            <label>Pincode</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.pincode} onChange={e => setAdminProfile({...adminProfile, pincode: e.target.value})} />
-                        </div>
-                        <div className="form-group span-2">
-                            <label>GSTN</label>
-                            <input type="text" className="product-input" disabled={!isEditing} value={adminProfile.gstn} onChange={e => setAdminProfile({...adminProfile, gstn: e.target.value})} />
+                        <div className="st-form-row three-col">
+                            <div className="st-form-group">
+                                <label>City</label>
+                                <input type="text" className="st-input" disabled={!isEditing} value={adminProfile.city} onChange={e => setAdminProfile({...adminProfile, city: e.target.value})} />
+                            </div>
+                            <div className="st-form-group">
+                                <label>State</label>
+                                <select className="st-input" disabled={!isEditing} value={adminProfile.state} onChange={e => setAdminProfile({...adminProfile, state: e.target.value})}>
+                                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div className="st-form-group">
+                                <label>Pincode</label>
+                                <input type="text" className="st-input" disabled={!isEditing} value={adminProfile.pincode} onChange={e => setAdminProfile({...adminProfile, pincode: e.target.value})} />
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="settings-info-card">
-                    <div className="card-header">
-                        <span className="card-icon">🛡️</span>
-                        <h5>Security & Access</h5>
-                    </div>
-                    <div className="card-body">
-                        <p className="card-note">Manage your authentication methods and security settings.</p>
-                        <button className="btn-secondary w-100" onClick={() => setShowPasswordModal(true)}>Change Password</button>
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Security</h4>
+                        <div className="st-security-box">
+                            <div>
+                                <h5>Password</h5>
+                                <p>Update your password to keep your account secure.</p>
+                            </div>
+                            <button className="btn-secondary" onClick={() => setShowPasswordModal(true)}>Change Password</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -302,72 +344,79 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                 </div>
             )}
 
-            <div className="settings-card-grid">
-                {/* Branding Card */}
-                <div className="settings-info-card">
-                    <div className="card-header">
-                        <span className="card-icon">🏛️</span>
-                        <h5>Branding & Identity</h5>
-                    </div>
-                    <div className="card-body">
-                        <div className="logo-upload-section">
-                            <div className="logo-preview-box">
-                                <span className="logo-icon-large">{corporateInfo.logo}</span>
+            <div className="st-profile-layout">
+                <div className="st-profile-main">
+                    
+                    {/* Branding & Identity Section */}
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Branding & Identity</h4>
+                        <div className="st-form-row">
+                            <div className="st-form-group">
+                                <label>Business Logo</label>
+                                <div className="logo-upload-section" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '8px' }}>
+                                    <div className="logo-preview-box" style={{ width: '64px', height: '64px', background: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                                        {corporateInfo.logoBase64 ? <img src={corporateInfo.logoBase64} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : corporateInfo.logo}
+                                    </div>
+                                    <div>
+                                        <input type="file" id="logoUpload" accept="image/png, image/jpeg, image/svg+xml" style={{ display: 'none' }} onChange={handleLogoUpload} />
+                                        <button className="btn-secondary btn-small" style={{ height: '32px', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => document.getElementById('logoUpload').click()}>Change Logo</button>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>Recommended: 512x512 PNG/SVG</p>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="logo-upload-actions">
-                                <button className="btn-secondary btn-small">Change Business Logo</button>
-                                <p className="help-text">Recommended: 512x512 PNG/SVG</p>
+                            <div className="st-form-group">
+                                <label>Registered Business Name</label>
+                                <input type="text" className="st-input" value={corporateInfo.companyName} onChange={e => setCorporateInfo({...corporateInfo, companyName: e.target.value})} />
                             </div>
                         </div>
-                        <div className="form-group">
-                            <label>Registered Business Name</label>
-                            <input type="text" className="product-input" value={corporateInfo.companyName} onChange={e => setCorporateInfo({...corporateInfo, companyName: e.target.value})} />
-                        </div>
                     </div>
-                </div>
 
-                {/* Tax & Compliance Card */}
-                <div className="settings-info-card">
-                    <div className="card-header">
-                        <span className="card-icon">📜</span>
-                        <h5>Tax & Compliance</h5>
-                    </div>
-                    <div className="card-body">
-                        <div className="form-group">
-                            <label>GSTIN (Goods & Services Tax Number)</label>
-                            <input type="text" className="product-input" value={corporateInfo.gstin} onChange={e => setCorporateInfo({...corporateInfo, gstin: e.target.value})} />
-                        </div>
-                        <div className="form-group">
-                            <label>Registration Number (Optional)</label>
-                            <input type="text" className="product-input" placeholder="Enter Registration No." />
+                    {/* Tax & Compliance Section */}
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Tax & Compliance</h4>
+                        <div className="st-form-row">
+                            <div className="st-form-group">
+                                <label>GSTIN (Goods & Services Tax Number)</label>
+                                <input type="text" className="st-input" value={corporateInfo.gstin} onChange={e => setCorporateInfo({...corporateInfo, gstin: e.target.value})} />
+                            </div>
+                            <div className="st-form-group">
+                                <label>Registration Number (Optional)</label>
+                                <input type="text" className="st-input" placeholder="Enter Registration No." />
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Corporate Address Card */}
-                <div className="settings-info-card full-row">
-                    <div className="card-header">
-                        <span className="card-icon">🏢</span>
-                        <h5>Corporate Headquarters</h5>
-                    </div>
-                    <div className="card-body multi-col">
-                        <div className="form-group span-2">
+                    {/* Corporate Headquarters Section */}
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Corporate Headquarters</h4>
+                        <div className="st-form-group full-width">
                             <label>Registered Office Address (for Invoices)</label>
-                            <textarea className="product-input" style={{ minHeight: '80px' }} value={corporateInfo.address} onChange={e => setCorporateInfo({...corporateInfo, address: e.target.value})} />
+                            <input type="text" className="st-input" value={corporateInfo.address} onChange={e => setCorporateInfo({...corporateInfo, address: e.target.value})} />
                         </div>
-                        <div className="form-group">
-                            <label>Billing Email</label>
-                            <input type="email" className="product-input" value={corporateInfo.email} onChange={e => setCorporateInfo({...corporateInfo, email: e.target.value})} />
-                        </div>
-                        <div className="form-group">
-                            <label>Support Phone</label>
-                            <input type="tel" className="product-input" value={corporateInfo.phone} onChange={e => setCorporateInfo({...corporateInfo, phone: e.target.value})} />
+                        <div className="st-form-row" style={{ marginTop: '16px' }}>
+                            <div className="st-form-group">
+                                <label>Billing Email</label>
+                                <input type="email" className="st-input" value={corporateInfo.email} onChange={e => setCorporateInfo({...corporateInfo, email: e.target.value})} />
+                            </div>
+                            <div className="st-form-group">
+                                <label>Support Phone</label>
+                                <input type="tel" className="st-input" value={corporateInfo.phone} onChange={e => setCorporateInfo({...corporateInfo, phone: e.target.value})} />
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
     );
+
+    const renderBarcodeSettings = () => {
+        return (
+            <div className="settings-content-pane">
+                <BarcodeSettingsScreen />
+            </div>
+        );
+    };
 
     return (
         <div className="settings-pane-container">
@@ -375,6 +424,7 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
             {tab === 'corporate' && renderCorporateProfile()}
             {tab === 'users' && <div className="settings-content-pane full-width-pane"><UsersRolesScreen /></div>}
             {tab === 'security' && <div className="settings-content-pane">Security Settings Coming Soon</div>}
+            {tab === 'barcode' && renderBarcodeSettings()}
         </div>
     );
 };

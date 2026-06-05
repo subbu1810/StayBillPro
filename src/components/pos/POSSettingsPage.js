@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { posSettingsAPI } from '../../services/api';
 
 /**
  * POSSettingsPage Component
@@ -8,6 +9,115 @@ export default function POSSettingsPage() {
   const [shopName, setShopName] = useState('Electronics Hub India');
   const [gstin, setGstin] = useState('27AAACH9999Z1Z5');
   const [theme, setTheme] = useState('light');
+  const [printSize, setPrintSize] = useState('80mm');
+  const [autoPrint, setAutoPrint] = useState(true);
+
+  // Tax Configurations
+  const [enableGst, setEnableGst] = useState(true);
+  const [inclusiveGst, setInclusiveGst] = useState(false);
+  const [showHsn, setShowHsn] = useState(true);
+  const [defaultGstPreset, setDefaultGstPreset] = useState(18);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const storedBranch = localStorage.getItem('selectedBranchId');
+      const branchId = (storedBranch && storedBranch !== 'undefined' && storedBranch !== 'null') ? storedBranch : '1';
+      const data = await posSettingsAPI.get(branchId);
+      if (data && Object.keys(data).length > 0) {
+        if (data.shop_name) setShopName(data.shop_name);
+        if (data.gstin) setGstin(data.gstin);
+        if (data.theme) setTheme(data.theme);
+        if (data.print_size) setPrintSize(data.print_size);
+        if (data.auto_print !== undefined) setAutoPrint(!!data.auto_print);
+        if (data.enable_gst !== undefined) setEnableGst(!!data.enable_gst);
+        if (data.inclusive_gst !== undefined) setInclusiveGst(!!data.inclusive_gst);
+        if (data.show_hsn !== undefined) setShowHsn(!!data.show_hsn);
+        if (data.default_gst_preset !== undefined) setDefaultGstPreset(data.default_gst_preset);
+      }
+    } catch (error) {
+      console.error('Failed to fetch POS settings:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const storedBranch = localStorage.getItem('selectedBranchId');
+      const branchId = (storedBranch && storedBranch !== 'undefined' && storedBranch !== 'null') ? storedBranch : '1';
+      
+      await posSettingsAPI.update({
+        branch_id: branchId,
+        shop_name: shopName,
+        gstin: gstin,
+        theme: theme,
+        print_size: printSize,
+        auto_print: autoPrint,
+        enable_gst: enableGst,
+        inclusive_gst: inclusiveGst,
+        show_hsn: showHsn,
+        default_gst_preset: defaultGstPreset
+      });
+      alert('Settings saved successfully to the backend!');
+    } catch (error) {
+      console.error('Failed to save POS settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
+  };
+
+  const handleTestPrint = () => {
+    const printWindow = window.open('', '_blank');
+    let htmlContent = '';
+
+    if (printSize === 'A4') {
+      htmlContent = `
+        <html>
+          <head>
+            <title>Test Print - A4</title>
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; margin: 0 auto; color: #1e293b; line-height: 1.5; }
+              .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; text-align: center; }
+              h1 { margin: 0; color: #0f172a; font-size: 28px; }
+              @media print { .print-btn { display: none; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Test Print (A4 Size)</h1>
+              <p>Printer settings are working perfectly!</p>
+            </div>
+            <p>This is a full-page A4 test print. Your invoices will be printed using this format.</p>
+            <button class="print-btn" onclick="window.print()" style="display: block; width: 200px; margin: 40px auto; padding: 12px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">PRINT PAGE</button>
+          </body>
+        </html>
+      `;
+    } else {
+      const width = printSize === '50mm' ? '50mm' : '80mm';
+      htmlContent = `
+        <html>
+          <head>
+            <title>Test Print - ${printSize}</title>
+            <style>
+              body { font-family: 'Courier New', Courier, monospace; width: ${width}; padding: 10px; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; text-align: center; }
+              .print-btn { display: block; width: 100%; padding: 10px; margin-top: 20px; background: #000; color: #fff; text-align: center; cursor: pointer; border: none; font-weight: bold; font-family: sans-serif; }
+              @media print { .print-btn { display: none; } body { width: 100%; padding: 0; } }
+            </style>
+          </head>
+          <body>
+            <h2 style="margin: 0; font-size: ${printSize === '50mm' ? '16px' : '20px'};">Test Print</h2>
+            <p style="margin: 4px 0;">Size: ${printSize}</p>
+            <p style="margin: 20px 0;">Printer configuration is working perfectly!</p>
+            <button class="print-btn" onclick="window.print()">PRINT</button>
+          </body>
+        </html>
+      `;
+    }
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   return (
     <div className="pos-settings-container animate-pos-fade">
@@ -17,25 +127,7 @@ export default function POSSettingsPage() {
       </div>
 
       <div className="settings-grid">
-        {/* Shop Profile */}
-        <div className="settings-section card">
-          <div className="section-title">
-            <span className="icon">🏪</span>
-            <h3>Shop Profile</h3>
-          </div>
-          <div className="form-group">
-            <label>Shop Display Name</label>
-            <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>GSTIN Number</label>
-            <input type="text" value={gstin} onChange={(e) => setGstin(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Address line</label>
-            <textarea defaultValue="MG Road, Bengaluru, Karnataka - 560001"></textarea>
-          </div>
-        </div>
+
 
         {/* GST & Tax Config */}
         <div className="settings-section card">
@@ -46,21 +138,30 @@ export default function POSSettingsPage() {
            <div className="toggle-group">
              <div className="toggle-row">
                <span>Enable GST Calculation</span>
-               <input type="checkbox" defaultChecked />
+               <input type="checkbox" checked={enableGst} onChange={(e) => setEnableGst(e.target.checked)} />
              </div>
              <div className="toggle-row">
                <span>Prices include GST (Inclusive)</span>
-               <input type="checkbox" />
+               <input type="checkbox" checked={inclusiveGst} onChange={(e) => setInclusiveGst(e.target.checked)} />
              </div>
              <div className="toggle-row">
                <span>Show HSN/SAC on Invoice</span>
-               <input type="checkbox" defaultChecked />
+               <input type="checkbox" checked={showHsn} onChange={(e) => setShowHsn(e.target.checked)} />
              </div>
            </div>
            <div className="gst-presets">
              <label>Default GST Presets (%)</label>
              <div className="chips">
-               <span>5%</span> <span>12%</span> <span className="active">18%</span> <span>28%</span>
+               {[5, 12, 18, 28].map(preset => (
+                 <span 
+                   key={preset} 
+                   className={defaultGstPreset === preset ? 'active' : ''}
+                   onClick={() => setDefaultGstPreset(preset)}
+                   style={{ cursor: 'pointer' }}
+                 >
+                   {preset}%
+                 </span>
+               ))}
              </div>
            </div>
         </div>
@@ -73,50 +174,28 @@ export default function POSSettingsPage() {
            </div>
            <div className="form-group">
              <label>Thermal Printer Size</label>
-             <select>
-               <option>80mm (Standard)</option>
-               <option>58mm (Small)</option>
-               <option>A4 (Full Page)</option>
+             <select value={printSize} onChange={(e) => setPrintSize(e.target.value)}>
+               <option value="80mm">80mm (Standard)</option>
+               <option value="50mm">50mm (Small)</option>
+               <option value="A4">A4 (Full Page)</option>
              </select>
            </div>
            <div className="toggle-row">
              <span>Auto-print on checkout</span>
-             <input type="checkbox" defaultChecked />
+             <input type="checkbox" checked={autoPrint} onChange={(e) => setAutoPrint(e.target.checked)} />
            </div>
            <div className="toggle-row">
              <span>Open Cash Drawer after payment</span>
              <input type="checkbox" />
            </div>
-           <button className="btn-test">Test Print Page</button>
+           <button className="btn-test" onClick={handleTestPrint}>Test Print Page</button>
         </div>
 
-        {/* UI & Theme */}
-        <div className="settings-section card">
-           <div className="section-title">
-             <span className="icon">🎨</span>
-             <h3>Interface Settings</h3>
-           </div>
-           <div className="theme-switcher">
-             <label>Color Theme</label>
-             <div className="theme-options">
-               <button className={theme === 'light' ? 'active' : ''} onClick={() => setTheme('light')}>☀️ Light</button>
-               <button className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme('dark')}>🌙 Dark</button>
-               <button>🌈 Custom</button>
-             </div>
-           </div>
-           <div className="toggle-row">
-             <span>Show Product Images in Grid</span>
-             <input type="checkbox" defaultChecked />
-           </div>
-           <div className="toggle-row">
-             <span>Enable Sound Effects</span>
-             <input type="checkbox" defaultChecked />
-           </div>
-        </div>
+
       </div>
 
       <div className="settings-footer">
-         <button className="btn-save">Save All Settings</button>
+         <button className="btn-save" onClick={handleSave}>Save All Settings</button>
       </div>
 
       <style jsx>{`

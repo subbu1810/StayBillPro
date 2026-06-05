@@ -39,6 +39,8 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const [adjustType, setAdjustType] = useState('in'); // 'in' or 'out'
 	const [adjustItem, setAdjustItem] = useState(null);
 	const [adjustQty, setAdjustQty] = useState(1);
+	const [adjustRetailPrice, setAdjustRetailPrice] = useState('');
+	const [adjustWholesalePrice, setAdjustWholesalePrice] = useState('');
 	const [stockHistory, setStockHistory] = useState([]);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [categoryToDelete, setCategoryToDelete] = useState('');
@@ -212,7 +214,15 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 			const newQty = adjustType === 'in' ? currentStock + Number(adjustQty) : Math.max(0, currentStock - Number(adjustQty));
 			
 			const api = activeSection === 'sales' ? productsAPI : sparesAPI;
-			const updatedItem = { ...adjustItem, quantity: newQty, branch_id: selectedBranchId };
+			const updatedItem = { 
+				...adjustItem, 
+				quantity: newQty, 
+				branch_id: selectedBranchId 
+			};
+			if (adjustType === 'in') {
+				updatedItem.price = adjustRetailPrice !== '' ? Number(adjustRetailPrice) : adjustItem.price;
+				updatedItem.wholesale_price = adjustWholesalePrice !== '' ? Number(adjustWholesalePrice) : adjustItem.wholesale_price;
+			}
 			await api.update(adjustItem.id, updatedItem);
 			
 			await stockLogAPI.create({
@@ -448,7 +458,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 							onClick={handleToggleForm}
 							style={{ 
 								padding: '6px 14px', 
-								background: showForm ? '#f1f5f9' : '#ff7e36', 
+								background: showForm ? '#f1f5f9' : '#14b8a6', 
 								color: showForm ? '#475569' : 'white', 
 								border: 'none', 
 								borderRadius: '6px', 
@@ -472,7 +482,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								onClose={() => { setShowAddItemModal(false); setIsEdit(false); setCurrentId(null); }} 
 								onSave={handleModalSave}
 								categories={allCategories}
-								initialData={isEdit ? items.find(i => i.id === currentId) : null}
+								initialData={isEdit ? { ...items.find(i => i.id === currentId), type: activeSection } : { type: activeSection }}
 							/>
 
 							<div style={{ flex: 1, background: 'white', borderRadius: '12px', border: '1px solid #eef2f6', overflow: 'auto' }}>
@@ -487,6 +497,12 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'center' }}>GST</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'center' }}>Stock</th>
 											<th style={{ padding: '8px 12px', color: '#64748b' }}>Serial No</th>
+											<th style={{ padding: '8px 12px', color: '#64748b' }}>Dimensions</th>
+											<th style={{ padding: '8px 12px', color: '#64748b' }}>Size</th>
+											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'right' }}>Pur. Price</th>
+											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'right' }}>Whol. Price</th>
+											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'center' }}>Min Whol Qty</th>
+											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'center' }}>Status</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'right' }}>Price</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'right' }}>Actions</th>
 										</tr>
@@ -521,11 +537,34 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 													</span>
 												</td>
 												<td style={{ padding: '6px 12px', color: '#94a3b8', fontSize: '0.65rem' }}>{item.serial_number || '—'}</td>
+												<td style={{ padding: '6px 12px', color: '#64748b' }}>{item.dimensions || '—'}</td>
+												<td style={{ padding: '6px 12px', color: '#64748b', fontWeight: 'bold' }}>{item.size || '—'}</td>
+												<td style={{ padding: '6px 12px', textAlign: 'right' }}>₹{(item.purchase_price || 0).toLocaleString()}</td>
+												<td style={{ padding: '6px 12px', textAlign: 'right' }}>{item.wholesale_price ? `₹${item.wholesale_price.toLocaleString()}` : '—'}</td>
+												<td style={{ padding: '6px 12px', textAlign: 'center' }}>{item.min_wholesale_qty || '—'}</td>
+												<td style={{ padding: '6px 12px', textAlign: 'center' }}>
+													<span style={{
+														padding: '2px 6px',
+														borderRadius: '4px',
+														background: item.status === 'available' ? '#f0fdf4' : item.status === 'out_of_stock' ? '#fef2f2' : '#f1f5f9',
+														color: item.status === 'available' ? '#15803d' : item.status === 'out_of_stock' ? '#ef4444' : '#475569',
+														fontWeight: '600',
+														fontSize: '0.7rem'
+													}}>
+														{item.status ? item.status.replace(/_/g, ' ').toUpperCase() : 'AVAILABLE'}
+													</span>
+												</td>
 												<td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 'bold' }}>₹{(item.price || 0).toLocaleString()}</td>
 												<td style={{ padding: '4px 12px', textAlign: 'right' }}>
 													<div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
 														<button 
-															onClick={() => { setAdjustItem(item); setAdjustType('in'); setShowAdjustModal(true); }}
+															onClick={() => { 
+																setAdjustItem(item); 
+																setAdjustType('in'); 
+																setAdjustRetailPrice(item.price || '');
+																setAdjustWholesalePrice(item.wholesale_price || '');
+																setShowAdjustModal(true); 
+															}}
 															className="adjust-btn-sm in"
 														>＋</button>
 														<button 
@@ -596,7 +635,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								<h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold' }}>Master Category List</h3>
 								<button 
 									onClick={() => { setCategoryModalMode('add'); setNewCategoryName(''); setShowCategoryModal(true); }}
-									style={{ padding: '8px 16px', background: '#ff7e36', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
+									style={{ padding: '8px 16px', background: '#14b8a6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
 								>
 									＋ Create New Category
 								</button>
@@ -665,7 +704,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 							>Cancel</button>
 							<button 
 								onClick={handleSaveCategory}
-								style={{ flex: 1, padding: '10px', border: 'none', background: '#ff7e36', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+								style={{ flex: 1, padding: '10px', border: 'none', background: '#14b8a6', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
 							>
 								{categoryModalMode === 'add' ? 'Save Category' : 'Update Name'}
 							</button>
@@ -722,6 +761,29 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 							onChange={(e) => setAdjustQty(e.target.value)}
 							style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px', fontSize: '1.2rem', fontWeight: 'bold', textAlign: 'center' }}
 						/>
+						
+						{adjustType === 'in' && (
+							<div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+								<div style={{ flex: 1 }}>
+									<label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}>Retail Price</label>
+									<input 
+										type="number" 
+										value={adjustRetailPrice}
+										onChange={(e) => setAdjustRetailPrice(e.target.value)}
+										style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '1rem', fontWeight: 'bold' }}
+									/>
+								</div>
+								<div style={{ flex: 1 }}>
+									<label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}>Wholesale Price</label>
+									<input 
+										type="number" 
+										value={adjustWholesalePrice}
+										onChange={(e) => setAdjustWholesalePrice(e.target.value)}
+										style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '1rem', fontWeight: 'bold' }}
+									/>
+								</div>
+							</div>
+						)}
 						
 						<div style={{ display: 'flex', gap: '8px' }}>
 							<button onClick={() => setShowAdjustModal(false)} style={{ flex: 1, padding: '10px', border: '1px solid #e2e8f0', background: 'white', borderRadius: '8px', cursor: 'pointer', color: '#64748b', fontWeight: 'bold' }}>Cancel</button>

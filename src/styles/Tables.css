@@ -48,8 +48,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--primary-orange-light, #fff2ec);
-    color: var(--primary-orange, #ff7e36);
+    background: var(--primary-orange-light, #ccfbf1);
+    color: var(--primary-orange, #14b8a6);
     border-radius: 12px;
 }
 
@@ -132,8 +132,8 @@
 }
 
 .card-action-btn:hover {
-    background: var(--primary-orange, #ff7e36);
-    border-color: var(--primary-orange, #ff7e36);
+    background: var(--primary-orange, #14b8a6);
+    border-color: var(--primary-orange, #14b8a6);
     color: white;
     transform: translateY(-1px);
 }
@@ -172,14 +172,14 @@
 }
 
 .filter-tab:hover {
-    background: var(--primary-orange-light, #fff2ec);
-    border-color: var(--primary-orange, #ff7e36);
-    color: var(--primary-orange, #ff7e36);
+    background: var(--primary-orange-light, #ccfbf1);
+    border-color: var(--primary-orange, #14b8a6);
+    color: var(--primary-orange, #14b8a6);
 }
 
 .filter-tab.active {
-    background: var(--primary-orange, #ff7e36);
-    border-color: var(--primary-orange, #ff7e36);
+    background: var(--primary-orange, #14b8a6);
+    border-color: var(--primary-orange, #14b8a6);
     color: white;
     box-shadow: 0 4px 6px -1px rgba(255, 126, 54, 0.2);
 }
@@ -241,7 +241,7 @@
 }
 
 .modern-table tbody tr:hover {
-    background: var(--primary-orange-light, #fff2ec);
+    background: var(--primary-orange-light, #ccfbf1);
 }
 
 .modern-table tbody tr:last-child td {
@@ -258,7 +258,7 @@
 /* Table Cell Styles */
 .table-id {
     font-weight: 600;
-    color: var(--primary-orange, #ff7e36);
+    color: var(--primary-orange, #14b8a6);
     font-size: 0.85rem;
 }
 
@@ -278,7 +278,7 @@
 
 .customer-icon {
     font-size: 1.1rem;
-    color: var(--primary-orange, #ff7e36);
+    color: var(--primary-orange, #14b8a6);
 }
 
 .table-phone {
@@ -289,11 +289,11 @@
 .appliance-tag {
     display: inline-block;
     padding: 0.35rem 0.75rem;
-    background: var(--primary-orange-light, #fff2ec);
+    background: var(--primary-orange-light, #ccfbf1);
     border-radius: 6px;
     font-weight: 500;
     font-size: 0.8rem;
-    color: var(--primary-orange, #ff7e36);
+    color: var(--primary-orange, #14b8a6);
 }
 
 .issue-preview {
@@ -331,7 +331,7 @@
 
 .status-select:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--primary-orange-light, #fff2ec);
+    box-shadow: 0 0 0 2px var(--primary-orange-light, #ccfbf1);
 }
 
 .status-select.status-pending {
@@ -379,8 +379,8 @@
 }
 
 .view-btn:hover {
-    background: var(--primary-orange, #ff7e36);
-    border-color: var(--primary-orange, #ff7e36);
+    background: var(--primary-orange, #14b8a6);
+    border-color: var(--primary-orange, #14b8a6);
     color: white;
 }
 
@@ -470,7 +470,7 @@
     justify-content: center;
     width: 40px;
     height: 40px;
-    background: var(--primary-orange, #ff7e36);
+    background: var(--primary-orange, #14b8a6);
     border: none;
     border-radius: 10px;
     color: white;
@@ -484,5 +484,5 @@
 .register-appliance-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgba(255, 126, 54, 0.3);
-    background: var(--primary-orange-hover, #e86d2a);
+    background: var(--primary-orange-hover, #0f766e);
 }

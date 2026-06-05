@@ -15,6 +15,7 @@ function App() {
   const [currentView, setCurrentView] = useState('landing'); // 'landing', 'auth', 'register', 'dashboard', 'privacy', 'terms', 'about', 'contact', 'track'
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [selectedFeatures, setSelectedFeatures] = useState('both');
 
   // Browser back button functionality
   useEffect(() => {
@@ -23,11 +24,13 @@ function App() {
       if (event.state && event.state.view) {
         setCurrentView(event.state.view);
         setSelectedPlan(event.state.selectedPlan || null);
+        setSelectedFeatures(event.state.selectedFeatures || 'both');
         setIsAuthenticated(event.state.isAuthenticated || false);
       } else {
         // Default fallback to landing page
         setCurrentView('landing');
         setSelectedPlan(null);
+        setSelectedFeatures('both');
         setIsAuthenticated(false);
       }
     };
@@ -37,7 +40,7 @@ function App() {
     
     // Set initial history state
     window.history.pushState(
-      { view: 'landing', selectedPlan: null, isAuthenticated: false },
+      { view: 'landing', selectedPlan: null, selectedFeatures: 'both', isAuthenticated: false },
       '',
       window.location.pathname
     );
@@ -47,9 +50,9 @@ function App() {
     };
   }, []);
 
-  const updateHistory = (view, plan = null, auth = false) => {
+  const updateHistory = (view, plan = null, features = 'both', auth = false) => {
     window.history.pushState(
-      { view, selectedPlan: plan, isAuthenticated: auth },
+      { view, selectedPlan: plan, selectedFeatures: features, isAuthenticated: auth },
       '',
       window.location.pathname
     );
@@ -57,13 +60,14 @@ function App() {
 
   const handleNavigateToAuth = () => {
     setCurrentView('auth');
-    updateHistory('auth', null, false);
+    updateHistory('auth', null, 'both', false);
   };
 
-  const handleNavigateToRegister = (planName) => {
+  const handleNavigateToRegister = (planName, planFeatures = 'both') => {
     setSelectedPlan(planName);
+    setSelectedFeatures(planFeatures);
     setCurrentView('register');
-    updateHistory('register', planName, false);
+    updateHistory('register', planName, planFeatures, false);
   };
 
   const handleNavigateToPrivacy = () => {
@@ -94,7 +98,8 @@ function App() {
   const handleBackToHome = () => {
     setCurrentView('landing');
     setSelectedPlan(null);
-    updateHistory('landing', null, false);
+    setSelectedFeatures('both');
+    updateHistory('landing', null, 'both', false);
   };
 
   const handleLogin = (success) => {
@@ -130,7 +135,7 @@ function App() {
             <Auth onLogin={handleLogin} onBackToHome={handleBackToHome} mode="login" />
           )}
           {currentView === 'register' && (
-            <Auth onLogin={handleLogin} onBackToHome={handleBackToHome} mode="register" selectedPlan={selectedPlan} />
+            <Auth onLogin={handleLogin} onBackToHome={handleBackToHome} mode="register" selectedPlan={selectedPlan} selectedFeatures={selectedFeatures} />
           )}
           {currentView === 'dashboard' && isAuthenticated && (
             <AdminPanel onLogout={handleLogout} />

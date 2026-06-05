@@ -20,7 +20,7 @@
     font-size: 0.7rem;
     font-weight: 800;
     text-transform: uppercase;
-    color: #6366f1;
+    color: #14b8a6;
     margin-top: 0;
     margin-bottom: 12px;
     padding-bottom: 6px;
@@ -214,7 +214,7 @@
 
 .form-input:focus {
     outline: none;
-    border-color: #ff7e36;
+    border-color: #14b8a6;
     background: white;
     box-shadow: 0 0 0 4px rgba(255, 126, 54, 0.1);
 }
@@ -245,11 +245,11 @@ textarea.form-input {
     justify-content: center;
     z-index: 10;
     font-weight: bold;
-    color: #ff7e36;
+    color: #14b8a6;
 }
 
 .btn-primary {
-    background: #ff7e36;
+    background: #14b8a6;
     color: white;
     padding: 10px 24px;
     border-radius: 12px;
@@ -265,7 +265,7 @@ textarea.form-input {
 }
 
 .btn-primary:hover {
-    background: #e86d2a;
+    background: #0f766e;
     transform: translateY(-1px);
     box-shadow: 0 10px 15px -3px rgba(255, 126, 54, 0.3);
 }

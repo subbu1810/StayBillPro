@@ -16,7 +16,7 @@ function PrivacyPolicy({ onBack }) {
                     <section>
                         <h2>1. Introduction</h2>
                         <p>
-                            Welcome to ServiceHub, provided by S Square G Tech Solutions ("we," "our," or "us").
+                            Welcome to StayBillPro, provided by S Square G Tech Solutions ("we," "our," or "us").
                             We are committed to protecting your personal information and your right to privacy.
                             This Privacy Policy explains how we collect, use, disclose, and safeguard your information
                             when you use our service management application.
@@ -43,7 +43,7 @@ function PrivacyPolicy({ onBack }) {
                         </ul>
 
                         <h3>2.2 Customer and Service Data</h3>
-                        <p>As you use ServiceHub to manage your electronics service business, we collect:</p>
+                        <p>As you use StayBillPro to manage your electronics service business, we collect:</p>
                         <ul>
                             <li>Customer information you input</li>
                             <li>Service request details</li>
@@ -65,7 +65,7 @@ function PrivacyPolicy({ onBack }) {
                         <h2>3. How We Use Your Information</h2>
                         <p>We use the collected information for:</p>
                         <ul>
-                            <li><strong>Service Provision:</strong> To provide, maintain, and improve ServiceHub</li>
+                            <li><strong>Service Provision:</strong> To provide, maintain, and improve StayBillPro</li>
                             <li><strong>Account Management:</strong> To manage your account and subscription</li>
                             <li><strong>Communication:</strong> To send you service updates, technical notices, and support messages</li>
                             <li><strong>Analytics:</strong> To understand how our service is used and improve user experience</li>
@@ -137,7 +137,7 @@ function PrivacyPolicy({ onBack }) {
                     <section>
                         <h2>9. Children's Privacy</h2>
                         <p>
-                            ServiceHub is not intended for use by children under 18 years of age.
+                            StayBillPro is not intended for use by children under 18 years of age.
                             We do not knowingly collect personal information from children.
                         </p>
                     </section>

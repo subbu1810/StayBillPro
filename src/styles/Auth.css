@@ -37,14 +37,14 @@
     font-size: 0.95rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    color: #667eea;
+    color: #20b2aa;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
 .back-to-home-btn:hover {
-    border-color: #667eea;
+    border-color: #20b2aa;
     background: #f5f7fa;
     transform: translateX(-3px);
 }
@@ -63,7 +63,7 @@
 }
 
 .logo-text {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -82,7 +82,7 @@
 
 .selected-plan-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     padding: 0.5rem 1rem;
     border-radius: 8px;
@@ -112,13 +112,13 @@
 }
 
 .nav-btn:hover {
-    border-color: #667eea;
-    color: #667eea;
+    border-color: #20b2aa;
+    color: #20b2aa;
 }
 
 .nav-btn.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: #667eea;
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
+    border-color: #20b2aa;
     color: white;
 }
 
@@ -199,7 +199,7 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     border-radius: 50%;
     font-weight: 700;
@@ -351,7 +351,7 @@
 
 .form-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #20b2aa;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -375,7 +375,7 @@ select.form-input option {
 
 .submit-btn {
     padding: 1rem 2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     border: none;
     border-radius: 0.75rem;
@@ -406,7 +406,7 @@ select.form-input option {
 .link-btn {
     background: none;
     border: none;
-    color: #667eea;
+    color: #20b2aa;
     font-weight: 700;
     cursor: pointer;
     margin-left: 0.5rem;
@@ -414,7 +414,7 @@ select.form-input option {
 }
 
 .link-btn:hover {
-    color: #764ba2;
+    color: #2c3e50;
     text-decoration: underline;
 }
 
@@ -550,12 +550,12 @@ select.form-input option {
 .pricing-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-    border-color: #667eea;
+    border-color: #20b2aa;
 }
 
 /* Featured Card */
 .pricing-card.featured {
-    border: 3px solid #667eea;
+    border: 3px solid #20b2aa;
     box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
     transform: scale(1.05);
 }
@@ -570,7 +570,7 @@ select.form-input option {
     top: -15px;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     padding: 0.5rem 1.5rem;
     border-radius: 2rem;
@@ -695,7 +695,7 @@ select.form-input option {
     justify-content: center;
     width: 24px;
     height: 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     border-radius: 50%;
     font-weight: 700;
@@ -707,9 +707,9 @@ select.form-input option {
 .buy-now-btn {
     width: 100%;
     padding: 1rem 2rem;
-    border: 2px solid #667eea;
+    border: 2px solid #20b2aa;
     background: white;
-    color: #667eea;
+    color: #20b2aa;
     border-radius: 0.75rem;
     font-size: 1.05rem;
     font-weight: 700;
@@ -718,16 +718,16 @@ select.form-input option {
 }
 
 .buy-now-btn:hover {
-    background: #667eea;
+    background: #20b2aa;
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
 }
 
 .buy-now-btn.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
-    border-color: #667eea;
+    border-color: #20b2aa;
 }
 
 .buy-now-btn.primary:hover {
@@ -888,7 +888,7 @@ select.form-input option {
 }
 
 .payment-option.selected {
-    border-color: #667eea;
+    border-color: #20b2aa;
     background: rgba(102, 126, 234, 0.05);
 }
 
@@ -909,7 +909,7 @@ select.form-input option {
 }
 
 .payment-option.selected span:last-child {
-    color: #667eea;
+    color: #20b2aa;
     font-weight: 600;
 }
 

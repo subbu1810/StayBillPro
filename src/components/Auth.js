@@ -9,7 +9,7 @@ const CARD_DETAILS_INITIAL = {
     cvv: ''
 };
 
-function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
+function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, selectedFeatures = 'both' }) {
     const [isLogin, setIsLogin] = useState(mode === 'login');
     const [loginData, setLoginData] = useState({
         identifier: '',
@@ -30,7 +30,8 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
         businessType: '',
         password: '',
         confirmPassword: '',
-        selectedPlan: selectedPlan || 'Starter (1-Year)'
+        selectedPlan: selectedPlan || 'Starter (1-Year)',
+        selectedFeatures: selectedFeatures || 'both'
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -58,11 +59,20 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
     const getPlanDetails = () => {
         if (!registerData.selectedPlan) return null;
 
-        const planPricing = {
-            'Starter (1-Year)': { monthlyPrice: 600, duration: 12, name: 'Starter' },
-            'Professional (2-Year)': { monthlyPrice: 500, duration: 24, name: 'Professional' },
-            'Enterprise (3-Year)': { monthlyPrice: 400, duration: 36, name: 'Enterprise' }
-        };
+        let planPricing;
+        if (registerData.selectedFeatures === 'both') {
+            planPricing = {
+                'Starter (1-Year)': { monthlyPrice: 800, duration: 12, name: 'Starter' },
+                'Professional (2-Year)': { monthlyPrice: 700, duration: 24, name: 'Professional' },
+                'Enterprise (3-Year)': { monthlyPrice: 600, duration: 36, name: 'Enterprise' }
+            };
+        } else {
+            planPricing = {
+                'Starter (1-Year)': { monthlyPrice: 400, duration: 12, name: 'Starter' },
+                'Professional (2-Year)': { monthlyPrice: 350, duration: 24, name: 'Professional' },
+                'Enterprise (3-Year)': { monthlyPrice: 300, duration: 36, name: 'Enterprise' }
+            };
+        }
 
         const plan = planPricing[registerData.selectedPlan];
         if (!plan) return null;
@@ -109,23 +119,20 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
             setIsSubmitting(true);
             setError('');
             
-            // Support login by email or phone
-            const payload = loginData.identifier.includes('@')
-                ? { email: loginData.identifier, password: loginData.password }
-                : { phone: loginData.identifier, password: loginData.password };
-
-            const response = await adminAuthAPI.login(payload);
+            const response = await adminAuthAPI.login({
+                email: loginData.identifier, 
+                password: loginData.password
+            });
 
             if (response.token) {
                 localStorage.setItem('token', response.token);
                 localStorage.setItem('adminToken', response.token); 
                 localStorage.setItem('adminUser', JSON.stringify(response.user));
-                onLogin(true);
+                onLogin(response.user);
             } else {
                 setError('Login failed. Please check your credentials.');
             }
         } catch (err) {
-            // Display server-provided message when available
             setError(err.message || 'Invalid credentials. Please try again.');
         } finally {
             setIsSubmitting(false);
@@ -218,13 +225,15 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
                 business_type: registerData.businessType,
                 gst_number: registerData.gstn,
                 password: registerData.password,
-                plan_name: currentPlanDetails.name
+                plan_name: currentPlanDetails.name,
+                features: registerData.selectedFeatures === 'both' ? 'Both Features' : registerData.selectedFeatures === 'billing' ? 'POS Billing' : 'Service Center'
             });
 
             // 2. Verify payment (Mock) and activate subscription
             await subscriptionAPI.verify({
                 admin_id: adminResponse.admin_id,
                 plan_name: currentPlanDetails.name,
+                features: registerData.selectedFeatures === 'both' ? 'Both Features' : registerData.selectedFeatures === 'billing' ? 'POS Billing' : 'Service Center',
                 transaction_id: 'MOCK_PAYMENT_' + Date.now(),
                 amount: currentPlanDetails.subtotal,
                 gst_amount: currentPlanDetails.gst,
@@ -253,7 +262,8 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
                 businessType: '',
                 password: '',
                 confirmPassword: '',
-                selectedPlan: registerData.selectedPlan // Keep selected plan
+                selectedPlan: registerData.selectedPlan,
+                selectedFeatures: registerData.selectedFeatures
             });
 
         } catch (err) {
@@ -276,7 +286,7 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null }) {
                     )}
                     <div className="logo">
                         <span className="logo-icon">🔧</span>
-                        <span className="logo-text">ServiceHub</span>
+                        <span className="logo-text">StayBillPro</span>
                     </div>
                     {isLogin ? (
                         <div className="auth-actions">

@@ -8,24 +8,55 @@ export default function ReturnsRefundPage() {
   const [invoiceId, setInvoiceId] = useState('');
   const [invoiceData, setInvoiceData] = useState(null);
   const [returnItems, setReturnItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundMode, setRefundMode] = useState('');
 
-  // Mock search function
-  const searchInvoice = (e) => {
+  const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+  const searchInvoice = async (e) => {
     e.preventDefault();
     if (!invoiceId) return;
     
-    // Mock Data found
-    setInvoiceData({
-      id: invoiceId,
-      customer: 'Rahul Sharma',
-      date: '2026-04-15',
-      items: [
-        { id: 1, name: 'Samsung Galaxy S24', price: 79999, qty: 1, gst: 18 },
-        { id: 3, name: 'Logitech G502 Mouse', price: 4500, qty: 2, gst: 12 },
-      ],
-      total: 88999,
-      mode: 'UPI'
-    });
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/billing/details/${invoiceId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.success && data.invoice) {
+        setInvoiceData({
+          id: data.invoice.id,
+          customer: data.invoice.customer_name || 'Walk-in',
+          date: data.invoice.created_at ? data.invoice.created_at.split('T')[0] : '',
+          items: data.items.map(i => ({
+            id: i.product_id,
+            itemId: i.id, // The invoice_item id
+            name: i.item_name,
+            price: Number(i.unit_price),
+            qty: i.quantity,
+            returnedQty: Number(i.returned_qty) || 0,
+            availableQty: i.quantity - (Number(i.returned_qty) || 0)
+          })),
+          total: Number(data.invoice.total_amount),
+          mode: data.invoice.payment_method
+        });
+        setRefundMode(data.invoice.payment_method);
+        setReturnItems([]);
+      } else {
+        alert(data.message || 'Invoice not found');
+        setInvoiceData(null);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error searching for invoice');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleItemForReturn = (item) => {
@@ -39,13 +70,56 @@ export default function ReturnsRefundPage() {
 
   const calculateRefund = () => {
     return returnItems.reduce((acc, item) => {
-      const itemTotal = item.price * item.returnQty;
-      const tax = itemTotal * (item.gst / 100);
-      return acc + itemTotal + tax;
+      // Assuming original invoice already included tax in unit_price or total,
+      // here we just return unit_price * qty
+      return acc + (item.price * item.returnQty);
     }, 0);
   };
 
   const refundAmount = calculateRefund();
+
+  const processRefund = async () => {
+    if (!invoiceData || returnItems.length === 0) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        invoiceId: invoiceData.id,
+        reason: refundReason,
+        paymentMethod: refundMode,
+        items: returnItems.map(item => ({
+          productId: item.id,
+          quantity: item.returnQty,
+          unitPrice: item.price,
+          refundPrice: item.price
+        }))
+      };
+
+      const res = await fetch(`${API_BASE}/returns`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        alert('Refund Processed & Stock Updated!');
+        // Reset form
+        setInvoiceId('');
+        setInvoiceData(null);
+        setReturnItems([]);
+        setRefundReason('');
+      } else {
+        alert(data.message || 'Error processing refund');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error while processing refund');
+    }
+  };
 
   return (
     <div className="pos-returns-container animate-pos-fade">
@@ -93,14 +167,28 @@ export default function ReturnsRefundPage() {
                 <h4>Select Items to Return</h4>
                 {invoiceData.items.map(item => {
                   const isSelected = returnItems.find(i => i.id === item.id);
+                  const isFullyReturned = item.availableQty <= 0;
                   return (
-                    <div key={item.id} className={`returnable-item ${isSelected ? 'selected' : ''}`} onClick={() => toggleItemForReturn(item)}>
-                      <div className="checkbox-indicator">{isSelected ? '✓' : ''}</div>
-                      <div className="item-info">
-                        <span className="name">{item.name}</span>
-                        <span className="meta">Bought: {item.qty} pcs @ ₹{item.price}</span>
+                    <div 
+                      key={item.id} 
+                      className={`returnable-item ${isSelected ? 'selected' : ''}`} 
+                      onClick={() => !isFullyReturned && toggleItemForReturn(item)}
+                      style={isFullyReturned ? { opacity: 0.5, cursor: 'not-allowed', background: '#f9fafb', borderColor: '#e5e7eb' } : {}}
+                    >
+                      <div className="checkbox-indicator" style={isFullyReturned ? { borderColor: '#d1d5db', background: '#e5e7eb' } : {}}>
+                        {isSelected ? '✓' : ''}
                       </div>
-                      <span className="item-price">₹{item.price * item.qty}</span>
+                      <div className="item-info">
+                        <span className="name" style={isFullyReturned ? { color: '#9ca3af' } : {}}>
+                          {item.name} {isFullyReturned ? '(Already Returned)' : ''}
+                        </span>
+                        <span className="meta">
+                          Bought: {item.qty} pcs | Available to return: {item.availableQty} @ ₹{item.price}
+                        </span>
+                      </div>
+                      <span className="item-price" style={isFullyReturned ? { color: '#9ca3af' } : {}}>
+                        ₹{item.price * item.availableQty}
+                      </span>
                     </div>
                   );
                 })}
@@ -142,20 +230,29 @@ export default function ReturnsRefundPage() {
 
                 <div className="refund-mode">
                    <label>Refund Via</label>
-                   <select>
-                     <option>Original Mode (UPI)</option>
-                     <option>Cash</option>
-                     <option>Store Credit</option>
+                   <select value={refundMode} onChange={(e) => setRefundMode(e.target.value)}>
+                     <option value="cash">Cash</option>
+                     <option value="upi">UPI</option>
+                     <option value="card">Card</option>
+                     <option value="credit">Store Credit</option>
                    </select>
                 </div>
 
                 <div className="refund-reason">
                    <label>Reason for Return</label>
-                   <textarea placeholder="e.g. Defective Product, Wrong Size..."></textarea>
+                   <textarea 
+                     placeholder="e.g. Defective Product, Wrong Size..."
+                     value={refundReason}
+                     onChange={(e) => setRefundReason(e.target.value)}
+                   ></textarea>
                 </div>
 
-                <button className="btn-process-refund" onClick={() => alert("Refund Processed & Stock Updated!")}>
-                  Complete Refund & Restock
+                <button 
+                  className="btn-process-refund" 
+                  onClick={processRefund}
+                  disabled={loading || returnItems.length === 0}
+                >
+                  {loading ? 'Processing...' : 'Complete Refund & Restock'}
                 </button>
               </div>
             )}

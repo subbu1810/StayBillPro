@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/StaffScreen.css';
-import { staffAPI, branchesAPI } from '../services/api';
+import '../styles/SettingsScreen.css';
+import { staffAPI, branchesAPI, staffManagementAPI } from '../services/api';
+import UsersRolesScreen from './UsersRolesScreen';
 
 const StaffScreen = ({ defaultTab = 'manage' }) => {
     const [staff, setStaff] = useState([]);
@@ -13,53 +15,99 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         phone: '',
         password: '',
         branch_id: '',
+        base_salary: '',
         permissions: ['dashboard']
     });
 
     const AVAILABLE_SCREENS = [
         { id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'Main' },
-        { id: 'pos', label: 'Quick Sale (POS)', icon: '⚡', group: 'Sales' },
+
+        // Sales (POS)
+        { id: 'pos-billing', label: 'Create Invoice', icon: '💳', group: 'Sales (POS)' },
+        { id: 'pos-returns', label: 'Returns & Refunds', icon: '↩️', group: 'Sales (POS)' },
+        { id: 'invoice-history', label: 'Invoice History', icon: '📋', group: 'Sales (POS)' },
         
         // Jobs
-        { id: 'jobs', label: 'Service Jobs List', icon: '📋', group: 'Jobs' },
-        { id: 'jobs-new', label: 'Create New Job', icon: '➕', group: 'Jobs' },
-        { id: 'jobs-calendar', label: 'Jobs Calendar', icon: '📅', group: 'Jobs' },
-        { id: 'jobs-invoicing', label: 'Job Invoicing', icon: '🧾', group: 'Jobs' },
+        { id: 'jobs', label: 'Active Jobs List', icon: '📋', group: 'Service Jobs' },
+        { id: 'jobs-new', label: 'Create New Job', icon: '➕', group: 'Service Jobs' },
+        { id: 'jobs-calendar', label: 'Service Calendar', icon: '📅', group: 'Service Jobs' },
+        { id: 'jobs-invoicing', label: 'Invoicing Hub', icon: '🧾', group: 'Service Jobs' },
         
-        // Inventory
-        { id: 'inventory-sales', label: 'Showroom Stock', icon: '🏬', group: 'Inventory' },
-        { id: 'inventory-service', label: 'Service Stock List', icon: '🔧', group: 'Inventory' },
-        { id: 'inventory-service-log', label: 'Service Stock Log', icon: '📜', group: 'Inventory' },
+        // Store Stock
+        { id: 'inventory-sales-stock', label: 'Current Stock', icon: '📦', group: 'Store Stock' },
+        { id: 'inventory-sales-categories', label: 'Categories', icon: '🏷️', group: 'Store Stock' },
+        { id: 'inventory-sales-ledger', label: 'Stock Log', icon: '📜', group: 'Store Stock' },
+
+        // Service Stock
+        { id: 'inventory-service', label: 'Spare Parts List', icon: '🔧', group: 'Service Stock' },
+        { id: 'inventory-service-log', label: 'Service Stock Log', icon: '📜', group: 'Service Stock' },
         
-        // CRM & Suppliers
-        { id: 'customers', label: 'Customer CRM', icon: '👥', group: 'Contacts' },
-        { id: 'suppliers', label: 'Suppliers List', icon: '🏭', group: 'Contacts' },
-        { id: 'technicians', label: 'Technicians List', icon: '👨‍🔧', group: 'Contacts' },
+        // Customer CRM
+        { id: 'customers-manage', label: 'Manage Customers', icon: '📑', group: 'Customer CRM' },
+        { id: 'customers-ledger', label: 'Customer Ledger', icon: '⚖️', group: 'Customer CRM' },
+        { id: 'customers-dues', label: 'Outstanding Dues', icon: '💸', group: 'Customer CRM' },
+        { id: 'customers-payments', label: 'Payment History', icon: '💳', group: 'Customer CRM' },
+        { id: 'customers-orders', label: 'Order History', icon: '🛒', group: 'Customer CRM' },
+        { id: 'customers-returns', label: 'Return History', icon: '🔄', group: 'Customer CRM' },
+
+        // Suppliers
+        { id: 'suppliers-manage', label: 'Manage Supplier', icon: '📑', group: 'Suppliers' },
+        { id: 'suppliers-ledger', label: 'Ledger', icon: '⚖️', group: 'Suppliers' },
+        { id: 'suppliers-payables', label: 'Payables', icon: '💸', group: 'Suppliers' },
+        { id: 'suppliers-payments', label: 'Payments', icon: '💳', group: 'Suppliers' },
+        { id: 'suppliers-purchases', label: 'Purchase History', icon: '📦', group: 'Suppliers' },
+
+        // Technicians
+        { id: 'technicians', label: 'Technicians List', icon: '👨‍🔧', group: 'Technicians' },
         
         // Staff
-        { id: 'staff-manage', label: 'Staff Directory', icon: '👮', group: 'Staff' },
-        { id: 'staff-roles', label: 'Roles & Access', icon: '🛡️', group: 'Staff' },
-        { id: 'staff-attendance', label: 'Attendance', icon: '🕒', group: 'Staff' },
-        { id: 'staff-salary', label: 'Payroll & Salary', icon: '💰', group: 'Staff' },
+        { id: 'staff-manage', label: 'Staff Directory', icon: '👮', group: 'Staff Management' },
+        { id: 'staff-roles', label: 'Roles & Access', icon: '🛡️', group: 'Staff Management' },
+        { id: 'staff-attendance', label: 'Attendance Tracking', icon: '🕒', group: 'Staff Management' },
+        { id: 'staff-salary', label: 'Payroll & Salary', icon: '💰', group: 'Staff Management' },
         
+        // Purchase
+        { id: 'purchase-po', label: 'Purchase Orders', icon: '📜', group: 'Purchase Management' },
+        { id: 'purchase-grn', label: 'GRN / Receiving', icon: '📥', group: 'Purchase Management' },
+        { id: 'purchase-due', label: 'Due Tracking', icon: '💸', group: 'Purchase Management' },
+
+        // Reports
+        { id: 'reports-sales', label: 'Sales Report', icon: '📊', group: 'Insight Reports' },
+        { id: 'reports-expenses', label: 'Expense Report', icon: '💸', group: 'Insight Reports' },
+        { id: 'reports-profit', label: 'Profit Report', icon: '💰', group: 'Insight Reports' },
+        { id: 'reports-stock', label: 'Stock Report', icon: '📦', group: 'Insight Reports' },
+        { id: 'reports-topCustomers', label: 'Top Customers', icon: '⭐', group: 'Insight Reports' },
+
         // Branch
-        { id: 'branch-manage', label: 'Manage Branches', icon: '🏢', group: 'Branch' },
-        { id: 'branch-transfer', label: 'Stock Transfer', icon: '🚚', group: 'Branch' },
-        { id: 'branch-consolidated', label: 'Group Reports', icon: '📊', group: 'Branch' },
+        { id: 'branch-manage', label: 'Manage Branches', icon: '🏘️', group: 'Multi-Branch Hub' },
+        { id: 'branch-transfer', label: 'Stock Transfer', icon: '🚚', group: 'Multi-Branch Hub' },
+        { id: 'branch-consolidated', label: 'Group Reports', icon: '📊', group: 'Multi-Branch Hub' },
         
         // Accounting
-        { id: 'accounting-ledger', label: 'Ledger', icon: '⚖️', group: 'Accounting' },
-        { id: 'accounting-gst', label: 'GST Reports', icon: '📜', group: 'Accounting' },
-        { id: 'accounting-expenses', label: 'Expenses', icon: '💸', group: 'Accounting' },
-        { id: 'accounting-pl', label: 'Profit & Loss', icon: '📈', group: 'Accounting' },
+        { id: 'accounting-ledger', label: 'Ledger & Cashbook', icon: '⚖️', group: 'Accounting Hub' },
+        { id: 'accounting-gst', label: 'GST Filling Report', icon: '📜', group: 'Accounting Hub' },
+        { id: 'accounting-expenses', label: 'Business Expenses', icon: '💸', group: 'Accounting Hub' },
+        { id: 'accounting-pl', label: 'Profit & Loss', icon: '📈', group: 'Accounting Hub' },
         
         // Settings
-        { id: 'settings-profile', label: 'Admin Profile', icon: '👤', group: 'Settings' },
-        { id: 'settings-corporate', label: 'Corporate Profile', icon: '🏢', group: 'Settings' },
-        { id: 'settings-users', label: 'Users & Access', icon: '👥', group: 'Settings' },
-        { id: 'settings-security', label: 'Security Config', icon: '⚙️', group: 'Settings' }
+        { id: 'settings-profile', label: 'Admin Profile', icon: '👤', group: 'Settings & Config' },
+        { id: 'settings-corporate', label: 'Corporate Profile', icon: '🏢', group: 'Settings & Config' },
+        { id: 'settings-users', label: 'Users & Access', icon: '👥', group: 'Settings & Config' },
+        { id: 'settings-security', label: 'Security Config', icon: '🛡️', group: 'Settings & Config' },
+        { id: 'settings-barcode', label: 'Barcode Printer', icon: '🖨️', group: 'Settings & Config' },
+        { id: 'pos-settings', label: 'POS Config', icon: '⚙️', group: 'Settings & Config' }
     ];
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [success, setSuccess] = useState(null);
+    const [error, setError] = useState(null);
+
+    // Attendance state
+    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceList, setAttendanceList] = useState([]);
+    
+    // Payroll state
+    const [payrollMonth, setPayrollMonth] = useState(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
+    const [payrollList, setPayrollList] = useState([]);
 
     useEffect(() => {
         fetchData();
@@ -87,6 +135,49 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         setLoading(false);
     };
 
+    const fetchAttendance = async () => {
+        try {
+            setLoading(true);
+            const res = await staffManagementAPI.getAttendance(attendanceDate);
+            if (res.success) setAttendanceList(res.attendance);
+        } catch (err) {
+            setError("Error fetching attendance: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchPayroll = async () => {
+        try {
+            setLoading(true);
+            const res = await staffManagementAPI.getPayroll(payrollMonth);
+            if (res.success) setPayrollList(res.payroll);
+        } catch (err) {
+            setError("Error fetching payroll: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (defaultTab === 'attendance') fetchAttendance();
+    }, [defaultTab, attendanceDate]);
+
+    useEffect(() => {
+        if (defaultTab === 'salary') fetchPayroll();
+    }, [defaultTab, payrollMonth]);
+
+    const toggleGroupPermissions = (screens, isAllChecked) => {
+        const screenIds = screens.map(s => s.id);
+        let current = [...newStaff.permissions];
+        if (isAllChecked) {
+            current = current.filter(id => !screenIds.includes(id));
+        } else {
+            current = Array.from(new Set([...current, ...screenIds]));
+        }
+        setNewStaff({ ...newStaff, permissions: current });
+    };
+
     const handleCreateStaff = async (e) => {
         e.preventDefault();
         if (!newStaff.branch_id) {
@@ -97,10 +188,13 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         try {
             await staffAPI.create(newStaff);
             setShowModal(false);
-            setNewStaff({ admin_name: '', email: '', phone: '', password: '', branch_id: '', permissions: ['dashboard'] });
+            setNewStaff({ admin_name: '', email: '', phone: '', password: '', branch_id: '', base_salary: '', permissions: ['dashboard'] });
+            setSuccess('Staff login account created successfully!');
+            setTimeout(() => setSuccess(null), 4000);
             fetchData();
-        } catch (error) {
-            alert("Error creating staff: " + error.message);
+        } catch (err) {
+            setError("Error creating staff: " + err.message);
+            setTimeout(() => setError(null), 4000);
         } finally {
             setIsSubmitting(false);
         }
@@ -140,7 +234,14 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                     <button className="btn-icon">✏️</button>
                                     <button className="btn-icon" onClick={() => {
                                         if(window.confirm('Remove this staff member?')) {
-                                            staffAPI.delete(s.id).then(() => fetchData());
+                                            staffAPI.delete(s.id).then(() => {
+                                                setSuccess('Staff member removed successfully!');
+                                                setTimeout(() => setSuccess(null), 4000);
+                                                fetchData();
+                                            }).catch(err => {
+                                                setError('Failed to remove staff: ' + err.message);
+                                                setTimeout(() => setError(null), 4000);
+                                            });
                                         }
                                     }}>🗑️</button>
                                 </td>
@@ -155,28 +256,38 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
     );
 
     const renderRoles = () => (
-        <div className="crm-content">
-            <h3 className="section-title">Roles & Access Control</h3>
-            <div className="crm-grid-3">
-                {['Admin', 'Manager', 'Technician', 'Sales Executive'].map(role => (
-                    <div key={role} className="report-card">
-                        <div className="card-header">
-                            <span className="card-title">{role}</span>
-                            <button className="btn-icon">⚙️</button>
-                        </div>
-                        <div className="card-value" style={{ fontSize: '0.9rem' }}>Full Access</div>
-                        <div className="card-trend grey">12 Permissions Enabled</div>
-                    </div>
-                ))}
-            </div>
+        <div className="crm-content" style={{ padding: '0', background: 'transparent', boxShadow: 'none' }}>
+            <UsersRolesScreen />
         </div>
     );
 
     const renderAttendance = () => (
         <div className="crm-content">
             <div className="crm-filters">
-                <input type="date" className="search-input" />
-                <button className="btn-secondary">Mark All Present</button>
+                <input 
+                    type="date" 
+                    className="search-input" 
+                    value={attendanceDate}
+                    onChange={(e) => setAttendanceDate(e.target.value)}
+                />
+                <button 
+                    className="btn-secondary"
+                    onClick={async () => {
+                        try {
+                            setLoading(true);
+                            await staffManagementAPI.markAllPresent(attendanceDate);
+                            setSuccess('All staff marked as present!');
+                            setTimeout(() => setSuccess(null), 3000);
+                            fetchAttendance();
+                        } catch (err) {
+                            setError('Error marking all present: ' + err.message);
+                            setTimeout(() => setError(null), 3000);
+                            setLoading(false);
+                        }
+                    }}
+                >
+                    Mark All Present
+                </button>
             </div>
             <table className="crm-table">
                 <thead>
@@ -189,58 +300,111 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {staff.map(s => (
-                        <tr key={s.id}>
-                            <td>{s.name}</td>
-                            <td>09:00 AM</td>
-                            <td>06:30 PM</td>
-                            <td>9.5 Hrs</td>
-                            <td><span className="method-pill success">On-Time</span></td>
-                        </tr>
-                    ))}
+                    {loading ? (
+                        <tr><td colSpan="5">Loading attendance...</td></tr>
+                    ) : attendanceList.length > 0 ? (
+                        attendanceList.map(a => (
+                            <tr key={a.staff_id}>
+                                <td>{a.name}</td>
+                                <td>{a.check_in}</td>
+                                <td>{a.check_out}</td>
+                                <td>{a.work_hours} Hrs</td>
+                                <td><span className={`method-pill ${a.status === 'Present' ? 'success' : 'warning'}`}>{a.status}</span></td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr><td colSpan="5">No attendance records found.</td></tr>
+                    )}
                 </tbody>
             </table>
         </div>
     );
 
-    const renderSalary = () => (
-        <div className="crm-content">
-            <div className="crm-grid-4">
-                <div className="report-card">
-                    <span className="card-title">Total Payroll</span>
-                    <div className="card-value">₹1,05,000</div>
+    const renderSalary = () => {
+        const totalPayroll = payrollList.reduce((acc, p) => acc + Number(p.net_payable), 0);
+        const pendingPayroll = payrollList.filter(p => p.status === 'Pending').reduce((acc, p) => acc + Number(p.net_payable), 0);
+        
+        return (
+            <div className="crm-content">
+                <div className="crm-filters" style={{ marginBottom: '16px' }}>
+                    <input 
+                        type="month" 
+                        className="search-input" 
+                        value={payrollMonth}
+                        onChange={(e) => setPayrollMonth(e.target.value)}
+                    />
                 </div>
-                <div className="report-card">
-                    <span className="card-title">Pending Salaries</span>
-                    <div className="card-value warning">₹25,000</div>
+                <div className="crm-grid-4">
+                    <div className="report-card">
+                        <span className="card-title">Total Payroll</span>
+                        <div className="card-value">₹{totalPayroll.toLocaleString()}</div>
+                    </div>
+                    <div className="report-card">
+                        <span className="card-title">Pending Salaries</span>
+                        <div className="card-value warning">₹{pendingPayroll.toLocaleString()}</div>
+                    </div>
                 </div>
-            </div>
-            <table className="crm-table" style={{ marginTop: '12px' }}>
-                <thead>
-                    <tr>
-                        <th>Employee</th>
-                        <th>Base Salary</th>
-                        <th>Allowances</th>
-                        <th>Deductions</th>
-                        <th>Net Payable</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {staff.map(s => (
-                        <tr key={s.id}>
-                            <td>{s.name}</td>
-                            <td>₹{s.salary}</td>
-                            <td>₹2,500</td>
-                            <td>₹500</td>
-                            <td style={{ fontWeight: 'bold' }}>₹{s.salary + 2000}</td>
-                            <td><button className="btn-small">Pay Now</button></td>
+                <table className="crm-table" style={{ marginTop: '12px' }}>
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Base Salary</th>
+                            <th>Allowances</th>
+                            <th>Deductions</th>
+                            <th>Net Payable</th>
+                            <th>Status</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan="6">Loading payroll data...</td></tr>
+                        ) : payrollList.length > 0 ? (
+                            payrollList.map(p => (
+                                <tr key={p.id}>
+                                    <td>{p.name}</td>
+                                    <td>₹{Number(p.base_salary).toLocaleString()}</td>
+                                    <td>₹{Number(p.allowances).toLocaleString()}</td>
+                                    <td>₹{Number(p.deductions).toLocaleString()}</td>
+                                    <td style={{ fontWeight: 'bold' }}>₹{Number(p.net_payable).toLocaleString()}</td>
+                                    <td>
+                                        {p.status === 'Paid' ? (
+                                            <span className="status-pill success">Paid</span>
+                                        ) : (
+                                            <button 
+                                                className="btn-small"
+                                                onClick={async () => {
+                                                    try {
+                                                        await staffManagementAPI.processPayment({
+                                                            staff_id: p.staff_id,
+                                                            month: payrollMonth,
+                                                            base_salary: p.base_salary,
+                                                            allowances: p.allowances,
+                                                            deductions: p.deductions,
+                                                            net_payable: p.net_payable
+                                                        });
+                                                        setSuccess('Salary processed successfully!');
+                                                        setTimeout(() => setSuccess(null), 3000);
+                                                        fetchPayroll();
+                                                    } catch (err) {
+                                                        setError('Error processing salary: ' + err.message);
+                                                        setTimeout(() => setError(null), 3000);
+                                                    }
+                                                }}
+                                            >
+                                                Pay Now
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr><td colSpan="6">No payroll records found.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
     const getTitle = () => {
         if (defaultTab === 'manage') return 'Staff Directory';
@@ -257,6 +421,16 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                     👥 {getTitle()}
                 </h2>
             </div>
+            {success && (
+                <div style={{ padding: '12px 16px', background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#15803d', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', animation: 'slideIn 0.3s ease' }}>
+                    <span>✅</span> {success}
+                </div>
+            )}
+            {error && (
+                <div style={{ padding: '12px 16px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', animation: 'slideIn 0.3s ease' }}>
+                    <span>⚠️</span> {error}
+                </div>
+            )}
 
             {defaultTab === 'manage' && renderManageStaff()}
             {defaultTab === 'roles' && renderRoles()}
@@ -315,6 +489,16 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                     />
                                 </div>
                                 <div className="premium-input-wrapper">
+                                    <label className="premium-input-label">Base Salary (₹)</label>
+                                    <input 
+                                        type="number" 
+                                        className="premium-input"
+                                        value={newStaff.base_salary} 
+                                        onChange={e => setNewStaff({...newStaff, base_salary: e.target.value})}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="premium-input-wrapper">
                                     <label className="premium-input-label">Assign to Branch *</label>
                                     <select 
                                         required 
@@ -339,33 +523,49 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                                 acc[group].push(screen);
                                                 return acc;
                                             }, {})
-                                        ).map(([group, screens]) => (
-                                            <div key={group} style={{ marginBottom: '16px' }}>
-                                                <div className="permission-group-header">{group}</div>
-                                                <div className="permission-grid">
-                                                    {screens.map(screen => (
-                                                        <label 
-                                                            key={screen.id} 
-                                                            className={`permission-item ${newStaff.permissions.includes(screen.id) ? 'selected' : ''}`}
-                                                        >
-                                                            <input 
-                                                                type="checkbox" 
-                                                                checked={newStaff.permissions.includes(screen.id)}
-                                                                onChange={() => {
-                                                                    const current = [...newStaff.permissions];
-                                                                    if (current.includes(screen.id)) {
-                                                                        setNewStaff({ ...newStaff, permissions: current.filter(id => id !== screen.id) });
-                                                                    } else {
-                                                                        setNewStaff({ ...newStaff, permissions: [...current, screen.id] });
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <span>{screen.icon} {screen.label}</span>
-                                                        </label>
-                                                    ))}
+                                        ).map(([group, screens]) => {
+                                            const groupScreenIds = screens.map(s => s.id);
+                                            const isAllChecked = groupScreenIds.every(id => newStaff.permissions.includes(id));
+                                            const isSomeChecked = !isAllChecked && groupScreenIds.some(id => newStaff.permissions.includes(id));
+                                            return (
+                                                <div key={group} className="permission-group-card">
+                                                    <div className="permission-group-header">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isAllChecked}
+                                                            ref={el => {
+                                                                if (el) el.indeterminate = isSomeChecked;
+                                                            }}
+                                                            onChange={() => toggleGroupPermissions(screens, isAllChecked)}
+                                                            style={{ marginRight: '8px', cursor: 'pointer', width: '15px', height: '15px' }}
+                                                        />
+                                                        <span>{group}</span>
+                                                    </div>
+                                                    <div className="permission-grid">
+                                                        {screens.map(screen => (
+                                                            <label 
+                                                                key={screen.id} 
+                                                                className={`permission-item ${newStaff.permissions.includes(screen.id) ? 'selected' : ''}`}
+                                                            >
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    checked={newStaff.permissions.includes(screen.id)}
+                                                                    onChange={() => {
+                                                                        const current = [...newStaff.permissions];
+                                                                        if (current.includes(screen.id)) {
+                                                                            setNewStaff({ ...newStaff, permissions: current.filter(id => id !== screen.id) });
+                                                                        } else {
+                                                                            setNewStaff({ ...newStaff, permissions: [...current, screen.id] });
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <span>{screen.icon} {screen.label}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>

@@ -1,8 +1,8 @@
 /* Light Orange Theme Dashboard */
 :root {
-	--primary-orange: #ff7e36;
-	--primary-orange-light: #fff2ec;
-	--primary-orange-hover: #e86d2a;
+	--primary-orange: #14b8a6;
+	--primary-orange-light: #ccfbf1;
+	--primary-orange-hover: #0f766e;
 	--bg-light: #fffaf7;
 	--bg-sidebar: #ffffff;
 	--text-dark: #1f2937;
@@ -228,7 +228,7 @@
 
 .global-search input:focus {
 	background: white;
-	border-color: #ff7e36;
+	border-color: #14b8a6;
 	box-shadow: 0 0 0 3px rgba(255, 126, 54, 0.1);
 	outline: none;
 }
@@ -273,7 +273,7 @@
 .user-avatar-small {
 	width: 32px;
 	height: 32px;
-	background: #ff7e36;
+	background: #14b8a6;
 	color: white;
 	border-radius: 50%;
 	display: flex;
@@ -708,7 +708,7 @@
 
 .view-selector button.active {
 	background: white !important;
-	color: #ff7e36 !important;
+	color: #14b8a6 !important;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 

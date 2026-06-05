@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { usersAPI, branchesAPI } from '../services/api';
+import { adminUsersAPI, branchesAPI } from '../services/api';
 import '../styles/SettingsScreen.css';
 
 export default function UsersRolesScreen() {
@@ -7,6 +7,7 @@ export default function UsersRolesScreen() {
 	const [branches, setBranches] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
+	const [success, setSuccess] = useState(null);
 	const [newUser, setNewUser] = useState({ 
 		name: '', email: '', password: '', phone: '', status: 'active', 
 		branch_id: '', permissions: [] 
@@ -19,46 +20,82 @@ export default function UsersRolesScreen() {
 
 	const AVAILABLE_SCREENS = [
 		{ id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'Main' },
-		{ id: 'pos', label: 'Quick Sale (POS)', icon: '⚡', group: 'Sales' },
+
+		// Sales (POS)
+		{ id: 'pos-billing', label: 'Create Invoice', icon: '💳', group: 'Sales (POS)' },
+		{ id: 'pos-wholesale', label: 'Wholesale Bill', icon: '📦', group: 'Sales (POS)' },
+		{ id: 'pos-returns', label: 'Returns & Refunds', icon: '↩️', group: 'Sales (POS)' },
+		{ id: 'invoice-history', label: 'Invoice History', icon: '📋', group: 'Sales (POS)' },
 		
 		// Jobs
-		{ id: 'jobs', label: 'Service Jobs List', icon: '📋', group: 'Jobs' },
-		{ id: 'jobs-new', label: 'Create New Job', icon: '➕', group: 'Jobs' },
-		{ id: 'jobs-calendar', label: 'Jobs Calendar', icon: '📅', group: 'Jobs' },
-		{ id: 'jobs-invoicing', label: 'Job Invoicing', icon: '🧾', group: 'Jobs' },
+		{ id: 'jobs', label: 'Active Jobs List', icon: '📋', group: 'Service Jobs' },
+		{ id: 'jobs-new', label: 'Create New Job', icon: '➕', group: 'Service Jobs' },
+		{ id: 'jobs-calendar', label: 'Service Calendar', icon: '📅', group: 'Service Jobs' },
+		{ id: 'jobs-invoicing', label: 'Invoicing Hub', icon: '🧾', group: 'Service Jobs' },
 		
-		// Inventory
-		{ id: 'inventory-sales', label: 'Showroom Stock', icon: '🏬', group: 'Inventory' },
-		{ id: 'inventory-service', label: 'Service Stock List', icon: '🔧', group: 'Inventory' },
-		{ id: 'inventory-service-log', label: 'Service Stock Log', icon: '📜', group: 'Inventory' },
+		// Store Stock
+		{ id: 'inventory-sales-stock', label: 'Current Stock', icon: '📦', group: 'Store Stock' },
+		{ id: 'inventory-sales-categories', label: 'Categories', icon: '🏷️', group: 'Store Stock' },
+		{ id: 'inventory-sales-ledger', label: 'Stock Log', icon: '📜', group: 'Store Stock' },
+
+		// Service Stock
+		{ id: 'inventory-service', label: 'Spare Parts List', icon: '🔧', group: 'Service Stock' },
+		{ id: 'inventory-service-log', label: 'Service Stock Log', icon: '📜', group: 'Service Stock' },
 		
-		// CRM & Suppliers
-		{ id: 'customers', label: 'Customer CRM', icon: '👥', group: 'Contacts' },
-		{ id: 'suppliers', label: 'Suppliers List', icon: '🏭', group: 'Contacts' },
-		{ id: 'technicians', label: 'Technicians List', icon: '👨‍🔧', group: 'Contacts' },
+		// Customer CRM
+		{ id: 'customers-manage', label: 'Manage Customers', icon: '📑', group: 'Customer CRM' },
+		{ id: 'customers-ledger', label: 'Customer Ledger', icon: '⚖️', group: 'Customer CRM' },
+		{ id: 'customers-dues', label: 'Outstanding Dues', icon: '💸', group: 'Customer CRM' },
+		{ id: 'customers-payments', label: 'Payment History', icon: '💳', group: 'Customer CRM' },
+		{ id: 'customers-orders', label: 'Order History', icon: '🛒', group: 'Customer CRM' },
+		{ id: 'customers-returns', label: 'Return History', icon: '🔄', group: 'Customer CRM' },
+
+		// Suppliers
+		{ id: 'suppliers-manage', label: 'Manage Supplier', icon: '📑', group: 'Suppliers' },
+		{ id: 'suppliers-ledger', label: 'Ledger', icon: '⚖️', group: 'Suppliers' },
+		{ id: 'suppliers-payables', label: 'Payables', icon: '💸', group: 'Suppliers' },
+		{ id: 'suppliers-payments', label: 'Payments', icon: '💳', group: 'Suppliers' },
+		{ id: 'suppliers-purchases', label: 'Purchase History', icon: '📦', group: 'Suppliers' },
+
+		// Technicians
+		{ id: 'technicians', label: 'Technicians List', icon: '👨‍🔧', group: 'Technicians' },
 		
 		// Staff
-		{ id: 'staff-manage', label: 'Staff Directory', icon: '👮', group: 'Staff' },
-		{ id: 'staff-roles', label: 'Roles & Access', icon: '🛡️', group: 'Staff' },
-		{ id: 'staff-attendance', label: 'Attendance', icon: '🕒', group: 'Staff' },
-		{ id: 'staff-salary', label: 'Payroll & Salary', icon: '💰', group: 'Staff' },
+		{ id: 'staff-manage', label: 'Staff Directory', icon: '👮', group: 'Staff Management' },
+		{ id: 'staff-roles', label: 'Roles & Access', icon: '🛡️', group: 'Staff Management' },
+		{ id: 'staff-attendance', label: 'Attendance Tracking', icon: '🕒', group: 'Staff Management' },
+		{ id: 'staff-salary', label: 'Payroll & Salary', icon: '💰', group: 'Staff Management' },
 		
+		// Purchase
+		{ id: 'purchase-po', label: 'Purchase Orders', icon: '📜', group: 'Purchase Management' },
+		{ id: 'purchase-grn', label: 'GRN / Receiving', icon: '📥', group: 'Purchase Management' },
+		{ id: 'purchase-due', label: 'Due Tracking', icon: '💸', group: 'Purchase Management' },
+
+		// Reports
+		{ id: 'reports-sales', label: 'Sales Report', icon: '📊', group: 'Insight Reports' },
+		{ id: 'reports-expenses', label: 'Expense Report', icon: '💸', group: 'Insight Reports' },
+		{ id: 'reports-profit', label: 'Profit Report', icon: '💰', group: 'Insight Reports' },
+		{ id: 'reports-stock', label: 'Stock Report', icon: '📦', group: 'Insight Reports' },
+		{ id: 'reports-topCustomers', label: 'Top Customers', icon: '⭐', group: 'Insight Reports' },
+
 		// Branch
-		{ id: 'branch-manage', label: 'Manage Branches', icon: '🏢', group: 'Branch' },
-		{ id: 'branch-transfer', label: 'Stock Transfer', icon: '🚚', group: 'Branch' },
-		{ id: 'branch-consolidated', label: 'Group Reports', icon: '📊', group: 'Branch' },
+		{ id: 'branch-manage', label: 'Manage Branches', icon: '🏘️', group: 'Multi-Branch Hub' },
+		{ id: 'branch-transfer', label: 'Stock Transfer', icon: '🚚', group: 'Multi-Branch Hub' },
+		{ id: 'branch-consolidated', label: 'Group Reports', icon: '📊', group: 'Multi-Branch Hub' },
 		
 		// Accounting
-		{ id: 'accounting-ledger', label: 'Ledger', icon: '⚖️', group: 'Accounting' },
-		{ id: 'accounting-gst', label: 'GST Reports', icon: '📜', group: 'Accounting' },
-		{ id: 'accounting-expenses', label: 'Expenses', icon: '💸', group: 'Accounting' },
-		{ id: 'accounting-pl', label: 'Profit & Loss', icon: '📈', group: 'Accounting' },
+		{ id: 'accounting-ledger', label: 'Ledger & Cashbook', icon: '⚖️', group: 'Accounting Hub' },
+		{ id: 'accounting-gst', label: 'GST Filling Report', icon: '📜', group: 'Accounting Hub' },
+		{ id: 'accounting-expenses', label: 'Business Expenses', icon: '💸', group: 'Accounting Hub' },
+		{ id: 'accounting-pl', label: 'Profit & Loss', icon: '📈', group: 'Accounting Hub' },
 		
 		// Settings
-		{ id: 'settings-profile', label: 'Admin Profile', icon: '👤', group: 'Settings' },
-		{ id: 'settings-corporate', label: 'Corporate Profile', icon: '🏢', group: 'Settings' },
-		{ id: 'settings-users', label: 'Users & Access', icon: '👥', group: 'Settings' },
-		{ id: 'settings-security', label: 'Security Config', icon: '⚙️', group: 'Settings' }
+		{ id: 'settings-profile', label: 'Admin Profile', icon: '👤', group: 'Settings & Config' },
+		{ id: 'settings-corporate', label: 'Corporate Profile', icon: '🏢', group: 'Settings & Config' },
+		{ id: 'settings-users', label: 'Users & Access', icon: '👥', group: 'Settings & Config' },
+		{ id: 'settings-security', label: 'Security Config', icon: '🛡️', group: 'Settings & Config' },
+		{ id: 'settings-barcode', label: 'Barcode Printer', icon: '🖨️', group: 'Settings & Config' },
+		{ id: 'pos-settings', label: 'POS Config', icon: '⚙️', group: 'Settings & Config' }
 	];
 
 	// Fetch users on mount
@@ -70,9 +107,9 @@ export default function UsersRolesScreen() {
 		setLoading(true);
 		setError(null);
 		
-		// Fetch Users
+		// Fetch Users (including SUPERADMIN)
 		try {
-			const usersData = await usersAPI.getAll();
+			const usersData = await adminUsersAPI.getBusinessUsers();
 			setUsers(Array.isArray(usersData) ? usersData : []);
 		} catch (err) {
 			setError(prev => prev ? prev + ' | ' + err.message : 'Error fetching users: ' + err.message);
@@ -112,8 +149,10 @@ export default function UsersRolesScreen() {
 				...newUser,
 				admin_name: newUser.name, // backend expects admin_name
 			};
-			await usersAPI.create(payload);
+			await adminUsersAPI.createUser(payload);
 			setShowUserModal(false);
+			setSuccess('User account created successfully!');
+			setTimeout(() => setSuccess(null), 4000);
 			await fetchData();
 		} catch (err) {
 			setError('Failed to create user: ' + err.message);
@@ -159,9 +198,27 @@ export default function UsersRolesScreen() {
 			if (editingUser.password) {
 				userData.password = editingUser.password;
 			}
-			await usersAPI.update(editingUser.id, userData);
+			await adminUsersAPI.updateUser(editingUser.id, userData);
+
+			// Update local storage and notify components if modifying own permissions
+			try {
+				const storedUserStr = localStorage.getItem('adminUser');
+				if (storedUserStr) {
+					const storedUser = JSON.parse(storedUserStr);
+					if (Number(storedUser.id) === Number(editingUser.id)) {
+						storedUser.permissions = editingUser.permissions;
+						localStorage.setItem('adminUser', JSON.stringify(storedUser));
+						window.dispatchEvent(new Event('user-profile-updated'));
+					}
+				}
+			} catch (e) {
+				console.error("Error updating local user profile after permission change:", e);
+			}
+
 			setShowEditUserModal(false);
 			setEditingUser(null);
+			setSuccess('User permissions and details updated successfully!');
+			setTimeout(() => setSuccess(null), 4000);
 			await fetchData();
 		} catch (err) {
 			setError('Failed to update user: ' + err.message);
@@ -180,9 +237,11 @@ export default function UsersRolesScreen() {
 			setLoading(true);
 			setError(null);
 			try {
-				await usersAPI.delete(deleteItem.id);
+				await adminUsersAPI.deleteUser(deleteItem.id);
 				setShowDeleteModal(false);
 				setDeleteItem({ type: null, id: null });
+				setSuccess('User account deleted successfully!');
+				setTimeout(() => setSuccess(null), 4000);
 				await fetchData();
 			} catch (err) {
 				setError('Failed to delete user: ' + err.message);
@@ -219,8 +278,35 @@ export default function UsersRolesScreen() {
 		}
 	};
 
+	const toggleGroupPermissions = (userType, screens, isAllChecked) => {
+		const screenIds = screens.map(s => s.id);
+		if (userType === 'new') {
+			let current = [...newUser.permissions];
+			if (isAllChecked) {
+				current = current.filter(id => !screenIds.includes(id));
+			} else {
+				current = Array.from(new Set([...current, ...screenIds]));
+			}
+			setNewUser({ ...newUser, permissions: current });
+		} else {
+			let current = [...editingUser.permissions];
+			if (isAllChecked) {
+				current = current.filter(id => !screenIds.includes(id));
+			} else {
+				current = Array.from(new Set([...current, ...screenIds]));
+			}
+			setEditingUser({ ...editingUser, permissions: current });
+		}
+	};
+
 	return (
 		<div className="users-management-pane">
+			{success && (
+				<div style={{ padding: '12px 16px', background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#15803d', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', animation: 'slideIn 0.3s ease' }}>
+					<span>✅</span> {success}
+				</div>
+			)}
+
 			{error && (
 				<div style={{ padding: '12px 16px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '6px', color: '#991b1b', marginBottom: '16px' }}>
 					{error}
@@ -365,26 +451,42 @@ export default function UsersRolesScreen() {
 												acc[group].push(screen);
 												return acc;
 											}, {})
-										).map(([group, screens]) => (
-											<div key={group} style={{ marginBottom: '16px' }}>
-												<div className="permission-group-header">{group}</div>
-												<div className="permission-grid">
-													{screens.map(screen => (
-														<label 
-															key={screen.id} 
-															className={`permission-item ${newUser.permissions.includes(screen.id) ? 'selected' : ''}`}
-														>
-															<input 
-																type="checkbox" 
-																checked={newUser.permissions.includes(screen.id)} 
-																onChange={() => togglePermission('new', screen.id)} 
-															/>
-															<span>{screen.icon} {screen.label}</span>
-														</label>
-													))}
+										).map(([group, screens]) => {
+											const groupScreenIds = screens.map(s => s.id);
+											const isAllChecked = groupScreenIds.every(id => newUser.permissions.includes(id));
+											const isSomeChecked = !isAllChecked && groupScreenIds.some(id => newUser.permissions.includes(id));
+											return (
+												<div key={group} className="permission-group-card">
+													<div className="permission-group-header">
+														<input 
+															type="checkbox" 
+															checked={isAllChecked}
+															ref={el => {
+																if (el) el.indeterminate = isSomeChecked;
+															}}
+															onChange={() => toggleGroupPermissions('new', screens, isAllChecked)}
+															style={{ marginRight: '8px', cursor: 'pointer', width: '15px', height: '15px' }}
+														/>
+														<span>{group}</span>
+													</div>
+													<div className="permission-grid">
+														{screens.map(screen => (
+															<label 
+																key={screen.id} 
+																className={`permission-item ${newUser.permissions.includes(screen.id) ? 'selected' : ''}`}
+															>
+																<input 
+																	type="checkbox" 
+																	checked={newUser.permissions.includes(screen.id)} 
+																	onChange={() => togglePermission('new', screen.id)} 
+																/>
+																<span>{screen.icon} {screen.label}</span>
+															</label>
+														))}
+													</div>
 												</div>
-											</div>
-										))}
+											);
+										})}
 									</div>
 								</div>
 
@@ -486,26 +588,42 @@ export default function UsersRolesScreen() {
 												acc[group].push(screen);
 												return acc;
 											}, {})
-										).map(([group, screens]) => (
-											<div key={group} style={{ marginBottom: '16px' }}>
-												<div className="permission-group-header">{group}</div>
-												<div className="permission-grid">
-													{screens.map(screen => (
-														<label 
-															key={screen.id} 
-															className={`permission-item ${editingUser.permissions.includes(screen.id) ? 'selected' : ''}`}
-														>
-															<input 
-																type="checkbox" 
-																checked={editingUser.permissions.includes(screen.id)} 
-																onChange={() => togglePermission('edit', screen.id)} 
-															/>
-															<span>{screen.icon} {screen.label}</span>
-														</label>
-													))}
+										).map(([group, screens]) => {
+											const groupScreenIds = screens.map(s => s.id);
+											const isAllChecked = groupScreenIds.every(id => editingUser.permissions.includes(id));
+											const isSomeChecked = !isAllChecked && groupScreenIds.some(id => editingUser.permissions.includes(id));
+											return (
+												<div key={group} className="permission-group-card">
+													<div className="permission-group-header">
+														<input 
+															type="checkbox" 
+															checked={isAllChecked}
+															ref={el => {
+																if (el) el.indeterminate = isSomeChecked;
+															}}
+															onChange={() => toggleGroupPermissions('edit', screens, isAllChecked)}
+															style={{ marginRight: '8px', cursor: 'pointer', width: '15px', height: '15px' }}
+														/>
+														<span>{group}</span>
+													</div>
+													<div className="permission-grid">
+														{screens.map(screen => (
+															<label 
+																key={screen.id} 
+																className={`permission-item ${editingUser.permissions.includes(screen.id) ? 'selected' : ''}`}
+															>
+																<input 
+																	type="checkbox" 
+																	checked={editingUser.permissions.includes(screen.id)} 
+																	onChange={() => togglePermission('edit', screen.id)} 
+																/>
+																<span>{screen.icon} {screen.label}</span>
+															</label>
+														))}
+													</div>
 												</div>
-											</div>
-										))}
+											);
+										})}
 									</div>
 								</div>
 

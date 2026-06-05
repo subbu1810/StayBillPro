@@ -43,6 +43,11 @@ const purchaseRoutes = require('./routes/purchaseRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
+const posSettingsRoutes = require('./routes/posSettingsRoutes');
+const returnRoutes = require('./routes/returnRoutes');
+const staffManagementRoutes = require('./routes/staffManagementRoutes');
+const barcodeSettingsRoutes = require('./routes/barcodeSettingsRoutes');
+const unitRoutes = require('./routes/unitRoutes');
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/branches', branchRoutes);
@@ -60,7 +65,11 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/suppliers', supplierRoutes);
-
+app.use('/api/pos-settings', posSettingsRoutes);
+app.use('/api/returns', returnRoutes);
+app.use('/api/staff-mgmt', staffManagementRoutes);
+app.use('/api/barcode-settings', barcodeSettingsRoutes);
+app.use('/api/units', unitRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

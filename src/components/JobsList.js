@@ -195,7 +195,7 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 					<title>Invoice - ${editingJob.ticketNo}</title>
 					<style>
 						body { font-family: sans-serif; padding: 40px; color: #333; }
-						.header { display: flex; justify-content: space-between; border-bottom: 2px solid #ff7e36; padding-bottom: 20px; }
+						.header { display: flex; justify-content: space-between; border-bottom: 2px solid #14b8a6; padding-bottom: 20px; }
 						.invoice-info { text-align: right; }
 						.section { margin-top: 30px; }
 						table { width: 100%; border-collapse: collapse; margin-top: 10px; }

@@ -1,183 +1,169 @@
 import React from 'react';
-import '../styles/LegalPages.css';
+import '../styles/AboutUs.css';
 
 function AboutUs({ onBack }) {
     return (
-        <div className="legal-page">
-            <div className="legal-container">
-                <button className="back-btn" onClick={onBack}>
-                    ← Back to Home
-                </button>
+        <div className="about-page">
+            <button className="about-back-btn" onClick={onBack}>
+                ← Back to Home
+            </button>
 
-                <h1 className="legal-title">About Us</h1>
-                <p className="legal-subtitle">Empowering Service Businesses with Technology</p>
+            {/* Hero Section */}
+            <section className="about-hero">
+                <h1>About Us</h1>
+                <p className="subtitle">
+                    Empowering Service Businesses with Technology
+                </p>
+            </section>
 
-                <div className="legal-content">
-                    <section>
-                        <h2>Who We Are</h2>
-                        <p>
-                            <strong>S Square G Tech Solutions</strong> is a leading technology company specializing in
-                            Business Process Outsourcing (BPO) and Application/Web Development. We are dedicated to
-                            building innovative solutions that drive growth and efficiency for businesses across industries.
-                        </p>
-                        <p>
-                            With expertise in both BPO services and cutting-edge software development, we understand
-                            the unique challenges faced by service-oriented businesses. ServiceHub was born from this
-                            understanding – a powerful yet simple platform designed specifically for electronics service
-                            centers to streamline their operations and enhance customer satisfaction.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2>Our Mission</h2>
-                        <p>
-                            To empower electronics service businesses with technology that simplifies operations,
-                            enhances customer experience, and drives sustainable growth. We believe that every service
-                            center, regardless of size, deserves access to professional-grade management tools.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2>Our Vision</h2>
-                        <p>
-                            To become the leading service management platform for electronics service centers globally,
-                            helping thousands of businesses transform their operations and achieve excellence in customer service.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2>What We Do</h2>
-                        <h3>ServiceHub Platform</h3>
-                        <p>ServiceHub is our flagship product designed to revolutionize how electronics service businesses operate:</p>
-                        <ul>
-                            <li><strong>Service Request Management:</strong> Track and manage all service requests in one centralized platform</li>
-                            <li><strong>Customer Database:</strong> Maintain comprehensive customer profiles and service history</li>
-                            <li><strong>Appliance Tracking:</strong> Keep detailed records of all appliances under service</li>
-                            <li><strong>Real-time Analytics:</strong> Make data-driven decisions with powerful dashboards and reports</li>
-                            <li><strong>Mobile Access:</strong> Manage your business from anywhere, anytime</li>
-                            <li><strong>Automated Workflows:</strong> Save time with intelligent automation</li>
-                        </ul>
-
-                        <h3>BPO Services</h3>
-                        <p>Through S Square G Tech Solutions, we offer comprehensive BPO services including:</p>
-                        <ul>
-                            <li>Customer support and helpdesk services</li>
-                            <li>Data management and processing</li>
-                            <li>Digital marketing solutions</li>
-                            <li>IT support services</li>
-                        </ul>
-
-                        <h3>App & Web Development</h3>
-                        <p>Our development expertise spans:</p>
-                        <ul>
-                            <li>Custom web application development</li>
-                            <li>Mobile app development (iOS & Android)</li>
-                            <li>Cloud-based solutions</li>
-                            <li>Enterprise software solutions</li>
-                            <li>UI/UX design</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2>Why Choose Us</h2>
-                        <div className="feature-grid">
-                            <div className="about-feature">
-                                <h3>🎯 Industry Expertise</h3>
-                                <p>Deep understanding of service industry needs and challenges</p>
-                            </div>
-                            <div className="about-feature">
-                                <h3>💡 Innovation</h3>
-                                <p>Cutting-edge technology with user-friendly design</p>
-                            </div>
-                            <div className="about-feature">
-                                <h3>🔒 Security</h3>
-                                <p>Enterprise-grade security to protect your business data</p>
-                            </div>
-                            <div className="about-feature">
-                                <h3>📈 Scalability</h3>
-                                <p>Solutions that grow with your business</p>
-                            </div>
-                            <div className="about-feature">
-                                <h3>🤝 Support</h3>
-                                <p>Dedicated support team committed to your success</p>
-                            </div>
-                            <div className="about-feature">
-                                <h3>💰 Value</h3>
-                                <p>Affordable pricing with transparent, no-hidden-cost structure</p>
-                            </div>
+            <div className="about-container">
+                {/* Introduction & Mission (Split Layout) */}
+                <section className="about-section">
+                    <div className="about-split">
+                        <div className="about-split-content">
+                            <h2>Who We Are</h2>
+                            <p>
+                                <strong>S Square G Tech Solutions</strong> is a leading technology company specializing in
+                                Business Process Outsourcing (BPO) and Application/Web Development. We are dedicated to
+                                building innovative solutions that drive growth and efficiency for businesses across industries.
+                            </p>
+                            <p>
+                                With expertise in both BPO services and cutting-edge software development, we understand
+                                the unique challenges faced by service-oriented businesses. StayBillPro was born from this
+                                understanding – a powerful yet simple platform designed specifically for electronics service
+                                centers to streamline their operations and enhance customer satisfaction.
+                            </p>
                         </div>
-                    </section>
-
-                    <section>
-                        <h2>Our Values</h2>
-                        <ul>
-                            <li><strong>Customer First:</strong> Your success is our success. We prioritize customer satisfaction in everything we do.</li>
-                            <li><strong>Innovation:</strong> We continuously evolve our platform with the latest technologies and best practices.</li>
-                            <li><strong>Integrity:</strong> We operate with transparency, honesty, and ethical business practices.</li>
-                            <li><strong>Excellence:</strong> We strive for excellence in our products, services, and customer support.</li>
-                            <li><strong>Collaboration:</strong> We work closely with our customers to understand and meet their unique needs.</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2>Our Impact</h2>
-                        <div className="stats-section">
-                            <div className="stat-box">
-                                <h3>1000+</h3>
-                                <p>Service Centers Trust Us</p>
-                            </div>
-                            <div className="stat-box">
-                                <h3>50,000+</h3>
-                                <p>Appliances Managed</p>
-                            </div>
-                            <div className="stat-box">
-                                <h3>99.9%</h3>
-                                <p>Platform Uptime</p>
-                            </div>
-                            <div className="stat-box">
-                                <h3>24/7</h3>
-                                <p>Support Available</p>
-                            </div>
+                        <div className="about-split-content">
+                            <h2>Our Mission</h2>
+                            <p>
+                                To empower electronics service businesses with technology that simplifies operations,
+                                enhances customer experience, and drives sustainable growth. We believe that every service
+                                center, regardless of size, deserves access to professional-grade management tools.
+                            </p>
+                            <br/>
+                            <h2>Our Vision</h2>
+                            <p>
+                                To become the leading service management platform for electronics service centers globally,
+                                helping thousands of businesses transform their operations and achieve excellence in customer service.
+                            </p>
                         </div>
-                    </section>
+                    </div>
+                </section>
 
-                    <section>
-                        <h2>Technology Stack</h2>
-                        <p>
-                            ServiceHub is built with modern, reliable technology to ensure performance, security, and scalability:
-                        </p>
-                        <ul>
-                            <li>Cloud-based infrastructure for global accessibility</li>
-                            <li>Responsive design for desktop and mobile devices</li>
-                            <li>Real-time synchronization across devices</li>
-                            <li>Automated backups and disaster recovery</li>
-                            <li>Regular security updates and monitoring</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2>Join Our Growing Community</h2>
-                        <p>
-                            Thousands of electronics service centers across India and beyond trust ServiceHub to manage
-                            their daily operations. From small independent repair shops to large service center chains,
-                            our platform adapts to businesses of all sizes.
-                        </p>
-                        <p>
-                            Ready to transform your service business? <a href="#contact">Contact us</a> today or
-                            <a href="#pricing"> view our pricing plans</a> to get started.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2>Parent Company</h2>
-                        <div className="contact-info">
-                            <p><strong>S Square G Tech Solutions</strong></p>
-                            <p>A technology company specializing in BPO services and App/Web Development</p>
-                            <p>Website: <a href="https://ssquareg.com" target="_blank" rel="noopener noreferrer">www.ssquareg.com</a></p>
-                            <p>Email: <a href="mailto:info@ssquareg.com">info@ssquareg.com</a></p>
+                {/* Stats Section */}
+                <section className="about-section" style={{border: 'none', padding: '2rem 0'}}>
+                    <div className="about-stats">
+                        <div className="about-stat-card">
+                            <h3>1000+</h3>
+                            <p>Service Centers Trust Us</p>
                         </div>
-                    </section>
-                </div>
+                        <div className="about-stat-card">
+                            <h3>50k+</h3>
+                            <p>Appliances Managed</p>
+                        </div>
+                        <div className="about-stat-card">
+                            <h3>99.9%</h3>
+                            <p>Platform Uptime</p>
+                        </div>
+                        <div className="about-stat-card">
+                            <h3>24/7</h3>
+                            <p>Support Available</p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Why Choose Us */}
+                <section className="about-section">
+                    <h2 style={{textAlign: 'center', width: '100%'}}>Why Choose Us</h2>
+                    <div className="about-grid">
+                        <div className="about-card">
+                            <div className="about-card-icon">🎯</div>
+                            <h3>Industry Expertise</h3>
+                            <p>Deep understanding of service industry needs and challenges, allowing us to build solutions that actually work for you.</p>
+                        </div>
+                        <div className="about-card">
+                            <div className="about-card-icon">💡</div>
+                            <h3>Innovation</h3>
+                            <p>Cutting-edge technology combined with intuitive, user-friendly design that your team will love using every day.</p>
+                        </div>
+                        <div className="about-card">
+                            <div className="about-card-icon">🔒</div>
+                            <h3>Security</h3>
+                            <p>Enterprise-grade cloud security protocols to protect your business data and customer information at all times.</p>
+                        </div>
+                        <div className="about-card">
+                            <div className="about-card-icon">📈</div>
+                            <h3>Scalability</h3>
+                            <p>Whether you have one branch or fifty, our solutions are built to scale seamlessly as your business grows.</p>
+                        </div>
+                        <div className="about-card">
+                            <div className="about-card-icon">🤝</div>
+                            <h3>Dedicated Support</h3>
+                            <p>Our expert support team is always on standby and fully committed to your operational success.</p>
+                        </div>
+                        <div className="about-card">
+                            <div className="about-card-icon">💰</div>
+                            <h3>Incredible Value</h3>
+                            <p>Highly affordable and transparent pricing with absolutely no hidden costs or surprise fees.</p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* What We Do */}
+                <section className="about-section">
+                    <h2>What We Do</h2>
+                    <div className="services-container">
+                        <div className="service-block">
+                            <h3>StayBillPro Platform</h3>
+                            <p>StayBillPro is our flagship product designed to revolutionize how electronics service businesses operate.</p>
+                            <ul className="service-list">
+                                <li>Service Request Management</li>
+                                <li>Wholesale & POS Billing</li>
+                                <li>Appliance Tracking</li>
+                                <li>Real-time Analytics</li>
+                                <li>Mobile Technician Access</li>
+                                <li>Automated Notifications</li>
+                            </ul>
+                        </div>
+                        <div className="service-block">
+                            <h3>BPO Services</h3>
+                            <p>Through S Square G Tech Solutions, we offer comprehensive Business Process Outsourcing.</p>
+                            <ul className="service-list">
+                                <li>Customer Support & Helpdesk</li>
+                                <li>Data Management</li>
+                                <li>Digital Marketing</li>
+                                <li>IT Support Services</li>
+                            </ul>
+                        </div>
+                        <div className="service-block">
+                            <h3>App & Web Development</h3>
+                            <p>We build tailored digital experiences for modern enterprises.</p>
+                            <ul className="service-list">
+                                <li>Custom Web Applications</li>
+                                <li>iOS & Android Apps</li>
+                                <li>Cloud-based Architecture</li>
+                                <li>UI/UX Design</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Parent Company */}
+                <section className="about-section" style={{border: 'none'}}>
+                    <div className="parent-company-card">
+                        <h3>Parent Company</h3>
+                        <p><strong>S Square G Tech Solutions</strong><br/>A technology company specializing in BPO services and App/Web Development.</p>
+                        <div className="parent-links">
+                            <a href="https://ssquareg.com" target="_blank" rel="noopener noreferrer">
+                                🌐 www.ssquareg.com
+                            </a>
+                            <a href="mailto:info@ssquareg.com">
+                                ✉️ info@ssquareg.com
+                            </a>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     );

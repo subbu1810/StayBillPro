@@ -15,7 +15,7 @@ export default function DailySummaryPage() {
 
   const paymentBreakdown = [
     { mode: 'Cash', amount: 52400, percent: 36, color: '#10b981' },
-    { mode: 'UPI / GPay', amount: 68000, percent: 47, color: '#6366f1' },
+    { mode: 'UPI / GPay', amount: 68000, percent: 47, color: '#14b8a6' },
     { mode: 'Card', amount: 24800, percent: 17, color: '#f59e0b' },
   ];
 

@@ -86,8 +86,8 @@ exports.updateStaff = async (req, res) => {
             return res.status(403).json({ message: "Access denied." });
         }
 
-        // Check if user exists and belongs to this admin
-        const [user] = await db.query('SELECT id FROM admins WHERE id = ? AND parent_admin_id = ?', [id, adminId]);
+        // Check if user exists and belongs to this admin (or is the admin themselves)
+        const [user] = await db.query('SELECT id FROM admins WHERE id = ? AND (id = ? OR parent_admin_id = ?)', [id, adminId, adminId]);
         if (user.length === 0) {
             return res.status(404).json({ message: "Staff member not found" });
         }
@@ -102,8 +102,8 @@ exports.updateStaff = async (req, res) => {
             params.push(hashedPassword);
         }
 
-        query += ' WHERE id = ? AND parent_admin_id = ?';
-        params.push(id, adminId);
+        query += ' WHERE id = ? AND (id = ? OR parent_admin_id = ?)';
+        params.push(id, adminId, adminId);
 
         await db.query(query, params);
         res.json({ message: "Staff member updated successfully" });

@@ -1,7 +1,7 @@
 /* Legal and Info Pages Styles */
 .legal-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     padding: 2rem 1rem;
 }
 
@@ -16,8 +16,8 @@
 
 .back-btn {
     background: transparent;
-    border: 2px solid #667eea;
-    color: #667eea;
+    border: 2px solid #20b2aa;
+    color: #20b2aa;
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
     font-weight: 600;
@@ -27,7 +27,7 @@
 }
 
 .back-btn:hover {
-    background: #667eea;
+    background: #20b2aa;
     color: white;
     transform: translateX(-5px);
 }
@@ -87,14 +87,14 @@
 }
 
 .legal-content a {
-    color: #667eea;
+    color: #20b2aa;
     text-decoration: none;
     font-weight: 500;
     transition: color 0.3s ease;
 }
 
 .legal-content a:hover {
-    color: #764ba2;
+    color: #2c3e50;
     text-decoration: underline;
 }
 
@@ -153,7 +153,7 @@
 }
 
 .stat-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     padding: 2rem;
     border-radius: 12px;
@@ -192,11 +192,11 @@
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 12px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #20b2aa;
 }
 
 .contact-method h3 {
-    color: #667eea;
+    color: #20b2aa;
     margin-top: 0;
     margin-bottom: 1rem;
     font-size: 1.2rem;
@@ -230,13 +230,13 @@
 }
 
 .quick-links a {
-    color: #667eea;
+    color: #20b2aa;
     text-decoration: none;
     transition: all 0.3s ease;
 }
 
 .quick-links a:hover {
-    color: #764ba2;
+    color: #2c3e50;
     padding-left: 5px;
 }
 
@@ -281,7 +281,7 @@
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #20b2aa;
 }
 
 .form-group textarea {
@@ -290,7 +290,7 @@
 }
 
 .submit-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #20b2aa 0%, #2c3e50 100%);
     color: white;
     border: none;
     padding: 1rem 2.5rem;
@@ -336,7 +336,7 @@
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 12px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #20b2aa;
 }
 
 .faq-item h3 {

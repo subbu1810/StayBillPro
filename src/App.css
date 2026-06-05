@@ -21,21 +21,21 @@
 
 /* CSS Variables */
 :root {
-	--primary: #0b74ff;
-	--primary-dark: #0a5cc7;
-	--secondary: #f5f7fb;
-	--accent: #16a34a;
+	--primary: #14b8a6;
+	--primary-dark: #0f766e;
+	--secondary: #f1f5f9;
+	--accent: #10b981;
 	--danger: #ef4444;
 	--warning: #f59e0b;
-	--muted: #6b7280;
-	--border: #e6e9ef;
+	--muted: #64748b;
+	--border: #e2e8f0;
 	--text-primary: #0f172a;
-	--text-secondary: #6b7280;
+	--text-secondary: #475569;
 	--bg: #ffffff;
-	--bg-light: #f5f7fb;
-	--radius: 8px;
-	--shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-	--shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.1);
+	--bg-light: #f8fafc;
+	--radius: 12px;
+	--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 	--transition: all 0.2s ease;
 }
 

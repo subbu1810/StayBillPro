@@ -30,6 +30,8 @@ exports.createInvoice = async (req, res) => {
             return res.status(400).json({ message: 'Valid total amount is required' });
         }
 
+
+
         await connection.beginTransaction();
 
         try {
@@ -47,11 +49,13 @@ exports.createInvoice = async (req, res) => {
 
             const branchId = branches[0].id;
 
+            const status = paymentMethod === 'credit' ? 'pending' : 'paid';
+
             // Insert invoice
             const [invoiceResult] = await connection.execute(
                 `INSERT INTO invoices (admin_id, branch_id, customer_name, customer_phone, total_amount, gst_amount, discount_amount, payment_method, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [adminId, branchId, customerName || 'Walk-in', customerPhone || '', totalAmount, gstAmount || 0, discountAmount || 0, paymentMethod, 'paid']
+                [adminId, branchId, customerName || 'Walk-in', customerPhone || '', totalAmount, gstAmount || 0, discountAmount || 0, paymentMethod, status]
             );
 
             const invoiceId = invoiceResult.insertId;
@@ -95,7 +99,7 @@ exports.createInvoice = async (req, res) => {
                     gstAmount: gstAmount || 0,
                     discountAmount: discountAmount || 0,
                     paymentMethod,
-                    status: 'paid',
+                    status: status,
                     createdAt: new Date()
                 }
             });
@@ -434,7 +438,15 @@ exports.getInvoiceDetails = async (req, res) => {
         }
 
         const [items] = await db.execute(
-            `SELECT * FROM invoice_items WHERE invoice_id = ?`,
+            `SELECT ii.*,
+                    COALESCE((
+                        SELECT SUM(sri.quantity)
+                        FROM sales_return_items sri
+                        JOIN sales_returns sr ON sr.id = sri.return_id
+                        WHERE sr.invoice_id = ii.invoice_id AND sri.product_id = ii.product_id
+                    ), 0) as returned_qty
+             FROM invoice_items ii 
+             WHERE ii.invoice_id = ?`,
             [invoiceId]
         );
 

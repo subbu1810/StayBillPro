@@ -154,11 +154,43 @@ export const customersAPI = {
   delete: (id) => apiRequest(API_ENDPOINTS.CUSTOMERS.DELETE(id), HTTP_METHODS.DELETE),
 };
 
+// ========== SUPPLIERS API ==========
+export const suppliersAPI = {
+  getAll: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers`, HTTP_METHODS.GET, null, params),
+  create: (supplierData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers`, HTTP_METHODS.POST, supplierData),
+  update: (id, supplierData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers/${id}`, HTTP_METHODS.PUT, supplierData),
+  delete: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers/${id}`, HTTP_METHODS.DELETE),
+};
+
+// ========== SETTINGS API ==========
+export const settingsAPI = {
+  getAdminProfile: () => apiRequest(API_ENDPOINTS.ADMIN_AUTH.PROFILE, HTTP_METHODS.GET),
+  updateAdminProfile: (profileData) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.UPDATE_PROFILE, HTTP_METHODS.PUT, profileData),
+  changePassword: (passwordData) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.CHANGE_PASSWORD, HTTP_METHODS.POST, passwordData),
+};
+
+// ========== BARCODE SETTINGS API ==========
+export const barcodeSettingsAPI = {
+  get: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/barcode-settings`, HTTP_METHODS.GET),
+  update: (data) => apiRequest(`${API_ENDPOINTS.BASE_URL}/barcode-settings`, HTTP_METHODS.PUT, data),
+};
+
+// ========== ADMIN USERS API (PERMISSIONS) ==========
+export const adminUsersAPI = {
+  getBusinessUsers: () => apiRequest(API_ENDPOINTS.ADMIN_USERS.LIST, HTTP_METHODS.GET),
+  createUser: (userData) => apiRequest(API_ENDPOINTS.ADMIN_USERS.CREATE, HTTP_METHODS.POST, userData),
+  updateUser: (id, userData) => apiRequest(API_ENDPOINTS.ADMIN_USERS.UPDATE(id), HTTP_METHODS.PUT, userData),
+  deleteUser: (id) => apiRequest(API_ENDPOINTS.ADMIN_USERS.DELETE(id), HTTP_METHODS.DELETE),
+  updatePermissions: (id, permissions) => apiRequest(API_ENDPOINTS.ADMIN_USERS.UPDATE_PERMISSIONS(id), HTTP_METHODS.PUT, { permissions }),
+};
+
 // ========== ADMIN AUTH API ==========
 export const adminAuthAPI = {
-  register: (adminData) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.REGISTER, HTTP_METHODS.POST, adminData),
-  login: (credentials) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.LOGIN, HTTP_METHODS.POST, credentials),
-  changePassword: (passwordData) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.CHANGE_PASSWORD, HTTP_METHODS.POST, passwordData),
+  register: (data) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.REGISTER, HTTP_METHODS.POST, data),
+  login: (data) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.LOGIN, HTTP_METHODS.POST, data),
+  changePassword: (data) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.CHANGE_PASSWORD, HTTP_METHODS.POST, data),
+  updateProfile: (data) => apiRequest(API_ENDPOINTS.ADMIN_AUTH.UPDATE_PROFILE, HTTP_METHODS.PUT, data),
+  acceptEula: () => apiRequest(API_ENDPOINTS.ADMIN_AUTH.ACCEPT_EULA, HTTP_METHODS.PUT),
 };
 
 // ========== SUBSCRIPTION API ==========
@@ -214,9 +246,29 @@ export const expenseAPI = {
 export const purchaseAPI = {
   getAll: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases`, HTTP_METHODS.GET, null, params),
   create: (purchaseData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases`, HTTP_METHODS.POST, purchaseData),
+  getOrders: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/orders`, HTTP_METHODS.GET, null, params),
+  getOrder: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/orders/${id}`, HTTP_METHODS.GET),
+  createOrder: (orderData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/orders`, HTTP_METHODS.POST, orderData),
+  getGRNs: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn`, HTTP_METHODS.GET, null, params),
+  createGRN: (grnData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn`, HTTP_METHODS.POST, grnData),
+  deleteGRNItem: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn/${id}`, HTTP_METHODS.DELETE),
 };
 
 // ========== HEALTH CHECK API ==========
 export const healthAPI = {
   check: () => apiRequest(API_ENDPOINTS.HEALTH),
+};
+
+// ========== POS SETTINGS API ==========
+export const posSettingsAPI = {
+  get: (branch_id) => apiRequest(API_ENDPOINTS.POS_SETTINGS.GET(branch_id)),
+  update: (data) => apiRequest(API_ENDPOINTS.POS_SETTINGS.UPDATE, HTTP_METHODS.POST, data),
+};
+
+// ========== STAFF MANAGEMENT API ==========
+export const staffManagementAPI = {
+  getAttendance: (date) => apiRequest(API_ENDPOINTS.STAFF_MGMT.ATTENDANCE, HTTP_METHODS.GET, null, { date }),
+  markAllPresent: (date) => apiRequest(API_ENDPOINTS.STAFF_MGMT.ATTENDANCE_BULK, HTTP_METHODS.POST, { date }),
+  getPayroll: (month) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL, HTTP_METHODS.GET, null, { month }),
+  processPayment: (paymentData) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_PAY, HTTP_METHODS.POST, paymentData),
 };

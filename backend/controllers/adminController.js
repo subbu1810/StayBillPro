@@ -25,12 +25,12 @@ exports.registerAdmin = async (req, res) => {
             `INSERT INTO admins (
                 business_name, admin_name, email, phone, address, 
                 city, state, pincode, country, business_type, 
-                gst_number, password, current_plan, role
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SUPERADMIN')`,
+                gst_number, password, current_plan, features, role
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SUPERADMIN')`,
             [
                 business_name, admin_name, email, phone, address, 
                 city, state, pincode, country, business_type, 
-                gst_number, hashedPassword, plan_name || 'Starter'
+                gst_number, hashedPassword, plan_name || 'Starter', req.body.features || 'Both Features'
             ]
         );
 
@@ -158,7 +158,9 @@ exports.loginAdmin = async (req, res) => {
                 branchId: user.branch_id,
                 permissions: user.permissions,
                 plan: user.current_plan,
-                expiry: user.subscription_expiry
+                expiry: user.subscription_expiry,
+                logo_url: user.logo_url,
+                eula_accepted: user.eula_accepted
             }
         });
     } catch (error) {
@@ -215,7 +217,8 @@ exports.updateAdminProfile = async (req, res) => {
             pincode,
             country,
             business_type,
-            gst_number
+            gst_number,
+            logo_url
         } = req.body;
 
         // Check for email conflicts if email is being changed
@@ -241,7 +244,8 @@ exports.updateAdminProfile = async (req, res) => {
                 pincode = COALESCE(?, pincode),
                 country = COALESCE(?, country),
                 business_type = COALESCE(?, business_type),
-                gst_number = COALESCE(?, gst_number)
+                gst_number = COALESCE(?, gst_number),
+                logo_url = COALESCE(?, logo_url)
              WHERE id = ?`,
             [
                 business_name,
@@ -255,6 +259,7 @@ exports.updateAdminProfile = async (req, res) => {
                 country,
                 business_type,
                 gst_number,
+                logo_url,
                 adminId
             ]
         );
@@ -263,5 +268,120 @@ exports.updateAdminProfile = async (req, res) => {
     } catch (error) {
         console.error('Update profile error:', error);
         res.status(500).json({ message: 'Server error while updating profile' });
+    }
+};
+
+exports.getBusinessUsers = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        
+        // Find users where id = adminId OR parent_admin_id = adminId
+        // Also assuming superadmins might have parent_admin_id = null but they are still the root.
+        const [users] = await db.query(
+            `SELECT a.id, a.admin_name, a.email, a.role, a.permissions, a.status, 
+                    a.branch_id, a.created_at, b.name AS branch_name
+             FROM admins a
+             LEFT JOIN branches b ON a.branch_id = b.id
+             WHERE a.id = ? OR a.parent_admin_id = ?
+             ORDER BY a.role ASC, a.admin_name ASC`,
+            [adminId, adminId]
+        );
+        
+        res.json(users);
+    } catch (error) {
+        console.error('Fetch users error:', error);
+        res.status(500).json({ message: 'Server error while fetching users' });
+    }
+};
+
+exports.updatePermissions = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const targetUserId = req.params.id;
+        const { permissions } = req.body;
+        
+        // First verify the target user belongs to this admin's business
+        const [users] = await db.query(
+            'SELECT id FROM admins WHERE id = ? AND (id = ? OR parent_admin_id = ?)',
+            [targetUserId, adminId, adminId]
+        );
+        
+        if (users.length === 0) {
+            return res.status(403).json({ message: 'Unauthorized to update this user' });
+        }
+        
+        // Update permissions (store as JSON string)
+        const permissionsString = Array.isArray(permissions) ? JSON.stringify(permissions) : permissions;
+        
+        await db.query(
+            'UPDATE admins SET permissions = ? WHERE id = ?',
+            [permissionsString, targetUserId]
+        );
+        
+        res.json({ message: 'Permissions updated successfully' });
+    } catch (error) {
+        console.error('Update permissions error:', error);
+        res.status(500).json({ message: 'Server error while updating permissions' });
+    }
+};
+
+exports.updateBusinessUser = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const targetUserId = req.params.id;
+        const { admin_name, email, phone, branch_id, status, permissions, password } = req.body;
+
+        // Verify the target user belongs to this admin's business (or is the admin themselves)
+        const [users] = await db.query(
+            'SELECT id, role FROM admins WHERE id = ? AND (id = ? OR parent_admin_id = ?)',
+            [targetUserId, adminId, adminId]
+        );
+
+        if (users.length === 0) {
+            return res.status(403).json({ message: 'Unauthorized to update this user' });
+        }
+
+        const permissionsString = Array.isArray(permissions) ? JSON.stringify(permissions) : (permissions || null);
+
+        let query = `UPDATE admins SET 
+            admin_name = COALESCE(?, admin_name),
+            email = COALESCE(?, email),
+            phone = COALESCE(?, phone),
+            branch_id = ?,
+            status = COALESCE(?, status),
+            permissions = ?`;
+        let params = [admin_name, email, phone, branch_id || null, status, permissionsString];
+
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            query += ', password = ?';
+            params.push(hashedPassword);
+        }
+
+        query += ' WHERE id = ?';
+        params.push(targetUserId);
+
+        await db.query(query, params);
+        res.json({ message: 'User updated successfully' });
+    } catch (error) {
+        console.error('Update business user error:', error);
+        res.status(500).json({ message: 'Server error while updating user' });
+    }
+};
+
+exports.acceptEula = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        
+        await db.query(
+            'UPDATE admins SET eula_accepted = TRUE WHERE id = ?',
+            [adminId]
+        );
+        
+        res.json({ message: 'EULA accepted successfully' });
+    } catch (error) {
+        console.error('Accept EULA error:', error);
+        res.status(500).json({ message: 'Server error while accepting EULA' });
     }
 };

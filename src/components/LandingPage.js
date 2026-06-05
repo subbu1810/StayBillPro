@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../styles/LandingPage.css';
 
 function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPrivacy, onNavigateToTerms, onNavigateToAbout, onNavigateToContact, onNavigateToTrack }) {
+    const [planType, setPlanType] = useState('both');
+
+    const getPrices = () => {
+        if (planType === 'both') {
+            return { starter: 800, pro: 700, enterprise: 600, origStarter: 1600, origPro: 1400, origEnterprise: 1200 };
+        } else {
+            return { starter: 400, pro: 350, enterprise: 300, origStarter: 800, origPro: 700, origEnterprise: 600 };
+        }
+    };
+    
+    const prices = getPrices();
+
     return (
         <div className="landing-page">
             {/* Header */}
@@ -9,14 +21,13 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                 <div className="header-content">
                     <div className="logo">
                         <span className="logo-icon">🔧</span>
-                        <span className="logo-text">ServiceHub</span>
+                        <span className="logo-text">StayBillPro</span>
                     </div>
                     <nav className="nav-menu">
                         <a href="#features">Features</a>
                         <a href="#pricing">Pricing</a>
                         <a href="#about" onClick={(e) => { e.preventDefault(); onNavigateToAbout(); }}>About</a>
                         <a href="#contact" onClick={(e) => { e.preventDefault(); onNavigateToContact(); }}>Contact</a>
-                        <a href="#track" onClick={(e) => { e.preventDefault(); onNavigateToTrack(); }} style={{color: 'var(--primary-orange)', fontWeight: 600}}>Track Repair</a>
                     </nav>
                     <button className="login-btn" onClick={onNavigateToAuth}>
                         Log In
@@ -32,42 +43,41 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                             <span className="badge-text">Limited Time Offer - Year End Sale!</span>
                         </div>
                         <h1 className="hero-title">
-                            Get <span className="highlight">50% Off</span> on<br />
-                            Service Management Software
+                            The Ultimate <span className="highlight">All-in-One</span><br />
+                            Business Management Software
                         </h1>
 
                         <div className="feature-highlights">
                             <div className="highlight-item">
                                 <span className="check-icon">✓</span>
-                                <span>Complete service request tracking</span>
+                                <span>POS Billing & Inventory Management</span>
                             </div>
                             <div className="highlight-item">
                                 <span className="check-icon">✓</span>
-                                <span>Customer & appliance management</span>
+                                <span>Complete Service Request Tracking</span>
                             </div>
                             <div className="highlight-item">
                                 <span className="check-icon">✓</span>
-                                <span>Real-time analytics dashboard</span>
+                                <span>Wholesale & Multi-Branch Operations</span>
+                            </div>
+                            <div className="highlight-item">
+                                <span className="check-icon">✓</span>
+                                <span>Real-time Analytics Dashboard</span>
                             </div>
                         </div>
 
                         <div className="price-section">
                             <div className="price-display">
                                 <span className="currency">₹</span>
-                                <span className="amount">500</span>
+                                <span className="amount">{prices.enterprise}</span>
                                 <span className="period">/mo</span>
                             </div>
-                            <div className="price-note">For 2-Year Plan — Best Value!</div>
+                            <div className="price-note">Starting from (3-Year Plan)</div>
                         </div>
 
                         <div className="cta-buttons">
-                            <button className="primary-btn" onClick={() => {
-                                document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                            }}>
+                            <button className="primary-btn" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}>
                                 View Plans
-                            </button>
-                            <button className="secondary-btn" onClick={(e) => { e.preventDefault(); onNavigateToTrack(); }}>
-                                🔍 Track a Repair
                             </button>
                         </div>
 
@@ -101,7 +111,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                             <div className="countries-served">
                                 <div className="countries-title">Trusted by 1000+ service centers across India</div>
                                 <div className="country-flags">
-                                    <span className="flag">🇮🇳 India</span>
+                                    <span className="flag">Proudly made in SINDHANUR ❤️</span>
                                 </div>
                             </div>
                         </div>
@@ -112,39 +122,72 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
             {/* Features Section */}
             <section className="features-section" id="features">
                 <div className="section-container">
-                    <h2 className="section-title">Why Choose ServiceHub?</h2>
+                    <h2 className="section-title">Why Choose StayBillPro?</h2>
                     <p className="section-subtitle">Everything you need to manage your electronics service business</p>
 
                     <div className="features-grid">
                         <div className="feature-card">
-                            <div className="feature-icon">📊</div>
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">📊</div>
+                            </div>
                             <h3>Real-time Dashboard</h3>
-                            <p>Track all service requests and appliances in one place with powerful analytics</p>
+                            <p>Track all service requests and appliances in one place with powerful real-time analytics and insights.</p>
                         </div>
                         <div className="feature-card">
-                            <div className="feature-icon">👥</div>
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">🏬</div>
+                            </div>
+                            <h3>Multi-Branch Management</h3>
+                            <p>Seamlessly scale your business by managing multiple service centers and inventory from a single master dashboard.</p>
+                        </div>
+                        <div className="feature-card">
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">📦</div>
+                            </div>
+                            <h3>Wholesale & POS Billing</h3>
+                            <p>Integrated Point-of-Sale (POS) and wholesale inventory management with direct barcode printing capabilities.</p>
+                        </div>
+                        <div className="feature-card">
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">🛠️</div>
+                            </div>
+                            <h3>Service & Repair Tracking</h3>
+                            <p>End-to-end lifecycle tracking for all service requests from initial booking to successful completion.</p>
+                        </div>
+                        <div className="feature-card">
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">👥</div>
+                            </div>
                             <h3>Customer Management</h3>
-                            <p>Efficiently manage customer data and service history</p>
+                            <p>Maintain detailed customer profiles, past service histories, and preferences for personalized service.</p>
                         </div>
                         <div className="feature-card">
-                            <div className="feature-icon">🔔</div>
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">📱</div>
+                            </div>
+                            <h3>Mobile Friendly Access</h3>
+                            <p>Empower your technicians with full mobile access to track jobs, update status, and manage their schedules.</p>
+                        </div>
+                        <div className="feature-card">
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">🔐</div>
+                            </div>
+                            <h3>Role-based Access</h3>
+                            <p>Secure operations by assigning specific roles and permissions to managers, technicians, and cashiers.</p>
+                        </div>
+                        <div className="feature-card">
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">🔔</div>
+                            </div>
                             <h3>Smart Notifications</h3>
-                            <p>Get instant alerts for new requests and updates</p>
+                            <p>Automated SMS and email updates to keep your customers constantly informed about their repair status.</p>
                         </div>
                         <div className="feature-card">
-                            <div className="feature-icon">📱</div>
-                            <h3>Mobile Friendly</h3>
-                            <p>Access your dashboard anywhere, anytime from any device</p>
-                        </div>
-                        <div className="feature-card">
-                            <div className="feature-icon">🔒</div>
-                            <h3>Secure & Reliable</h3>
-                            <p>Your data is protected with enterprise-grade security</p>
-                        </div>
-                        <div className="feature-card">
-                            <div className="feature-icon">💬</div>
-                            <h3>24/7 Support</h3>
-                            <p>Expert support team ready to help you anytime</p>
+                            <div className="feature-icon-wrapper">
+                                <div className="feature-icon">🛡️</div>
+                            </div>
+                            <h3>Enterprise-Grade Security</h3>
+                            <p>Your business data and customer information is protected with state-of-the-art cloud security architecture.</p>
                         </div>
                     </div>
                 </div>
@@ -156,6 +199,14 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                     <h2 className="section-title">Choose Your Plan</h2>
                     <p className="section-subtitle">Get 50% off on all plans - Limited time offer!</p>
 
+                    <div className="pricing-toggle-wrapper">
+                        <div className="pricing-toggle">
+                            <button className={`toggle-btn ${planType === 'billing' ? 'active' : ''}`} onClick={() => setPlanType('billing')}>POS Billing</button>
+                            <button className={`toggle-btn ${planType === 'service' ? 'active' : ''}`} onClick={() => setPlanType('service')}>Service Center</button>
+                            <button className={`toggle-btn ${planType === 'both' ? 'active' : ''}`} onClick={() => setPlanType('both')}>Both Features</button>
+                        </div>
+                    </div>
+
                     <div className="pricing-plans">
                         {/* 1 Year Plan */}
                         <div className="pricing-card-landing">
@@ -165,11 +216,11 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                             </div>
 
                             <div className="price-section-landing">
-                                <div className="original-price">₹1200<span className="price-period">/mo</span></div>
+                                <div className="original-price">₹{prices.origStarter}<span className="price-period">/mo</span></div>
                                 <div className="discount-badge">50% OFF</div>
                                 <div className="current-price">
                                     <span className="rupee">₹</span>
-                                    <span className="amount">600</span>
+                                    <span className="amount">{prices.starter}</span>
                                     <span className="period">/month</span>
                                 </div>
                                 <div className="price-details">
@@ -197,7 +248,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                                 </div>
                             </div>
 
-                            <button className="buy-now-btn" onClick={() => onNavigateToRegister('Starter (1-Year)')}>Get Started</button>
+                            <button className="buy-now-btn" onClick={() => onNavigateToRegister('Starter (1-Year)', planType)}>Get Started</button>
                         </div>
 
                         {/* 2 Year Plan - BEST DEAL */}
@@ -209,11 +260,11 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                             </div>
 
                             <div className="price-section-landing">
-                                <div className="original-price">₹1000<span className="price-period">/mo</span></div>
+                                <div className="original-price">₹{prices.origPro}<span className="price-period">/mo</span></div>
                                 <div className="discount-badge">50% OFF</div>
                                 <div className="current-price">
                                     <span className="rupee">₹</span>
-                                    <span className="amount">500</span>
+                                    <span className="amount">{prices.pro}</span>
                                     <span className="period">/month</span>
                                 </div>
                                 <div className="price-details">
@@ -241,7 +292,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                                 </div>
                             </div>
 
-                            <button className="buy-now-btn primary" onClick={() => onNavigateToRegister('Professional (2-Year)')}>Get Started</button>
+                            <button className="buy-now-btn primary" onClick={() => onNavigateToRegister('Professional (2-Year)', planType)}>Get Started</button>
                         </div>
 
                         {/* 3 Year Plan */}
@@ -252,11 +303,11 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                             </div>
 
                             <div className="price-section-landing">
-                                <div className="original-price">₹800<span className="price-period">/mo</span></div>
+                                <div className="original-price">₹{prices.origEnterprise}<span className="price-period">/mo</span></div>
                                 <div className="discount-badge">50% OFF</div>
                                 <div className="current-price">
                                     <span className="rupee">₹</span>
-                                    <span className="amount">400</span>
+                                    <span className="amount">{prices.enterprise}</span>
                                     <span className="period">/month</span>
                                 </div>
                                 <div className="price-details">
@@ -284,7 +335,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                                 </div>
                             </div>
 
-                            <button className="buy-now-btn" onClick={() => onNavigateToRegister('Enterprise (3-Year)')}>Get Started</button>
+                            <button className="buy-now-btn" onClick={() => onNavigateToRegister('Enterprise (3-Year)', planType)}>Get Started</button>
                         </div>
                     </div>
 
@@ -298,7 +349,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
             <section className="cta-section">
                 <div className="cta-content">
                     <h2>Ready to Transform Your Service Business?</h2>
-                    <p>Join thousands of service centers already using ServiceHub</p>
+                    <p>Join thousands of service centers already using StayBillPro</p>
                     <button className="cta-btn" onClick={onNavigateToAuth}>
                         Get Started Now
                     </button>
@@ -312,7 +363,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                         <div className="footer-col">
                             <div className="footer-logo">
                                 <span className="logo-icon">🔧</span>
-                                <span className="logo-text">ServiceHub</span>
+                                <span className="logo-text">StayBillPro</span>
                             </div>
                             <p>Manage your electronics service business with ease</p>
                         </div>
@@ -336,7 +387,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                         </div>
                     </div>
                     <div className="footer-bottom">
-                        <p>&copy; 2024 ServiceHub by <a href="https://ssquareg.com" target="_blank" rel="noopener noreferrer" style={{ color: '#667eea' }}>S Square G Tech Solutions</a>. All rights reserved.</p>
+                        <p>&copy; {new Date().getFullYear()} StayBillPro by <a href="https://ssquareg.com" target="_blank" rel="noopener noreferrer" style={{ color: '#20b2aa' }}>S Square G Tech Solutions</a>. All rights reserved.</p>
                         <div className="footer-links">
                             <a href="#privacy" onClick={(e) => { e.preventDefault(); onNavigateToPrivacy(); }}>Privacy Policy</a>
                             <a href="#terms" onClick={(e) => { e.preventDefault(); onNavigateToTerms(); }}>Terms of Service</a>

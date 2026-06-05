@@ -72,7 +72,7 @@
 }
 
 .track-submit-btn {
-    background: #ff7e36;
+    background: #14b8a6;
     color: white;
     border: none;
     padding: 12px 24px;
@@ -156,8 +156,8 @@
 }
 
 .timeline-step.active .step-badge {
-    background: #ff7e36;
-    border-color: #ff7e36;
+    background: #14b8a6;
+    border-color: #14b8a6;
     color: white;
     box-shadow: 0 0 0 6px rgba(255, 126, 54, 0.15);
 }

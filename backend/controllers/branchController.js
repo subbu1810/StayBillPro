@@ -38,11 +38,11 @@ exports.updateBranch = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { id } = req.params;
-        const { name, address, city, phone, is_main } = req.body;
+        const { name, email, phone, address, city, state, pincode, gst_number, is_main } = req.body;
         
         await db.query(
-            'UPDATE branches SET name = ?, address = ?, city = ?, phone = ?, is_main = ? WHERE id = ? AND admin_id = ?',
-            [name, address, city, phone, is_main, id, adminId]
+            'UPDATE branches SET name = ?, email = ?, phone = ?, address = ?, city = ?, state = ?, pincode = ?, gst_number = ?, is_main = ? WHERE id = ? AND admin_id = ?',
+            [name, email, phone, address, city, state, pincode, gst_number, is_main || false, id, adminId]
         );
         
         res.json({ message: "Branch updated successfully" });

@@ -271,7 +271,7 @@ export default function SuppliersScreen({ defaultTab }) {
                         </select>
                     </div>
                     <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                        <div className="summary-card" style={{ borderLeft: '3px solid #6366f1' }}>
+                        <div className="summary-card" style={{ borderLeft: '3px solid #14b8a6' }}>
                             <h3>Total Purchase</h3>
                             <p className="big-number" style={{ fontSize: '1.1rem' }}>₹4,85,000</p>
                         </div>

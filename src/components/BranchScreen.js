@@ -19,6 +19,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [editingBranchId, setEditingBranchId] = useState(null);
     const [newBranch, setNewBranch] = useState({
         name: '',
         email: '',
@@ -216,7 +217,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
 					<title>Invoice - #${inv.id}</title>
 					<style>
 						body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: 0 auto; }
-						.header { display: flex; justify-content: space-between; border-bottom: 2px solid #ff7e36; padding-bottom: 20px; }
+						.header { display: flex; justify-content: space-between; border-bottom: 2px solid #14b8a6; padding-bottom: 20px; }
 						.invoice-info { text-align: right; }
 						.section { margin-top: 30px; }
 						table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -277,19 +278,46 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         printWindow.document.close();
     };
 
-    const handleCreateBranch = async (e) => {
+    const handleSaveBranch = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            await branchesAPI.create(newBranch);
+            if (editingBranchId) {
+                await branchesAPI.update(editingBranchId, newBranch);
+            } else {
+                await branchesAPI.create(newBranch);
+            }
             setShowModal(false);
+            setEditingBranchId(null);
             setNewBranch({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', gst_number: '', is_main: false });
             fetchBranches();
         } catch (error) {
-            alert("Error creating branch: " + error.message);
+            alert(`Error ${editingBranchId ? 'updating' : 'creating'} branch: ` + error.message);
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEditClick = (branch) => {
+        setNewBranch({
+            name: branch.name || '',
+            email: branch.email || '',
+            phone: branch.phone || '',
+            address: branch.address || '',
+            city: branch.city || '',
+            state: branch.state || '',
+            pincode: branch.pincode || '',
+            gst_number: branch.gst_number || '',
+            is_main: branch.is_main || false
+        });
+        setEditingBranchId(branch.id);
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setEditingBranchId(null);
+        setNewBranch({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', gst_number: '', is_main: false });
     };
 
     const onProductSelect = (id) => {
@@ -406,7 +434,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         <div className="crm-content">
             <div className="crm-filters">
                 <input type="text" placeholder="Search Branch / Outlet..." className="search-input" />
-                <button className="btn-primary" onClick={() => setShowModal(true)}>+ Register New Branch</button>
+                <button className="btn-primary" onClick={() => { setEditingBranchId(null); setNewBranch({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', gst_number: '', is_main: false }); setShowModal(true); }}>+ Register New Branch</button>
             </div>
             <div className="crm-grid-3">
                 {loading ? (
@@ -430,8 +458,9 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
                                     <span className="stat-val emerald">{branch.phone || 'N/A'}</span>
                                 </div>
                             </div>
-                            <div className="branch-actions">
+                            <div className="branch-actions" style={{ display: 'flex', gap: '8px' }}>
                                 <button className="btn-secondary btn-full">View Branch Dashboard</button>
+                                <button className="btn-primary" style={{ padding: '8px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleEditClick(branch)} title="Edit Branch">✏️</button>
                             </div>
                         </div>
                     ))
@@ -651,12 +680,12 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
             {defaultTab === 'transfer' && renderStockTransfer()}
             {defaultTab === 'consolidated' && renderConsolidatedReports()}
 
-            {/* Register Branch Modal */}
+            {/* Register/Edit Branch Modal */}
             {showModal && (
                 <div className="branch-modal-overlay">
                     <div className="branch-modal">
-                        <h3>🏢 Register New Branch</h3>
-                        <form onSubmit={handleCreateBranch}>
+                        <h3>🏢 {editingBranchId ? 'Edit Branch' : 'Register New Branch'}</h3>
+                        <form onSubmit={handleSaveBranch}>
                             <div className="form-group">
                                 <label>Branch Name</label>
                                 <input 
@@ -752,9 +781,9 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
                                 </div>
                             </div>
                             <div className="modal-actions">
-                                <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>
+                                <button type="button" className="btn-cancel" onClick={handleCloseModal}>Cancel</button>
                                 <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                                    {isSubmitting ? 'Registering...' : 'Register Branch'}
+                                    {isSubmitting ? 'Saving...' : (editingBranchId ? 'Update Branch' : 'Register Branch')}
                                 </button>
                             </div>
                         </form>

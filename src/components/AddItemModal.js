@@ -7,7 +7,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
         hsn: initialData?.hsn_code || '',
-        unit: initialData?.unit || 'None',
+        unit: initialData?.unit && initialData.unit !== 'None' ? initialData.unit : '',
         category: initialData?.category_name || initialData?.category || '',
         code: initialData?.sku || initialData?.part_number || '',
         salePrice: initialData?.price || '',
@@ -17,7 +17,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
         purchasePrice: initialData?.purchase_price || '',
         purchasePriceTax: 'Without Tax',
         taxRate: initialData?.gst_rate ? `GST @ ${initialData.gst_rate}%` : 'None',
-        openingStock: initialData?.quantity || 0,
+        openingStock: initialData?.quantity ?? '',
         lowStockWarning: initialData?.low_stock_warning || 5,
         image: initialData?.image || null,
         wholesalePrice: initialData?.wholesale_price || '',
@@ -25,10 +25,17 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
         minWholesaleQty: initialData?.min_wholesale_qty || '',
         atPrice: initialData?.at_price || '',
         asOfDate: initialData?.as_of_date || new Date().toISOString().split('T')[0],
-        location: initialData?.location || ''
+        location: initialData?.location || '',
+        dimensions: initialData?.dimensions || '',
+        size: initialData?.size || '',
+        serial_number: initialData?.serial_number || '',
+        status: initialData?.status || 'available'
     });
     const [showWholesale, setShowWholesale] = useState(!!initialData?.wholesale_price);
     const [imagePreview, setImagePreview] = useState(initialData?.image || null);
+    const [unitsList, setUnitsList] = useState(['BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (Ml)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)']);
+    const [showAddUnit, setShowAddUnit] = useState(false);
+    const [newUnit, setNewUnit] = useState('');
     const fileInputRef = React.useRef(null);
 
     // Update form when initialData changes (e.g. when opening for edit)
@@ -38,7 +45,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             setFormData({
                 name: initialData.name || '',
                 hsn: initialData.hsn_code || '',
-                unit: initialData.unit || 'None',
+                unit: initialData.unit && initialData.unit !== 'None' ? initialData.unit : '',
                 category: initialData.category_name || initialData.category || '',
                 code: initialData.sku || initialData.part_number || '',
                 salePrice: initialData.price || '',
@@ -48,7 +55,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 purchasePrice: initialData.purchase_price || '',
                 purchasePriceTax: 'Without Tax',
                 taxRate: initialData.gst_rate ? `GST @ ${initialData.gst_rate}%` : 'None',
-                openingStock: initialData.quantity || 0,
+                openingStock: initialData.quantity ?? '',
                 lowStockWarning: initialData.low_stock_warning || 5,
                 image: initialData.image || null,
                 wholesalePrice: initialData.wholesale_price || '',
@@ -56,7 +63,11 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 minWholesaleQty: initialData.min_wholesale_qty || '',
                 atPrice: initialData.at_price || '',
                 asOfDate: initialData.as_of_date || new Date().toISOString().split('T')[0],
-                location: initialData.location || ''
+                location: initialData.location || '',
+                dimensions: initialData.dimensions || '',
+                size: initialData.size || '',
+                serial_number: initialData.serial_number || '',
+                status: initialData.status || 'available'
             });
             setShowWholesale(!!initialData.wholesale_price);
             setImagePreview(initialData.image || null);
@@ -66,7 +77,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             setFormData({
                 name: '',
                 hsn: '',
-                unit: 'None',
+                unit: '',
                 category: '',
                 code: '',
                 salePrice: '',
@@ -76,11 +87,38 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 purchasePrice: '',
                 purchasePriceTax: 'Without Tax',
                 taxRate: 'None',
-                openingStock: 0,
-                lowStockWarning: 5
+                openingStock: '',
+                lowStockWarning: 5,
+                dimensions: '',
+                size: '',
+                serial_number: '',
+                status: 'available'
             });
         }
     }, [initialData, isOpen]);
+
+    React.useEffect(() => {
+        const fetchUnits = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:5000/api/units', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        const defaultUnits = ['BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (Ml)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
+                        const fetchedUnits = data.map(u => u.name);
+                        const merged = [...new Set([...defaultUnits, ...fetchedUnits])].sort();
+                        setUnitsList(merged);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch units", err);
+            }
+        };
+        fetchUnits();
+    }, []);
 
     if (!isOpen) return null;
 
@@ -96,6 +134,35 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
         }
     };
 
+    const handleAddUnit = async () => {
+        if (newUnit.trim()) {
+            const upperUnit = newUnit.trim().toUpperCase();
+            if (!unitsList.includes(upperUnit)) {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('http://localhost:5000/api/units', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({ name: upperUnit })
+                    });
+                    if (response.ok) {
+                        setUnitsList(prev => [...prev, upperUnit].sort());
+                    } else {
+                        console.error("Failed to save unit to backend");
+                    }
+                } catch (err) {
+                    console.error("Error saving unit", err);
+                }
+            }
+            setFormData(prev => ({ ...prev, unit: upperUnit }));
+            setNewUnit('');
+            setShowAddUnit(false);
+        }
+    };
+
     const triggerFileInput = () => {
         fileInputRef.current?.click();
     };
@@ -103,6 +170,17 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'category') {
+            const selectedCat = categories.find(c => c.name === value);
+            if (selectedCat && selectedCat.type) {
+                if (selectedCat.type === 'sales') {
+                    setIsProduct(true);
+                } else if (selectedCat.type === 'service') {
+                    setIsProduct(false);
+                }
+            }
+        }
     };
 
     const generateUniqueCode = () => {
@@ -113,10 +191,36 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
     };
 
     const handleSave = () => {
+        if (!formData.name) {
+            alert('Please enter Item Name');
+            return;
+        }
+        if (!formData.hsn) {
+            alert('Please enter HSN Code');
+            return;
+        }
+        if (!formData.unit || formData.unit === 'None') {
+            alert('Please select a Unit');
+            return;
+        }
+        if (!formData.category) {
+            alert('Please select a Category');
+            return;
+        }
+        if (!formData.code) {
+            alert('Please enter Item Code');
+            return;
+        }
+        if (formData.openingStock === '' || formData.openingStock === null || formData.openingStock === undefined) {
+            alert('Please enter Quantity');
+            return;
+        }
+        
         // Map local state to the schema expected by the API
         const payload = {
             name: formData.name,
             hsn_code: formData.hsn,
+            unit: formData.unit,
             category: formData.category,
             part_number: formData.code, // or sku
             price: parseFloat(formData.salePrice) || 0,
@@ -130,7 +234,10 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             location: formData.location,
             low_stock_warning: parseInt(formData.lowStockWarning) || 5,
             type: isProduct ? 'sales' : 'service',
-            status: 'available'
+            dimensions: formData.dimensions,
+            size: formData.size,
+            serial_number: formData.serial_number,
+            status: formData.status
         };
         onSave(payload);
     };
@@ -178,24 +285,70 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                             <input 
                                 type="text" 
                                 name="hsn"
-                                placeholder={isProduct ? "Item HSN" : "Service HSN"}
+                                placeholder={isProduct ? "Item HSN *" : "Service HSN *"}
                                 value={formData.hsn}
                                 onChange={handleInputChange}
                             />
                             <span className="search-icon">🔍</span>
                         </div>
-                        <div className="input-group unit-group">
-                            <select 
-                                name="unit" 
-                                value={formData.unit} 
-                                onChange={handleInputChange}
-                                className="select-unit-dropdown"
-                            >
-                                <option value="" disabled>Select Unit</option>
-                                {['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (Ml)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'].map(u => (
-                                    <option key={u} value={u}>{u}</option>
-                                ))}
-                            </select>
+                        <div className="input-group" style={{ flexDirection: 'row', gap: '4px', maxWidth: '160px' }}>
+                            {!showAddUnit ? (
+                                <>
+                                    <div className="unit-group" style={{ flex: 1 }}>
+                                        <select 
+                                            name="unit" 
+                                            value={formData.unit} 
+                                            onChange={handleInputChange}
+                                            className="select-unit-dropdown"
+                                            style={{ width: '100%', padding: '8px' }}
+                                        >
+                                            <option value="" disabled>Select Unit *</option>
+                                            {unitsList.map(u => (
+                                                <option key={u} value={u}>{u}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowAddUnit(true)}
+                                        style={{ padding: '0 10px', background: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        title="Add Custom Unit"
+                                    >
+                                        +
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <input 
+                                        type="text" 
+                                        placeholder="New Unit"
+                                        value={newUnit}
+                                        onChange={(e) => setNewUnit(e.target.value)}
+                                        style={{ flex: 1 }}
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleAddUnit();
+                                            }
+                                        }}
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={handleAddUnit}
+                                        style={{ padding: '0 8px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                        ✓
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setShowAddUnit(false); setNewUnit(''); }}
+                                        style={{ padding: '0 8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                        ×
+                                    </button>
+                                </>
+                            )}
                         </div>
                         <input 
                             type="file" 
@@ -226,7 +379,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                 onChange={handleInputChange}
                                 style={{ width: '100%' }}
                             >
-                                <option value="">Select Category</option>
+                                <option value="" disabled>Select Category *</option>
                                 {categories.map(cat => (
                                     <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>
                                 ))}
@@ -236,7 +389,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                             <input 
                                 type="text" 
                                 name="code"
-                                placeholder={isProduct ? "Item Code" : "Service Code"}
+                                placeholder={isProduct ? "Item Code *" : "Service Code *"}
                                 value={formData.code}
                                 onChange={handleInputChange}
                             />
@@ -249,6 +402,44 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                     Assign Code
                                 </button>
                             )}
+                        </div>
+                    </div>
+                    <div className="input-grid">
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <input 
+                                type="number" 
+                                name="openingStock"
+                                placeholder={isProduct ? "Quantity *" : "Quantity"}
+                                value={formData.openingStock}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <input 
+                                type="text" 
+                                name="serial_number"
+                                placeholder={isProduct ? "Serial Number / IMEI" : "Serial Number"}
+                                value={formData.serial_number || ''}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <input 
+                                type="text" 
+                                name="dimensions"
+                                placeholder="Dimensions (e.g. 10x10x10)"
+                                value={formData.dimensions}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <input 
+                                type="text" 
+                                name="size"
+                                placeholder="Size (e.g. 9, XL, 42)"
+                                value={formData.size || ''}
+                                onChange={handleInputChange}
+                            />
                         </div>
                     </div>
 
@@ -319,7 +510,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                             <div className="wholesale-section">
                                                 <div className="section-header">
                                                     <h4>Wholesale Price</h4>
-                                                    <button className="remove-btn" onClick={() => setShowWholesale(false)}>⊖ Remove</button>
+                                                    <button type="button" className="wholesale-remove-btn" onClick={() => setShowWholesale(false)}>⊖ Remove</button>
                                                 </div>
                                                 <div className="row">
                                                     <div className="input-with-select">
@@ -464,6 +655,17 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                                     value={formData.location}
                                                     onChange={handleInputChange}
                                                 />
+                                            </div>
+                                            <div className="input-group">
+                                                <select 
+                                                    name="status"
+                                                    value={formData.status}
+                                                    onChange={handleInputChange}
+                                                >
+                                                    <option value="available">Available</option>
+                                                    <option value="unavailable">Unavailable</option>
+                                                    <option value="out_of_stock">Out of Stock</option>
+                                                </select>
                                             </div>
                                         </div>
                                     </div>

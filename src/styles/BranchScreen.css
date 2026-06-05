@@ -17,7 +17,7 @@
 .branch-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    border-color: #ff7e36;
+    border-color: #14b8a6;
 }
 
 .branch-header {
@@ -141,7 +141,7 @@
 
 .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
     outline: none;
-    border-color: #ff7e36;
+    border-color: #14b8a6;
     background: white;
     box-shadow: 0 0 0 4px rgba(255, 126, 54, 0.1);
 }
@@ -154,7 +154,7 @@
 }
 
 .help-text.stock-avail {
-    color: #ff7e36;
+    color: #14b8a6;
     background: #fff7ed;
     display: inline-block;
     padding: 4px 10px;

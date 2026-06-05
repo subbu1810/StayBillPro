@@ -16,7 +16,7 @@ function TermsOfService({ onBack }) {
                     <section>
                         <h2>1. Agreement to Terms</h2>
                         <p>
-                            By accessing and using ServiceHub, provided by S Square G Tech Solutions ("Company," "we," "our," or "us"),
+                            By accessing and using StayBillPro, provided by S Square G Tech Solutions ("Company," "we," "our," or "us"),
                             you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms,
                             please do not use our service.
                         </p>
@@ -25,7 +25,7 @@ function TermsOfService({ onBack }) {
                     <section>
                         <h2>2. Description of Service</h2>
                         <p>
-                            ServiceHub is a cloud-based service management application designed for electronics service businesses.
+                            StayBillPro is a cloud-based service management application designed for electronics service businesses.
                             Our platform enables you to:
                         </p>
                         <ul>
@@ -40,7 +40,7 @@ function TermsOfService({ onBack }) {
                     <section>
                         <h2>3. Account Registration and Security</h2>
                         <h3>3.1 Registration</h3>
-                        <p>To use ServiceHub, you must:</p>
+                        <p>To use StayBillPro, you must:</p>
                         <ul>
                             <li>Be at least 18 years of age</li>
                             <li>Provide accurate and complete registration information</li>
@@ -106,13 +106,13 @@ function TermsOfService({ onBack }) {
                         <h2>6. Data Ownership and Usage</h2>
                         <h3>6.1 Your Data</h3>
                         <p>
-                            You retain all ownership rights to the data you input into ServiceHub. We do not claim
+                            You retain all ownership rights to the data you input into StayBillPro. We do not claim
                             ownership of your customer data, service records, or other business information.
                         </p>
 
                         <h3>6.2 License to Use</h3>
                         <p>
-                            By using ServiceHub, you grant us a limited license to host, store, and process your data
+                            By using StayBillPro, you grant us a limited license to host, store, and process your data
                             solely for the purpose of providing the service to you.
                         </p>
 
@@ -126,7 +126,7 @@ function TermsOfService({ onBack }) {
                     <section>
                         <h2>7. Intellectual Property Rights</h2>
                         <p>
-                            ServiceHub, including all software, designs, text, graphics, and other content, is owned by
+                            StayBillPro, including all software, designs, text, graphics, and other content, is owned by
                             S Square G Tech Solutions and is protected by copyright, trademark, and other intellectual
                             property laws. You may not copy, modify, or create derivative works without our written permission.
                         </p>
@@ -218,7 +218,7 @@ function TermsOfService({ onBack }) {
                         <h2>15. Entire Agreement</h2>
                         <p>
                             These Terms, together with our Privacy Policy, constitute the entire agreement between
-                            you and S Square G Tech Solutions regarding the use of ServiceHub.
+                            you and S Square G Tech Solutions regarding the use of StayBillPro.
                         </p>
                     </section>
                 </div>

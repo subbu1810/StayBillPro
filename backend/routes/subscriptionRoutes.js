@@ -6,7 +6,7 @@ const db = require('../config/db');
 router.post('/verify', async (req, res) => {
     try {
         const { 
-            admin_id, plan_name, transaction_id, 
+            admin_id, plan_name, features, transaction_id, 
             amount, gst_amount, total_paid 
         } = req.body;
 
@@ -22,10 +22,10 @@ router.post('/verify', async (req, res) => {
         // 2. Record the subscription
         await db.query(
             `INSERT INTO subscriptions (
-                admin_id, plan_name, amount, gst_amount, total_paid, 
+                admin_id, plan_name, features, amount, gst_amount, total_paid, 
                 transaction_id, payment_status, start_date, expiry_date
-            ) VALUES (?, ?, ?, ?, ?, ?, 'Success', ?, ?)`,
-            [admin_id, plan_name, amount, gst_amount, total_paid, transaction_id, startDate, expiryDate]
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Success', ?, ?)`,
+            [admin_id, plan_name, features || 'Both Features', amount, gst_amount, total_paid, transaction_id, startDate, expiryDate]
         );
 
         // 3. Activate the Admin profile

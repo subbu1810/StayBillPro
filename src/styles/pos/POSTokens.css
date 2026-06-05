@@ -1,15 +1,15 @@
 :root {
   /* POS Design System Tokens */
-  --pos-primary: #6366f1;
+  --pos-primary: #14b8a6;
   --pos-primary-glow: rgba(99, 102, 241, 0.4);
-  --pos-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --pos-gradient: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
   
   --pos-success: #10b981;
   --pos-warning: #f59e0b;
   --pos-danger: #ef4444;
   --pos-info: #0ea5e9;
   
-  --pos-bg-main: #f8fafc;
+  --pos-bg-main: #fffaf7;
   --pos-bg-card: #ffffff;
   --pos-bg-dark: #0f172a;
   

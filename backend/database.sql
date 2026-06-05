@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS admins (
     phone VARCHAR(20) NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('SUPERADMIN', 'USER') DEFAULT 'SUPERADMIN',
+    base_salary DECIMAL(10, 2) DEFAULT 0.00,
     address TEXT,
     city VARCHAR(100),
     state VARCHAR(100),
@@ -20,7 +21,10 @@ CREATE TABLE IF NOT EXISTS admins (
     country VARCHAR(100) DEFAULT 'India',
     business_type VARCHAR(100),
     gst_number VARCHAR(20),
+    logo_url LONGTEXT,
     current_plan ENUM('Starter', 'Professional', 'Enterprise') DEFAULT 'Starter',
+    features VARCHAR(50) DEFAULT 'Both Features',
+    eula_accepted BOOLEAN DEFAULT FALSE,
     subscription_expiry DATETIME,
     is_active BOOLEAN DEFAULT FALSE,
     permissions TEXT DEFAULT NULL, -- JSON string of accessible screen IDs
@@ -35,6 +39,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT,
     plan_name VARCHAR(50) NOT NULL,
+    features VARCHAR(50) DEFAULT 'Both Features',
     amount DECIMAL(10, 2) NOT NULL,
     gst_amount DECIMAL(10, 2) NOT NULL,
     total_paid DECIMAL(10, 2) NOT NULL,
@@ -78,6 +83,16 @@ CREATE TABLE IF NOT EXISTS categories (
     UNIQUE KEY unique_admin_category_type (admin_id, name, type)
 );
 
+-- Units Table
+CREATE TABLE IF NOT EXISTS units (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_admin_unit (admin_id, name)
+);
+
 -- Sales Inventory Table
 CREATE TABLE IF NOT EXISTS sales_inventory (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -88,11 +103,15 @@ CREATE TABLE IF NOT EXISTS sales_inventory (
     brand VARCHAR(100),
     sku VARCHAR(100),
     hsn_code VARCHAR(20),
+    unit VARCHAR(50) DEFAULT NULL,
     gst_rate DECIMAL(5, 2) DEFAULT 18.0,
     serial_number VARCHAR(100),
     dimensions VARCHAR(100),
+    size VARCHAR(50),
     price DECIMAL(10, 2) DEFAULT 0.00,
     purchase_price DECIMAL(10, 2) DEFAULT 0.00,
+    wholesale_price DECIMAL(10, 2) DEFAULT NULL,
+    min_wholesale_qty INT DEFAULT NULL,
     quantity INT DEFAULT 0,
     image_url VARCHAR(255) DEFAULT NULL,
     status ENUM('available', 'unavailable', 'out_of_stock') DEFAULT 'available',
@@ -113,11 +132,15 @@ CREATE TABLE IF NOT EXISTS service_inventory (
     brand VARCHAR(100),
     part_number VARCHAR(100),
     hsn_code VARCHAR(20),
+    unit VARCHAR(50) DEFAULT NULL,
     gst_rate DECIMAL(5, 2) DEFAULT 18.0,
     serial_number VARCHAR(100),
     dimensions VARCHAR(100),
+    size VARCHAR(50),
     price DECIMAL(10, 2) DEFAULT 0.00,
     purchase_price DECIMAL(10, 2) DEFAULT 0.00,
+    wholesale_price DECIMAL(10, 2) DEFAULT NULL,
+    min_wholesale_qty INT DEFAULT NULL,
     quantity INT DEFAULT 0,
     image_url VARCHAR(255) DEFAULT NULL,
     status ENUM('available', 'unavailable', 'out_of_stock') DEFAULT 'available',
@@ -294,3 +317,141 @@ CREATE TABLE IF NOT EXISTS purchases (
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
 );
 
+-- POS Settings Table
+CREATE TABLE IF NOT EXISTS pos_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    shop_name VARCHAR(255),
+    gstin VARCHAR(50),
+    theme VARCHAR(50) DEFAULT 'light',
+    print_size VARCHAR(50) DEFAULT '80mm',
+    auto_print BOOLEAN DEFAULT TRUE,
+    enable_gst BOOLEAN DEFAULT TRUE,
+    inclusive_gst BOOLEAN DEFAULT FALSE,
+    show_hsn BOOLEAN DEFAULT TRUE,
+    default_gst_preset INT DEFAULT 18,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_branch_settings (branch_id)
+);
+
+-- Sales Returns Table
+CREATE TABLE IF NOT EXISTS sales_returns (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    invoice_id INT NOT NULL,
+    return_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_refund_amount DECIMAL(15, 2) DEFAULT 0.00,
+    payment_method ENUM('cash', 'card', 'upi', 'credit') DEFAULT 'cash',
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+);
+
+-- Sales Return Items Table
+CREATE TABLE IF NOT EXISTS sales_return_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    return_id INT NOT NULL,
+    product_id INT,
+    item_name VARCHAR(255),
+    quantity INT DEFAULT 1,
+    unit_price DECIMAL(15, 2) DEFAULT 0.00,
+    refund_price DECIMAL(15, 2) DEFAULT 0.00,
+    FOREIGN KEY (return_id) REFERENCES sales_returns(id) ON DELETE CASCADE
+);
+
+-- Staff Attendance Table
+CREATE TABLE IF NOT EXISTS staff_attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    staff_id INT NOT NULL,
+    date DATE NOT NULL,
+    status ENUM('Present', 'Absent', 'Half Day') DEFAULT 'Present',
+    check_in TIME,
+    check_out TIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (staff_id) REFERENCES admins(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_staff_date (staff_id, date)
+);
+
+-- Staff Payroll Table
+CREATE TABLE IF NOT EXISTS staff_payroll (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    staff_id INT NOT NULL,
+    month VARCHAR(20) NOT NULL, -- e.g. '2026-06'
+    base_salary DECIMAL(15, 2) DEFAULT 0.00,
+    allowances DECIMAL(15, 2) DEFAULT 0.00,
+    deductions DECIMAL(15, 2) DEFAULT 0.00,
+    net_payable DECIMAL(15, 2) DEFAULT 0.00,
+    status ENUM('Pending', 'Paid') DEFAULT 'Pending',
+    payment_date DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (staff_id) REFERENCES admins(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_staff_month (staff_id, month)
+);
+
+-- Purchase Orders Table
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    supplier_name VARCHAR(255) NOT NULL,
+    po_number VARCHAR(100) NOT NULL,
+    order_date DATE NOT NULL,
+    expected_date DATE,
+    total_amount DECIMAL(15, 2) DEFAULT 0.00,
+    status ENUM('Pending', 'Received', 'Cancelled') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
+);
+
+-- Purchase Order Items Table
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    po_id INT NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    quantity INT DEFAULT 1,
+    unit_price DECIMAL(15, 2) DEFAULT 0.00,
+    total_price DECIMAL(15, 2) DEFAULT 0.00,
+    FOREIGN KEY (po_id) REFERENCES purchase_orders(id) ON DELETE CASCADE
+);
+
+-- Goods Received Notes (GRN) Table
+CREATE TABLE IF NOT EXISTS grns (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    branch_id INT NOT NULL,
+    po_id INT,
+    grn_number VARCHAR(100) NOT NULL,
+    grn_date DATE NOT NULL,
+    supplier_name VARCHAR(255) NOT NULL,
+    warehouse VARCHAR(100) DEFAULT 'Main Warehouse',
+    status ENUM('Stocked', 'Pending QA', 'Rejected') DEFAULT 'Stocked',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
+    FOREIGN KEY (po_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
+);
+
+-- GRN Items Table
+CREATE TABLE IF NOT EXISTS grn_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    grn_id INT NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    quantity_received INT DEFAULT 1,
+    FOREIGN KEY (grn_id) REFERENCES grns(id) ON DELETE CASCADE
+);

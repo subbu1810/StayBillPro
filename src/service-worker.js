@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 const CACHE_NAME = 'service-pro-v1';
 const urlsToCache = [
   '/',
@@ -24,7 +25,14 @@ self.addEventListener('fetch', event => {
           return response;
         }
         return fetch(event.request);
-      }
-    )
+      })
   );
 });
+
+
+
+// Reference self.__WB_MANIFEST to satisfy Workbox build plugin
+// eslint-disable-next-line no-unused-expressions
+self.__WB_MANIFEST;
+
+
