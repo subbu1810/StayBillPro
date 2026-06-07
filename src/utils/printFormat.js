@@ -380,8 +380,15 @@ export const getPosInvoiceHtml = (invoice, printSize = '80mm') => {
       </tr>
   `;
 
-  const shopName = invoice.business_name || 'STAYBILL PRO';
-  const gstin = invoice.corporate_gst || invoice.branch_gst || '29AMEPP6614P1ZC';
+  const adminUserStr = localStorage.getItem('adminUser');
+  const bProf = adminUserStr ? JSON.parse(adminUserStr) : {};
+  
+  const shopName = invoice.business_name || invoice.branch_name || bProf.business || bProf.business_name || '';
+  const gstin = invoice.corporate_gst || invoice.branch_gst || bProf.gst_number || '';
+  const bUpiId = invoice.upi_id || bProf.upi_id || '';
+  
+  const upiString = bUpiId ? `upi://pay?pa=${bUpiId}&pn=${encodeURIComponent(shopName)}&am=${Number(total).toFixed(2)}&cu=INR` : '';
+  const upiQrUrl = bUpiId ? `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(upiString)}` : '';
 
   return `
     <!DOCTYPE html>
@@ -415,7 +422,7 @@ export const getPosInvoiceHtml = (invoice, printSize = '80mm') => {
         <div style="width: 100%; margin: 0 auto; padding: 10px 5px;">
           <div class="center">
             <div class="header-name">${shopName}</div>
-            <div class="header-address">Phone: ${invoice.branch_phone || '—'}</div>
+            <div class="header-address">Phone: ${invoice.branch_phone || bProf.phone || '—'}</div>
             <div class="header-address">GSTIN: ${gstin}</div>
           </div>
           <div class="divider"></div>
@@ -491,6 +498,110 @@ export const getPosInvoiceHtml = (invoice, printSize = '80mm') => {
           <div class="center bold" style="margin-top: 10px; font-style: italic; font-size: 14px;">
             *** Thank You Visit Again ***
           </div>
+          ${upiQrUrl ? `
+          <div class="center" style="margin-top: 15px;">
+            <img src="${upiQrUrl}" alt="UPI QR Code" style="max-width: 100px; height: auto;" />
+            <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">Scan to Pay</div>
+          </div>
+          ` : ''}
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+export const getSubscriptionInvoiceHtml = (invoice, adminUser = {}) => {
+  const subtotal = invoice.amount || (invoice.total_paid / 1.18);
+  const gst = invoice.gst_amount || (invoice.total_paid - subtotal);
+  const total = invoice.total_paid;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Subscription Invoice - ${invoice.transaction_id || 'Invoice'}</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
+          .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+          .header h1 { margin: 0; color: #2563eb; }
+          .invoice-details { display: flex; justify-content: space-between; margin-bottom: 40px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+          th { background: #f8fafc; }
+          .totals { text-align: right; width: 300px; margin-left: auto; }
+          .totals div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .totals .grand-total { font-weight: bold; font-size: 1.2em; border-top: 2px solid #333; border-bottom: none; }
+          @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #0ea5e9; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🖨️ Print Invoice</button>
+        </div>
+        <div class="header">
+          <h1>S Square G Tech Solutions Pvt Ltd.</h1>
+          <p style="margin: 5px 0;">Near Anikethana Degree College, Adarsh colony, Sindhanur, Raichur, Karnataka 584128</p>
+          <p style="margin: 5px 0;">Phone: 7022477479, 7676814367</p>
+          <h2 style="margin-top: 15px; color: #2563eb;">Subscription Tax Invoice</h2>
+        </div>
+        
+        <div class="invoice-details">
+          <div>
+            <strong>Billed To:</strong><br/>
+            ${adminUser.name ? `<strong>${adminUser.name}</strong><br/>` : ''}
+            ${adminUser.business ? `${adminUser.business}<br/>` : ''}
+            ${adminUser.address ? `${adminUser.address}<br/>` : ''}
+            ${adminUser.phone ? `Phone: ${adminUser.phone}<br/>` : ''}
+            ${adminUser.email ? `Email: ${adminUser.email}<br/>` : ''}
+            ${adminUser.gst_number ? `GSTIN: ${adminUser.gst_number}<br/>` : ''}
+            ${!adminUser.name && !adminUser.business ? 'Administrator<br/>' : ''}
+          </div>
+          <div>
+            <strong>Invoice No:</strong> SUB-INV-${invoice.id || String(Math.floor(Math.random() * 10000)).padStart(4, '0')}<br/>
+            <strong>Invoice Date:</strong> ${new Date(invoice.start_date || invoice.created_at || Date.now()).toLocaleDateString()}<br/>
+            <strong>Transaction ID:</strong> ${invoice.transaction_id || 'N/A'}<br/>
+            <strong>Payment Status:</strong> ${invoice.payment_status || 'Success'}
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Features</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${invoice.plan_name} Subscription</td>
+              <td>${invoice.features || 'Both Features'}</td>
+              <td>₹${Number(subtotal).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <div>
+            <span>Subtotal:</span>
+            <span>₹${Number(subtotal).toFixed(2)}</span>
+          </div>
+          <div>
+            <span>GST (18%):</span>
+            <span>₹${Number(gst).toFixed(2)}</span>
+          </div>
+          <div class="grand-total">
+            <span>Total Paid:</span>
+            <span>₹${Number(total).toFixed(2)}</span>
+          </div>
+        </div>
+        
+        <div style="margin-top: 60px; font-size: 0.9em; color: #666; text-align: center;">
+          <p>Thank you for subscribing with S Square G Tech Solutions Pvt Ltd.!</p>
+          <p>This is a computer generated invoice and requires no physical signature.</p>
         </div>
       </body>
     </html>

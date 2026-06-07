@@ -23,6 +23,7 @@ import BranchScreen from './BranchScreen';
 import InvoiceHistory from './InvoiceHistory';
 import SupportScreen from './SupportScreen';
 import QuotationScreen from './QuotationScreen';
+import SubscriptionScreen from './SubscriptionScreen';
 import { usePopup } from './ui/PopupProvider';
 import '../styles/StaffScreen.css';
 import '../styles/AccountingScreen.css';
@@ -919,7 +920,7 @@ export default function AdminPanel({ onLogout }) {
 							)}
 						</div>
 					)}
-					{(hasPermission('settings-profile') || hasPermission('settings-corporate') || hasPermission('settings-users') || hasPermission('settings-security') || hasPermission('pos-settings') || hasPermission('settings-barcode')) && (
+					{(hasPermission('settings-profile') || hasPermission('settings-corporate') || hasPermission('settings-users') || hasPermission('settings-security') || hasPermission('pos-settings') || hasPermission('settings-barcode') || hasPermission('settings-subscription')) && (
 						<button
 							className={currentScreen === 'settings' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('settings')}
@@ -949,6 +950,9 @@ export default function AdminPanel({ onLogout }) {
 							)}
 							{hasPermission('pos-settings') && (
 								<button className={`sub-nav-item ${currentScreen === 'pos' && currentSubScreen === 'settings' ? 'active' : ''}`} onClick={() => handleScreenChange('pos', 'settings')}><span>⚙️</span> POS Config</button>
+							)}
+							{hasPermission('settings-subscription') && (
+								<button className={`sub-nav-item ${currentScreen === 'settings' && currentSubScreen === 'subscription' ? 'active' : ''}`} onClick={() => handleScreenChange('settings', 'subscription')}><span>💳</span> Subscription</button>
 							)}
 						</div>
 					)}
@@ -1129,7 +1133,8 @@ export default function AdminPanel({ onLogout }) {
 							{currentScreen === 'invoicing' && <InvoicingScreen key={activeTabId} />}
 							{currentScreen === 'support' && <SupportScreen key={activeTabId} />}
 							{currentScreen === 'technicians' && <TechniciansScreen key={activeTabId} />}
-							{currentScreen === 'settings' && <SettingsScreen key={activeTabId} defaultTab={currentSubScreen} />}
+							{currentScreen === 'settings' && currentSubScreen === 'subscription' && <SubscriptionScreen key={activeTabId} />}
+							{currentScreen === 'settings' && currentSubScreen !== 'subscription' && <SettingsScreen key={activeTabId} defaultTab={currentSubScreen} />}
 						</>
 					)}
 

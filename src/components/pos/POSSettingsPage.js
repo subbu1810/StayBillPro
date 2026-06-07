@@ -8,8 +8,10 @@ import { usePopup } from '../ui/PopupProvider';
  */
 export default function POSSettingsPage() {
   const popup = usePopup();
-  const [shopName, setShopName] = useState('Electronics Hub India');
-  const [gstin, setGstin] = useState('27AAACH9999Z1Z5');
+  const adminUserStr = localStorage.getItem('adminUser');
+  const bProf = adminUserStr ? JSON.parse(adminUserStr) : {};
+  const [shopName, setShopName] = useState(bProf.business || bProf.business_name || '');
+  const [gstin, setGstin] = useState(bProf.gst_number || '');
   const [theme, setTheme] = useState('light');
   const [printSize, setPrintSize] = useState('80mm');
   const [wholesalePrintSize, setWholesalePrintSize] = useState('A4');

@@ -158,9 +158,11 @@ export default function WholesaleBillingPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [custSearch, setCustSearch] = useState('');
   const [showCustDropdown, setShowCustDropdown] = useState(false);
-  const [shopName, setShopName] = useState('Electronics Hub India');
-  const [gstin, setGstin] = useState('27AAACH9999Z1Z5');
-  const [printSize, setPrintSize] = useState('80mm');
+  const adminUserStr = localStorage.getItem('adminUser');
+  const bProf = adminUserStr ? JSON.parse(adminUserStr) : {};
+  const [shopName, setShopName] = useState(bProf.business || bProf.business_name || '');
+  const [gstin, setGstin] = useState(bProf.gst_number || '');
+  const [printSize, setPrintSize] = useState('A4');
   const [branchAddress, setBranchAddress] = useState('VENKATESHWARA NAGAR, SINDHANUR');
   const [branchPhone, setBranchPhone] = useState('9845122669');
   const [branchEmail, setBranchEmail] = useState('mohan.mv2@gmail.com');

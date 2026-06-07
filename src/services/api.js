@@ -209,6 +209,8 @@ export const adminAuthAPI = {
 // ========== SUBSCRIPTION API ==========
 export const subscriptionAPI = {
   verify: (data) => apiRequest(API_ENDPOINTS.SUBSCRIPTIONS.VERIFY, HTTP_METHODS.POST, data),
+  getCurrent: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/subscriptions/current`, HTTP_METHODS.GET),
+  getHistory: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/subscriptions/history`, HTTP_METHODS.GET),
 };
 
 // ========== PAYMENT API ==========

@@ -1,0 +1,161 @@
+.subscription-screen {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.subscription-header {
+  margin-bottom: 30px;
+}
+
+.subscription-header h2 {
+  font-size: 24px;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.subscription-header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.subscription-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 4px solid #ff7a00;
+}
+
+.plan-details h3 {
+  font-size: 20px;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.plan-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.plan-info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-info-item .label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.plan-info-item .value {
+  font-size: 16px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.plan-info-item .value.active {
+  color: #059669;
+}
+
+.plan-info-item .value.expired {
+  color: #dc2626;
+}
+
+.plan-actions .change-plan-btn {
+  background: #ff7a00;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.plan-actions .change-plan-btn:hover {
+  background: #e66e00;
+}
+
+.invoice-history-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.invoice-history-section h3 {
+  font-size: 18px;
+  color: #111827;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-table th,
+.invoice-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.invoice-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.invoice-table td {
+  color: #374151;
+  font-size: 14px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 768px) {
+  .plan-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  
+  .invoice-table-wrapper {
+    overflow-x: auto;
+  }
+}

@@ -309,6 +309,16 @@ export default function InvoiceHistory({ invoiceType }) {
     }
   };
 
+  const getUpiQrUrl = () => {
+    if (!selectedInvoice) return '';
+    const adminUserStr = localStorage.getItem('adminUser');
+    const bProf = adminUserStr ? JSON.parse(adminUserStr) : {};
+    const bUpiId = bProf.upi_id || '';
+    if (!bUpiId) return '';
+    const upiString = `upi://pay?pa=${bUpiId}&pn=${encodeURIComponent(selectedInvoice.business_name || 'STAYBILL PRO')}&am=${Number(selectedInvoice.total_amount || 0).toFixed(2)}&cu=INR`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}`;
+  };
+
   return (
     <div className="invoice-history-wrapper">
       {/* HEADER */}
@@ -543,6 +553,12 @@ export default function InvoiceHistory({ invoiceType }) {
                 </div>
                 <div className="invoice-title">
                   <h1>TAX INVOICE</h1>
+                  {getUpiQrUrl() && (
+                    <div style={{ marginTop: '10px' }}>
+                      <img src={getUpiQrUrl()} alt="UPI QR Code" style={{ width: '80px', height: '80px' }} />
+                      <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Scan to Pay</div>
+                    </div>
+                  )}
                 </div>
               </div>
               

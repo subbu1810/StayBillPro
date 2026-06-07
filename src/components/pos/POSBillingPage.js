@@ -122,8 +122,10 @@ export default function POSBillingPage({ mode = 'billing' }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [custSearch, setCustSearch] = useState('');
   const [showCustDropdown, setShowCustDropdown] = useState(false);
-  const [shopName, setShopName] = useState('Electronics Hub India');
-  const [gstin, setGstin] = useState('27AAACH9999Z1Z5');
+  const adminUserStr = localStorage.getItem('adminUser');
+  const bProf = adminUserStr ? JSON.parse(adminUserStr) : {};
+  const [shopName, setShopName] = useState(bProf.business || bProf.business_name || '');
+  const [gstin, setGstin] = useState(bProf.gst_number || '');
   const [printSize, setPrintSize] = useState('80mm');
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
@@ -586,7 +588,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
               <div style="width: 100%; margin: 0 auto; padding: 10px 5px;">
                 <div class="center">
                   <div class="header-name">${shopName}</div>
-                  <div class="header-address">Phone: ${finalCustomerPhone || '—'}</div>
+                  <div class="header-address">Phone: ${bProf.phone || finalCustomerPhone || '—'}</div>
                   <div class="header-address">GSTIN: ${gstin}</div>
                 </div>
                 <div class="divider"></div>
@@ -662,6 +664,12 @@ export default function POSBillingPage({ mode = 'billing' }) {
                 <div class="center bold" style="margin-top: 10px; font-style: italic; font-size: 14px;">
                   *** Thank You Visit Again ***
                 </div>
+                ${bProf.upi_id ? `
+                <div class="center" style="margin-top: 15px;">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`upi://pay?pa=${bProf.upi_id}&pn=${encodeURIComponent(shopName)}&am=${Number(total).toFixed(2)}&cu=INR`)}" alt="UPI QR Code" style="max-width: 100px; height: auto;" />
+                  <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">Scan to Pay</div>
+                </div>
+                ` : ''}
               </div>
               <script>
                 window.onload = function() { 
