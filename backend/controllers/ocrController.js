@@ -23,6 +23,16 @@ exports.scanBill = async (req, res) => {
             return res.status(402).json({ success: false, message: 'Insufficient Scan Wallet balance. Please contact StayBillPro support to recharge.' });
         }
 
+        // 1. Deduct 5 rupees from wallet upfront
+        let currentBalance = walletBalance - 5.00;
+        await db.query('UPDATE admins SET scan_wallet_balance = ? WHERE id = ?', [currentBalance, businessId]);
+        
+        // Log deduction transaction
+        await db.query(
+            'INSERT INTO wallet_transactions (admin_id, type, amount, description) VALUES (?, ?, ?, ?)',
+            [businessId, 'deduction', 5.00, 'AI Document Scan']
+        );
+
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         
         // Convert buffer to base64
@@ -104,15 +114,6 @@ Return ONLY valid JSON. Do not include markdown formatting or backticks.`;
             amount: item.amount || 0
         }));
 
-        // Deduct 5 rupees from wallet
-        const newBalance = walletBalance - 5.00;
-        await db.query('UPDATE admins SET scan_wallet_balance = ? WHERE id = ?', [newBalance, businessId]);
-        
-        // Log transaction
-        await db.query(
-            'INSERT INTO wallet_transactions (admin_id, type, amount, description) VALUES (?, ?, ?, ?)',
-            [businessId, 'deduction', 5.00, 'AI Document Scan']
-        );
 
         res.json({
             success: true,
@@ -120,11 +121,32 @@ Return ONLY valid JSON. Do not include markdown formatting or backticks.`;
             invoiceNumber: parsedData.invoiceNumber || "",
             rawText: rawText,
             items: items,
-            newWalletBalance: newBalance
+            newWalletBalance: currentBalance
         });
 
     } catch (error) {
         console.error('OCR Error:', error);
+        
+        // Refund 5 rupees on error
+        try {
+            const businessId = req.user.businessId || req.user.id;
+            const [bizUsers] = await db.query('SELECT scan_wallet_balance FROM admins WHERE id = ?', [businessId]);
+            if (bizUsers.length > 0) {
+                const currentBal = parseFloat(bizUsers[0].scan_wallet_balance || 0);
+                const refundedBalance = currentBal + 5.00;
+                
+                await db.query('UPDATE admins SET scan_wallet_balance = ? WHERE id = ?', [refundedBalance, businessId]);
+                
+                await db.query(
+                    'INSERT INTO wallet_transactions (admin_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                    [businessId, 'recharge', 5.00, 'Refund for Failed AI Scan']
+                );
+                console.log(`Refunded 5.00 to business ${businessId} due to OCR failure.`);
+            }
+        } catch (refundError) {
+            console.error('CRITICAL: Failed to refund wallet after OCR error:', refundError);
+        }
+
         res.status(500).json({ success: false, message: 'AI Error: ' + error.message, error: error.stack });
     }
 };
