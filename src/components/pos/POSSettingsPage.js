@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { posSettingsAPI } from '../../services/api';
+import { usePopup } from '../ui/PopupProvider';
 
 /**
  * POSSettingsPage Component
  * Configuration for the POS module
  */
 export default function POSSettingsPage() {
+  const popup = usePopup();
   const [shopName, setShopName] = useState('Electronics Hub India');
   const [gstin, setGstin] = useState('27AAACH9999Z1Z5');
   const [theme, setTheme] = useState('light');
   const [printSize, setPrintSize] = useState('80mm');
+  const [wholesalePrintSize, setWholesalePrintSize] = useState('A4');
   const [autoPrint, setAutoPrint] = useState(true);
 
   // Tax Configurations
@@ -32,6 +35,7 @@ export default function POSSettingsPage() {
         if (data.gstin) setGstin(data.gstin);
         if (data.theme) setTheme(data.theme);
         if (data.print_size) setPrintSize(data.print_size);
+        if (data.wholesale_print_size) setWholesalePrintSize(data.wholesale_print_size);
         if (data.auto_print !== undefined) setAutoPrint(!!data.auto_print);
         if (data.enable_gst !== undefined) setEnableGst(!!data.enable_gst);
         if (data.inclusive_gst !== undefined) setInclusiveGst(!!data.inclusive_gst);
@@ -54,16 +58,17 @@ export default function POSSettingsPage() {
         gstin: gstin,
         theme: theme,
         print_size: printSize,
+        wholesale_print_size: wholesalePrintSize,
         auto_print: autoPrint,
         enable_gst: enableGst,
         inclusive_gst: inclusiveGst,
         show_hsn: showHsn,
         default_gst_preset: defaultGstPreset
       });
-      alert('Settings saved successfully to the backend!');
+      popup.showSuccess('Settings saved successfully to the backend!');
     } catch (error) {
       console.error('Failed to save POS settings:', error);
-      alert('Failed to save settings. Please try again.');
+      popup.showError('Failed to save settings. Please try again.');
     }
   };
 
@@ -100,9 +105,13 @@ export default function POSSettingsPage() {
           <head>
             <title>Test Print - ${printSize}</title>
             <style>
-              body { font-family: 'Courier New', Courier, monospace; width: ${width}; padding: 10px; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; text-align: center; }
+              body { font-family: 'Courier New', Courier, monospace; width: 100%; max-width: 100%; padding: 10px; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; text-align: center; box-sizing: border-box; }
               .print-btn { display: block; width: 100%; padding: 10px; margin-top: 20px; background: #000; color: #fff; text-align: center; cursor: pointer; border: none; font-weight: bold; font-family: sans-serif; }
-              @media print { .print-btn { display: none; } body { width: 100%; padding: 0; } }
+              @media print { 
+                @page { margin: 0; }
+                .print-btn { display: none; } 
+                body { width: 100%; max-width: 100%; padding: 5px; } 
+              }
             </style>
           </head>
           <body>
@@ -173,8 +182,16 @@ export default function POSSettingsPage() {
              <h3>Printer & Hardware</h3>
            </div>
            <div className="form-group">
-             <label>Thermal Printer Size</label>
+             <label>POS Billing Print Size</label>
              <select value={printSize} onChange={(e) => setPrintSize(e.target.value)}>
+               <option value="80mm">80mm (Standard)</option>
+               <option value="50mm">50mm (Small)</option>
+               <option value="A4">A4 (Full Page)</option>
+             </select>
+           </div>
+           <div className="form-group">
+             <label>Wholesale Billing Print Size</label>
+             <select value={wholesalePrintSize} onChange={(e) => setWholesalePrintSize(e.target.value)}>
                <option value="80mm">80mm (Standard)</option>
                <option value="50mm">50mm (Small)</option>
                <option value="A4">A4 (Full Page)</option>

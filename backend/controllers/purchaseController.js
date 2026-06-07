@@ -198,6 +198,8 @@ exports.getAllGRNs = async (req, res) => {
                 gi.id as grn_item_id,
                 gi.product_name as item_name,
                 gi.quantity_received as recvd_qty,
+                gi.damaged_quantity as damaged_qty,
+                gi.pushed_to_stock,
                 g.id as grn_id,
                 g.grn_number,
                 g.grn_date,
@@ -284,9 +286,16 @@ exports.createGRN = async (req, res) => {
         // Insert items into grn_items
         for (const item of items) {
             await db.execute(
-                `INSERT INTO grn_items (grn_id, product_name, quantity_received) 
-                 VALUES (?, ?, ?)`,
-                [grn_id, item.product_name, item.quantity_received]
+                `INSERT INTO grn_items (grn_id, product_name, quantity_received, damaged_quantity, mapped_inventory_id, inventory_type) 
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    grn_id, 
+                    item.product_name, 
+                    item.quantity_received, 
+                    item.damaged_quantity || 0,
+                    item.mapped_inventory_id || null, 
+                    item.inventory_type || 'sales'
+                ]
             );
         }
 
@@ -330,5 +339,161 @@ exports.deleteGRNItem = async (req, res) => {
     } catch (error) {
         console.error('Error deleting GRN item:', error);
         res.status(500).json({ success: false, message: 'Error deleting GRN item' });
+    }
+};
+
+// Push GRN Items to Stock
+exports.pushToStock = async (req, res) => {
+    const adminId = req.user.id;
+    const { itemIds } = req.body;
+
+    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'No items selected' });
+    }
+
+    try {
+        await db.query('START TRANSACTION');
+
+        for (const itemId of itemIds) {
+            const [rows] = await db.query(`
+                SELECT gi.*, g.branch_id
+                FROM grn_items gi 
+                JOIN grns g ON gi.grn_id = g.id 
+                WHERE gi.id = ? AND g.admin_id = ?
+            `, [itemId, adminId]);
+
+            if (rows.length === 0) continue;
+            const item = rows[0];
+
+            if (item.pushed_to_stock) continue;
+
+            const valid_quantity = item.quantity_received - (item.damaged_quantity || 0);
+            if (valid_quantity <= 0) {
+                await db.execute('UPDATE grn_items SET pushed_to_stock = TRUE WHERE id = ?', [itemId]);
+                continue;
+            }
+
+            if (item.mapped_inventory_id) {
+                const tableName = item.inventory_type === 'service' ? 'service_inventory' : 'sales_inventory';
+                const [updateResult] = await db.execute(`
+                    UPDATE ${tableName} 
+                    SET quantity = quantity + ? 
+                    WHERE id = ? AND branch_id = ? AND admin_id = ?
+                `, [valid_quantity, item.mapped_inventory_id, item.branch_id, adminId]);
+
+                if (updateResult.affectedRows > 0) {
+                    const [invRows] = await db.query(
+                        `SELECT id, quantity, name FROM ${tableName} WHERE id = ? LIMIT 1`, 
+                        [item.mapped_inventory_id]
+                    );
+                    if (invRows.length > 0) {
+                        await db.execute(`
+                            INSERT INTO stock_log (admin_id, branch_id, item_id, item_type, item_name, change_type, quantity_changed, resulting_quantity, reason)
+                            VALUES (?, ?, ?, ?, ?, 'in', ?, ?, ?)
+                        `, [adminId, item.branch_id, invRows[0].id, item.inventory_type || 'sales', invRows[0].name, valid_quantity, invRows[0].quantity, 'GRN Push to Stock']);
+                    }
+                    await db.execute('UPDATE grn_items SET pushed_to_stock = TRUE WHERE id = ?', [itemId]);
+                    continue; // Skip the fallback logic
+                }
+            }
+
+            // Fallback logic if mapping wasn't provided or update failed
+            const [updateResult] = await db.execute(`
+                UPDATE sales_inventory 
+                SET quantity = quantity + ? 
+                WHERE name = ? AND branch_id = ? AND admin_id = ?
+            `, [valid_quantity, item.product_name, item.branch_id, adminId]);
+
+            if (updateResult.affectedRows === 0) {
+                await db.execute(`
+                    INSERT INTO sales_inventory (admin_id, branch_id, name, quantity, category_id)
+                    VALUES (?, ?, ?, ?, NULL)
+                `, [adminId, item.branch_id, item.product_name, valid_quantity]);
+            }
+
+            const [invRows] = await db.query(
+                `SELECT id, quantity FROM sales_inventory WHERE name = ? AND branch_id = ? AND admin_id = ? LIMIT 1`, 
+                [item.product_name, item.branch_id, adminId]
+            );
+
+            if (invRows.length > 0) {
+                 await db.execute(`
+                    INSERT INTO stock_log (admin_id, branch_id, item_id, item_type, item_name, change_type, quantity_changed, resulting_quantity, reason)
+                    VALUES (?, ?, ?, 'sales', ?, 'in', ?, ?, ?)
+                 `, [adminId, item.branch_id, invRows[0].id, item.product_name, valid_quantity, invRows[0].quantity, 'GRN Push to Stock']);
+            }
+
+            await db.execute('UPDATE grn_items SET pushed_to_stock = TRUE WHERE id = ?', [itemId]);
+        }
+
+        await db.query('COMMIT');
+        res.json({ success: true, message: 'Items pushed to stock successfully' });
+    } catch (error) {
+        await db.query('ROLLBACK');
+        console.error('Error pushing to stock:', error);
+        res.status(500).json({ success: false, message: 'Error pushing items to stock' });
+    }
+};
+
+// ================= DAMAGED & RETURNS ================= //
+
+// Get Damaged Items
+exports.getDamagedItems = async (req, res) => {
+    const adminId = req.user.id;
+    try {
+        const query = `
+            SELECT 
+                gi.id as grn_item_id,
+                gi.product_name as item_name,
+                gi.damaged_quantity,
+                gi.return_status,
+                gi.return_date,
+                g.grn_number,
+                g.grn_date,
+                g.supplier_name,
+                b.name as branch_name
+            FROM grn_items gi
+            JOIN grns g ON gi.grn_id = g.id
+            LEFT JOIN branches b ON g.branch_id = b.id
+            WHERE g.admin_id = ? AND gi.damaged_quantity > 0
+            ORDER BY g.grn_date DESC
+        `;
+        const [items] = await db.query(query, [adminId]);
+        res.json({ success: true, damagedItems: items });
+    } catch (error) {
+        console.error('Error fetching damaged items:', error);
+        res.status(500).json({ success: false, message: 'Error fetching damaged items' });
+    }
+};
+
+// Process Return
+exports.processReturn = async (req, res) => {
+    const adminId = req.user.id;
+    const { id } = req.params; // grn_item_id
+
+    try {
+        // Verify ownership and existence
+        const [rows] = await db.query(`
+            SELECT gi.id 
+            FROM grn_items gi 
+            JOIN grns g ON gi.grn_id = g.id 
+            WHERE gi.id = ? AND g.admin_id = ?
+        `, [id, adminId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Item not found or unauthorized' });
+        }
+
+        const returnDate = new Date().toISOString().split('T')[0];
+        await db.execute(`
+            UPDATE grn_items 
+            SET return_status = 'Returned', return_date = ? 
+            WHERE id = ?
+        `, [returnDate, id]);
+
+        res.json({ success: true, message: 'Item marked as returned successfully', returnDate });
+    } catch (error) {
+        console.error('Error processing return:', error);
+        res.status(500).json({ success: false, message: 'Error processing return' });
     }
 };

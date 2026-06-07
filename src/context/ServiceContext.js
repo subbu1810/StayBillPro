@@ -1,5 +1,5 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
-import { appliancesAPI, jobsAPI, serviceRequestsAPI, techniciansAPI, customersAPI, sparesAPI } from '../services/api';
+import { appliancesAPI, jobsAPI, serviceRequestsAPI, techniciansAPI, customersAPI, sparesAPI, billingAPI } from '../services/api';
 
 export const ServiceContext = createContext();
 
@@ -14,6 +14,8 @@ export function ServiceProvider({ children }) {
 	const [availableProducts, setAvailableProducts] = useState([]);
 	const [allSpares, setAllSpares] = useState([]);
 	const [lowStockSpares, setLowStockSpares] = useState([]);
+	const [todaySummary, setTodaySummary] = useState({ total_invoices: 0, total_sales: 0 });
+	const [invoiceSalesReport, setInvoiceSalesReport] = useState([]);
 	const [selectedBranchId, setSelectedBranchId] = useState(null);
 
 	const mapJobFromApi = useCallback((job) => {
@@ -52,16 +54,31 @@ export function ServiceProvider({ children }) {
 
 	useEffect(() => {
 		let cancelled = false;
-		(async () => {
+		
+		const fetchData = async () => {
 			try {
 				const params = selectedBranchId ? { branch_id: selectedBranchId } : {};
-				const [apiJobs, apiTechnicians, apiAppliances, apiCustomers, apiLowStock, apiAllSpares] = await Promise.all([
-					jobsAPI.getAll(params),
+
+				const getLocalDate = (d) => {
+					return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+				};
+
+				// Compute 7-day date range for sales report
+				const now = new Date();
+				const sevenDaysAgo = new Date();
+				sevenDaysAgo.setDate(now.getDate() - 6);
+				const startDate = getLocalDate(sevenDaysAgo);
+				const endDate = getLocalDate(now);
+
+				const [apiJobs, apiTechnicians, apiAppliances, apiCustomers, apiLowStock, apiAllSpares, apiDailySummary, apiSalesReport] = await Promise.all([
+					jobsAPI.getAll(params).catch(() => []),
 					techniciansAPI.getAll(params).catch(() => []),
 					appliancesAPI.getAll(params).catch(() => []),
 					customersAPI.getAll(params).catch(() => []),
 					sparesAPI.getLowStock(params).catch(() => []),
 					sparesAPI.getAll(params).catch(() => []),
+					billingAPI.getDailySummary(endDate).catch(() => null),
+					billingAPI.getSalesReport(startDate, endDate).catch(() => []),
 				]);
 				if (cancelled) return;
 				if (Array.isArray(apiJobs)) {
@@ -111,14 +128,31 @@ export function ServiceProvider({ children }) {
 				if (Array.isArray(apiAllSpares)) {
 					setAllSpares(apiAllSpares);
 				}
+				if (apiDailySummary && typeof apiDailySummary === 'object') {
+					// getDailySummary returns { date, summary: { total_invoices, total_sales, ... } }
+					const s = apiDailySummary.summary || apiDailySummary;
+					setTodaySummary(s);
+				}
+				if (Array.isArray(apiSalesReport)) {
+					setInvoiceSalesReport(apiSalesReport);
+				}
 			} catch (e) {
 				if (cancelled) return;
+				console.error("Error fetching realtime data:", e);
 			} finally {
 				if (!cancelled) setJobsLoaded(true);
 			}
-		})();
+		};
+
+		// Initial fetch
+		fetchData();
+
+		// Set up polling for realtime updates
+		const intervalId = setInterval(fetchData, 15000); // Poll every 15 seconds
+
 		return () => {
 			cancelled = true;
+			clearInterval(intervalId);
 		};
 	}, [mapJobFromApi, selectedBranchId]);
 
@@ -289,7 +323,7 @@ export function ServiceProvider({ children }) {
 	return (
 		<ServiceContext.Provider value={{ 
 			jobs, jobsLoaded, customers, technicians, availableProducts, 
-			allSpares, lowStockSpares, selectedBranchId, setSelectedBranchId,
+			allSpares, lowStockSpares, todaySummary, invoiceSalesReport, selectedBranchId, setSelectedBranchId,
 			addJob, updateJob, deleteJob, addCustomer, addTechnician, jobsAPI 
 		}}>
 			{children}

@@ -1,8 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { purchaseAPI, branchesAPI } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { purchaseAPI, branchesAPI, productsAPI, sparesAPI, suppliersAPI } from '../services/api';
 import '../styles/AddItemModal.css';
+import { usePopup } from './ui/PopupProvider';
+import ScanningOverlay from './ScanningOverlay';
+
+const SearchableSelect = ({ options, value, onChange, placeholder = "Select..." }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    const filteredOptions = options.filter(opt => (opt.label || '').toLowerCase().includes((search || '').toLowerCase()));
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+        <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    width: '100%', fontSize: '0.9rem', padding: '6px 8px', border: '1px solid #cbd5e1', 
+                    borderRadius: '4px', background: '#f8fafc', color: value ? '#047857' : '#64748b',
+                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    minHeight: '34px'
+                }}
+                title="Map to existing master inventory product to avoid creating duplicates"
+            >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                <span style={{ fontSize: '0.8rem' }}>▼</span>
+            </div>
+            
+            {isOpen && (
+                <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
+                    background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginTop: '2px',
+                    minHeight: '150px', maxHeight: '220px', overflowY: 'auto'
+                }}>
+                    <input 
+                        autoFocus
+                        type="text" 
+                        placeholder="Search..." 
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{ padding: '8px', border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box', position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}
+                    />
+                    <div>
+                        <div 
+                            onClick={() => { onChange(""); setIsOpen(false); setSearch(""); }}
+                            style={{ padding: '8px', fontSize: '0.9rem', cursor: 'pointer', color: '#64748b' }}
+                            onMouseEnter={e => e.target.style.background = '#f1f5f9'}
+                            onMouseLeave={e => e.target.style.background = 'transparent'}
+                        >
+                            -- Create as New Product --
+                        </div>
+                        {filteredOptions.map(opt => (
+                            <div 
+                                key={opt.value}
+                                onClick={() => { onChange(opt.value); setIsOpen(false); setSearch(""); }}
+                                style={{ padding: '8px', fontSize: '0.9rem', cursor: 'pointer', background: value === opt.value ? '#e0f2fe' : 'transparent', color: '#333' }}
+                                onMouseEnter={e => e.target.style.background = value === opt.value ? '#e0f2fe' : '#f8fafc'}
+                                onMouseLeave={e => e.target.style.background = value === opt.value ? '#e0f2fe' : 'transparent'}
+                            >
+                                {opt.label}
+                            </div>
+                        ))}
+                        {filteredOptions.length === 0 && (
+                            <div style={{ padding: '8px', fontSize: '0.9rem', color: '#94a3b8', textAlign: 'center' }}>No results found</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
+    const popup = usePopup();
+    const fileInputRef = useRef(null);
+    const [isScanning, setIsScanning] = useState(false);
+    
     const [branches, setBranches] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
     
@@ -16,11 +103,13 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
     });
     
     const [items, setItems] = useState([
-        { product_name: '', quantity_received: 1 }
+        { product_name: '', quantity_received: 1, damaged_quantity: 0 }
     ]);
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [inventoryList, setInventoryList] = useState([]);
+    const [supplierList, setSupplierList] = useState([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -30,9 +119,12 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
 
     const fetchInitialData = async () => {
         try {
-            const [branchesData, poData] = await Promise.all([
+            const [branchesData, poData, productsData, sparesData, suppliersData] = await Promise.all([
                 branchesAPI.getAll(),
-                purchaseAPI.getOrders()
+                purchaseAPI.getOrders(),
+                productsAPI.getAll(),
+                sparesAPI.getAll(),
+                suppliersAPI.getAll()
             ]);
             
             setBranches(branchesData);
@@ -45,6 +137,21 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                 const pendingPOs = poData.purchaseOrders.filter(po => po.status !== 'Received' && po.status !== 'Cancelled');
                 setPurchaseOrders(pendingPOs);
             }
+
+            // Combine sales and service inventory
+            let combinedInventory = [];
+            if (productsData && Array.isArray(productsData)) {
+                combinedInventory = [...combinedInventory, ...productsData.map(p => ({...p, inv_type: 'sales'}))];
+            }
+            if (sparesData && Array.isArray(sparesData)) {
+                combinedInventory = [...combinedInventory, ...sparesData.map(s => ({...s, inv_type: 'service'}))];
+            }
+            setInventoryList(combinedInventory);
+
+            if (suppliersData && Array.isArray(suppliersData)) {
+                setSupplierList(suppliersData);
+            }
+
         } catch (err) {
             console.error("Error fetching initial data:", err);
         }
@@ -67,7 +174,8 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                 if (res.success && res.purchaseOrder && res.purchaseOrder.items) {
                     const poItems = res.purchaseOrder.items.map(item => ({
                         product_name: item.product_name,
-                        quantity_received: item.quantity // default to ordered quantity
+                        quantity_received: item.quantity, // default to ordered quantity
+                        damaged_quantity: 0
                     }));
                     if (poItems.length > 0) {
                         setItems(poItems);
@@ -78,7 +186,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
             }
         } else {
             // Reset to empty row if "None" selected
-            setItems([{ product_name: '', quantity_received: 1 }]);
+            setItems([{ product_name: '', quantity_received: 1, damaged_quantity: 0 }]);
         }
     };
 
@@ -89,7 +197,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
     };
 
     const addItemRow = () => {
-        setItems([...items, { product_name: '', quantity_received: 1 }]);
+        setItems([...items, { product_name: '', quantity_received: 1, damaged_quantity: 0 }]);
     };
 
     const removeItemRow = (index) => {
@@ -106,7 +214,11 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
 
         try {
             // Validate items
-            const validItems = items.filter(item => item.product_name.trim() !== '' && item.quantity_received > 0);
+            const validItems = items.filter(item => 
+                item.product_name.trim() !== '' && 
+                item.quantity_received > 0 &&
+                (item.damaged_quantity || 0) <= item.quantity_received
+            );
             if (validItems.length === 0) {
                 throw new Error("Please add at least one valid item to the GRN.");
             }
@@ -128,13 +240,93 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                 grn_date: new Date().toISOString().split('T')[0],
                 status: 'Stocked'
             });
-            setItems([{ product_name: '', quantity_received: 1 }]);
+            setItems([{ product_name: '', quantity_received: 1, damaged_quantity: 0 }]);
             
             onSuccess();
         } catch (err) {
             setError(err.message || 'Error creating GRN');
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            setIsScanning(true);
+            setError(null);
+            
+            const token = localStorage.getItem('token');
+            const formDataData = new FormData();
+            formDataData.append('document', file);
+
+            // Using the same endpoint as InventoryScreen
+            const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+            const response = await fetch(`${API_BASE}/ocr/scan-bill`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formDataData
+            });
+
+            if (response.status === 402) {
+                const data = await response.json();
+                popup.showError(data.message || 'Insufficient wallet balance to scan.');
+                return;
+            }
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to scan bill');
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                // Deduct balance locally if provided
+                if (data.newWalletBalance !== undefined) {
+                    try {
+                        const saved = localStorage.getItem('adminUser');
+                        if (saved) {
+                            const user = JSON.parse(saved);
+                            user.scan_wallet_balance = data.newWalletBalance;
+                            localStorage.setItem('adminUser', JSON.stringify(user));
+                            window.dispatchEvent(new Event('walletUpdated'));
+                        }
+                    } catch (e) {}
+                }
+
+                // Populate items
+                if (data.items && data.items.length > 0) {
+                    const scannedItems = data.items.map(item => ({
+                        product_name: item.name || '',
+                        hsn: item.hsn || '',
+                        gst: item.gst || 0,
+                        quantity_received: item.quantity || 1,
+                        damaged_quantity: 0,
+                        netRate: item.netRate || 0,
+                        rate: item.rate || 0,
+                        discount: item.discount || 0,
+                        amount: item.amount || 0
+                    }));
+                    setItems(scannedItems);
+                    popup.showSuccess(`Successfully scanned ${scannedItems.length} items!`);
+                } else {
+                    popup.showError('No items could be read from the document.');
+                }
+            } else {
+                throw new Error(data.message || 'Scan failed');
+            }
+        } catch (err) {
+            console.error('Scan Error:', err);
+            popup.showError(err.message || 'Failed to process invoice image.');
+        } finally {
+            setIsScanning(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -169,12 +361,18 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                             <label>Supplier Name *</label>
                             <input 
                                 type="text" 
+                                list="grn-supplier-list"
                                 required
                                 value={formData.supplier_name}
                                 onChange={e => setFormData({...formData, supplier_name: e.target.value})}
                                 className="search-input"
                                 placeholder="e.g. Samsung Distro"
                             />
+                            <datalist id="grn-supplier-list">
+                                {supplierList.map(sup => (
+                                    <option key={sup.id} value={sup.supplier_name} />
+                                ))}
+                            </datalist>
                         </div>
                     </div>
 
@@ -233,50 +431,168 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                     <div className="items-section">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                             <h3 style={{ fontSize: '1rem', fontWeight: 'bold' }}>Items Received</h3>
-                            <button type="button" onClick={addItemRow} className="btn-small success">+ Add Item</button>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    style={{ display: 'none' }}
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={async () => {
+                                        const isConfirmed = await popup.confirm("5 Points will be deducted from your wallet for this AI scan. Do you want to proceed?");
+                                        if (isConfirmed) {
+                                            fileInputRef.current.click();
+                                        }
+                                    }} 
+                                    disabled={isScanning}
+                                    style={{ 
+                                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+                                        color: '#fff', 
+                                        border: 'none', 
+                                        padding: '6px 12px', 
+                                        borderRadius: '4px', 
+                                        fontWeight: 'bold', 
+                                        cursor: isScanning ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.85rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px'
+                                    }}
+                                >
+                                    {isScanning ? '⏳ Scanning...' : '✨ Scan Bill with AI'}
+                                </button>
+                                <button type="button" onClick={addItemRow} className="btn-small success">+ Add Item</button>
+                            </div>
                         </div>
-                        
-                        <table className="crm-table" style={{ marginBottom: '15px' }}>
-                            <thead>
-                                <tr>
-                                    <th>Product Name</th>
-                                    <th style={{ width: '150px' }}>Quantity Received</th>
+                        <div style={{ position: 'relative' }}>
+                            {isScanning && <ScanningOverlay />}
+                            <table className="crm-table" style={{ marginBottom: '15px', overflow: 'visible' }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '30%' }}>Product Name</th>
+                                    <th style={{ width: '80px', textAlign: 'center' }}>HSN/SAC</th>
+                                    <th style={{ width: '60px', textAlign: 'center' }}>GST%</th>
+                                    <th style={{ width: '80px', textAlign: 'center' }}>Qty</th>
+                                    <th style={{ width: '80px', textAlign: 'center' }}>Damaged</th>
+                                    <th style={{ width: '80px', textAlign: 'right' }}>Net Rate</th>
+                                    <th style={{ width: '80px', textAlign: 'right' }}>Rate</th>
+                                    <th style={{ width: '80px', textAlign: 'right' }}>Discount</th>
+                                    <th style={{ width: '80px', textAlign: 'right' }}>Amount</th>
                                     <th style={{ width: '50px' }}></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.map((item, index) => (
                                     <tr key={index}>
-                                        <td>
+                                        <td style={{ padding: '4px' }}>
                                             <input 
                                                 type="text" 
                                                 required
                                                 placeholder="Item name"
-                                                className="search-input"
                                                 value={item.product_name}
                                                 onChange={e => handleItemChange(index, 'product_name', e.target.value)}
-                                                style={{ width: '100%' }}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px', marginBottom: '6px' }}
+                                            />
+                                            <SearchableSelect
+                                                value={item.mapped_inventory_id ? `${item.inventory_type}_${item.mapped_inventory_id}` : ''}
+                                                onChange={val => {
+                                                    if (!val) {
+                                                        handleItemChange(index, 'mapped_inventory_id', null);
+                                                        handleItemChange(index, 'inventory_type', null);
+                                                    } else {
+                                                        const [type, id] = val.split('_');
+                                                        handleItemChange(index, 'mapped_inventory_id', Number(id));
+                                                        handleItemChange(index, 'inventory_type', type);
+                                                    }
+                                                }}
+                                                placeholder="-- Create as New Product --"
+                                                options={inventoryList.map(inv => ({
+                                                    value: `${inv.inv_type}_${inv.id}`,
+                                                    label: inv.category_name ? `${inv.name || 'Unnamed'} (${inv.category_name})` : (inv.name || 'Unnamed')
+                                                }))}
                                             />
                                         </td>
-                                        <td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="text" 
+                                                value={item.hsn || ''}
+                                                onChange={e => handleItemChange(index, 'hsn', e.target.value)}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '6px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="number" 
+                                                value={item.gst || 0}
+                                                onChange={e => handleItemChange(index, 'gst', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
                                             <input 
                                                 type="number" 
                                                 required
                                                 min="1"
-                                                className="search-input"
                                                 value={item.quantity_received}
-                                                onChange={e => handleItemChange(index, 'quantity_received', e.target.value)}
-                                                style={{ width: '100%' }}
+                                                onChange={e => handleItemChange(index, 'quantity_received', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                                             />
                                         </td>
-                                        <td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                max={item.quantity_received}
+                                                value={item.damaged_quantity || 0}
+                                                onChange={e => handleItemChange(index, 'damaged_quantity', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '4px', color: (item.damaged_quantity > 0) ? '#ef4444' : 'inherit' }}
+                                                title="Enter number of items that arrived damaged (will not be pushed to stock)"
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="number" 
+                                                value={item.netRate || 0}
+                                                onChange={e => handleItemChange(index, 'netRate', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="number" 
+                                                value={item.rate || 0}
+                                                onChange={e => handleItemChange(index, 'rate', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="number" 
+                                                value={item.discount || 0}
+                                                onChange={e => handleItemChange(index, 'discount', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="number" 
+                                                value={item.amount || 0}
+                                                onChange={e => handleItemChange(index, 'amount', Number(e.target.value))}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px', textAlign: 'center' }}>
                                             {items.length > 1 && (
                                                 <button 
                                                     type="button" 
                                                     onClick={() => removeItemRow(index)}
-                                                    style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
+                                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}
+                                                    title="Remove Item"
                                                 >
-                                                    &times;
+                                                    ✕
                                                 </button>
                                             )}
                                         </td>
@@ -284,6 +600,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                     <div className="modal-footer" style={{ marginTop: '20px' }}>

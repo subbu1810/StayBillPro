@@ -1,46 +1,329 @@
-.staff-screen {
-    animation: fadeIn 0.3s ease;
-    height: 100%;
-}
+/* ============================================
+   PAYROLL & SALARY - PREMIUM DESIGN SYSTEM
+   ============================================ */
 
-.status-pill {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.status-pill.success {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.status-pill.warning {
-    background: #fef9c3;
-    color: #854d0e;
-}
-
-.section-title {
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin-bottom: 12px;
+/* --- Top Bar: Month Picker + Summary Stats --- */
+.payroll-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.payroll-month-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.payroll-month-selector label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.payroll-month-input {
+    padding: 8px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.payroll-month-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+
+/* --- Summary Stats Row --- */
+.payroll-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.payroll-stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 18px;
+    min-width: 150px;
+}
+
+.payroll-stat-chip .stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+
+.payroll-stat-chip .stat-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.payroll-stat-chip .stat-value.orange {
+    color: #f59e0b;
+}
+
+/* --- Card Grid --- */
+.payroll-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+}
+
+/* --- Individual Salary Card --- */
+.salary-card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e8eef6;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.salary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
+}
+
+/* --- Card Top Banner (Paid vs Pending) --- */
+.salary-card-banner {
+    height: 5px;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+}
+
+.salary-card-banner.paid {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* --- Card Header --- */
+.salary-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.salary-employee-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.salary-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.salary-card-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1e293b;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.salary-card-role {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.salary-status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.salary-status-badge.paid {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.salary-status-badge.pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* --- Card Body: Salary Fields --- */
+.salary-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-grow: 1;
+}
+
+.salary-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.salary-field-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.salary-field-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.salary-input {
+    width: 110px;
+    padding: 7px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #0f172a;
+    background-color: #f8fafc;
+    transition: all 0.2s;
+    -moz-appearance: textfield;
+}
+
+.salary-input::-webkit-outer-spin-button,
+.salary-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.salary-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.salary-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+    margin: 4px 0;
+}
+
+/* --- Card Footer: Net Payable + Buttons --- */
+.salary-card-footer {
+    padding: 14px 20px 18px;
+    background-color: #f8fafc;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.net-payable-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.net-payable-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #64748b;
+}
+
+.net-payable-amount {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+}
+
+.net-payable-amount span {
+    font-size: 1rem;
+    color: #64748b;
+    font-weight: 600;
+    margin-right: 2px;
+}
+
+.salary-actions {
+    display: flex;
     gap: 8px;
 }
 
-.btn-small {
-    padding: 2px 8px;
-    background: #14b8a6;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.7rem;
+.salary-btn {
+    flex: 1;
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.82rem;
     cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
 }
 
-.btn-small:hover {
-    background: #0f766e;
+.salary-btn-save {
+    background-color: white;
+    color: #475569;
+    border: 1.5px solid #e2e8f0;
+}
+
+.salary-btn-save:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+
+.salary-btn-pay {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.salary-btn-pay:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+    transform: translateY(-1px);
+}
+
+/* --- Empty / Loading State --- */
+.payroll-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    font-weight: 500;
 }

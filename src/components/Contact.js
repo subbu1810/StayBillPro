@@ -116,6 +116,7 @@ function Contact({ onBack }) {
                                 <label htmlFor="phone">Phone Number</label>
                                 <input
                                     type="tel"
+                                    maxLength="10"
                                     id="phone"
                                     name="phone"
                                     value={formData.phone}

@@ -21,34 +21,67 @@ import InvoicingScreen from './InvoicingScreen';
 import POSManager from './pos/POSManager';
 import BranchScreen from './BranchScreen';
 import InvoiceHistory from './InvoiceHistory';
+import SupportScreen from './SupportScreen';
+import QuotationScreen from './QuotationScreen';
+import { usePopup } from './ui/PopupProvider';
 import '../styles/StaffScreen.css';
 import '../styles/AccountingScreen.css';
 import '../styles/PurchaseScreen.css';
 import '../styles/GSTScreen.css';
 import '../styles/InvoiceHistory.css';
+import { X, Menu } from 'lucide-react';
+import RechargeModal from './RechargeModal';
+import WalletHistoryModal from './WalletHistoryModal';
 
 export default function AdminPanel({ onLogout }) {
+	const popup = usePopup();
 	const [currentScreen, setCurrentScreen] = useState('dashboard');
 	const [selectedJobId, setSelectedJobId] = useState(null);
-	const [userProfile] = useState(() => {
+	const [showRechargeModal, setShowRechargeModal] = useState(false);
+	const [showWalletHistoryModal, setShowWalletHistoryModal] = useState(false);
+	const [userProfile, setUserProfile] = useState(() => {
 		const saved = localStorage.getItem('adminUser');
 		if (saved) {
 			try {
 				const user = JSON.parse(saved);
-				return { name: user.business || user.name || 'Admin', avatar: '👤' };
+				return { 
+                    name: user.business || user.name || 'Admin', 
+                    avatar: '👤',
+                    scan_wallet_balance: user.scan_wallet_balance !== undefined ? parseFloat(user.scan_wallet_balance).toFixed(2) : '0.00'
+                };
 			} catch (e) {
-				return { name: 'Admin User', avatar: '👤' };
+				return { name: 'Admin User', avatar: '👤', scan_wallet_balance: '0.00' };
 			}
 		}
-		return { name: 'Admin User', avatar: '👤' };
+		return { name: 'Admin User', avatar: '👤', scan_wallet_balance: '0.00' };
 	});
+
+	useEffect(() => {
+		const handleWalletUpdate = () => {
+			const saved = localStorage.getItem('adminUser');
+			if (saved) {
+				try {
+					const user = JSON.parse(saved);
+					setUserProfile(prev => ({
+						...prev,
+						scan_wallet_balance: user.scan_wallet_balance !== undefined ? parseFloat(user.scan_wallet_balance).toFixed(2) : prev.scan_wallet_balance
+					}));
+				} catch (e) {}
+			}
+		};
+		window.addEventListener('walletUpdated', handleWalletUpdate);
+		return () => window.removeEventListener('walletUpdated', handleWalletUpdate);
+	}, []);
+
 	const { jobs, setSelectedBranchId } = useService();
 	const [screenHistory, setScreenHistory] = useState(['dashboard']);
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const [confirmAction, setConfirmAction] = useState(null);
+	const [tabToClose, setTabToClose] = useState(null);
 	const [historyInitialized, setHistoryInitialized] = useState(false);
 	const [posSubScreen, setPosSubScreen] = useState('billing');
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [expandedGroups, setExpandedGroups] = useState({
 		inventorySales: false,
 		inventoryService: false,
@@ -102,7 +135,7 @@ export default function AdminPanel({ onLogout }) {
 			console.log('Current User Context (Loaded/Updated):', user);
 			setUserRole(user.role);
 			setUserBranchId(user.branchId);
-			
+
 			// Parse permissions
 			try {
 				const userPerms = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : (user.permissions || []);
@@ -112,7 +145,7 @@ export default function AdminPanel({ onLogout }) {
 				console.error("Error parsing permissions", e);
 				setPermissions([]);
 			}
-			
+
 			if (user.role === 'SUPERADMIN' || user.role === 'superadmin') {
 				fetchBranches(user.branchId);
 			} else {
@@ -148,12 +181,12 @@ export default function AdminPanel({ onLogout }) {
 			const data = await branchesAPI.getAll();
 			console.log('Branches API Result:', data);
 			setBranches(data);
-			
+
 			if (data.length > 0) {
-				const branchToSet = currentBranchId 
+				const branchToSet = currentBranchId
 					? data.find(b => b.id == currentBranchId) || data[0]
 					: data.find(b => b.is_main) || data[0];
-				
+
 				console.log('Setting Active Branch:', branchToSet);
 				setActiveBranch(branchToSet.name);
 				setActiveBranchId(branchToSet.id);
@@ -262,6 +295,7 @@ export default function AdminPanel({ onLogout }) {
 		if (screen === 'inventory-sales') {
 			if (finalSubScreen === 'categories') title = 'Showroom: Categories';
 			else if (finalSubScreen === 'ledger') title = 'Showroom: Stock Log';
+			else if (finalSubScreen === 'expiry') title = 'Store Stock: Expiry Monitor';
 			else title = 'Store Stock';
 		}
 		if (screen === 'inventory-service') {
@@ -290,9 +324,9 @@ export default function AdminPanel({ onLogout }) {
 		if (screen === 'staff') {
 			if (finalSubScreen === 'roles') title = 'Staff: Permissions';
 			else if (finalSubScreen === 'attendance') title = 'Staff: Attendance';
-			else if (finalSubScreen === 'sales') title = 'Staff: Sales Audit';
 			else if (finalSubScreen === 'salary') title = 'Staff: Payroll';
-			else title = `Staff: ${finalSubScreen || 'Directory'}`;
+			else if (finalSubScreen === 'history') title = 'Staff: Payment History';
+			else title = 'Staff Management';
 		}
 		if (screen === 'accounting') {
 			if (finalSubScreen === 'pnl') title = 'A/C: Profit & Loss';
@@ -329,21 +363,15 @@ export default function AdminPanel({ onLogout }) {
 		}
 
 		// 2. Add new tab if within limit
-		if (tabs.length < 8) {
+		if (tabs.length < 10) {
 			const newTabId = `${screen}-${Date.now()}`;
 			const newTab = { id: newTabId, title, screen, subScreen: finalSubScreen, jobId };
 			setTabs([...tabs, newTab]);
 			setActiveTabId(newTabId);
 		} else {
-			// Replace current active tab if limit reached (except dashboard)
-			if (activeTabId === 'dashboard') {
-				alert('Maximum 8 tabs allowed. Please close some tabs.');
-				return;
-			}
-			const newTabs = tabs.map(t => 
-				t.id === activeTabId ? { ...t, title, screen, subScreen: finalSubScreen, jobId } : t
-			);
-			setTabs(newTabs);
+			// Limit reached - block opening new tabs
+			popup.showError('Maximum 10 tabs allowed. Please close some tabs.');
+			return;
 		}
 
 		setCurrentScreen(screen);
@@ -399,17 +427,9 @@ export default function AdminPanel({ onLogout }) {
 		e.stopPropagation();
 		if (tabId === 'dashboard') return;
 
-		const tabIndex = tabs.findIndex(t => t.id === tabId);
-		const newTabs = tabs.filter(t => t.id !== tabId);
-		setTabs(newTabs);
-
-		if (activeTabId === tabId) {
-			const nextTab = newTabs[tabIndex - 1] || newTabs[0];
-			setActiveTabId(nextTab.id);
-			setCurrentScreen(nextTab.screen);
-			if (nextTab.screen === 'pos') setPosSubScreen(nextTab.subScreen || 'billing');
-			if (nextTab.jobId) setSelectedJobId(nextTab.jobId);
-		}
+		setTabToClose(tabId);
+		setConfirmAction('closeTab');
+		setShowConfirmDialog(true);
 	};
 
 	const switchTab = (tabId) => {
@@ -439,27 +459,52 @@ export default function AdminPanel({ onLogout }) {
 			setConfirmAction(null);
 			// Allow back navigation
 			window.history.back();
+		} else if (confirmAction === 'closeTab' && tabToClose) {
+			setShowConfirmDialog(false);
+			setConfirmAction(null);
+
+			const tabIndex = tabs.findIndex(t => t.id === tabToClose);
+			const newTabs = tabs.filter(t => t.id !== tabToClose);
+			setTabs(newTabs);
+
+			if (activeTabId === tabToClose) {
+				const nextTab = newTabs[tabIndex - 1] || newTabs[0];
+				setActiveTabId(nextTab.id);
+				setCurrentScreen(nextTab.screen);
+				if (nextTab.screen === 'pos') setPosSubScreen(nextTab.subScreen || 'billing');
+				if (nextTab.jobId) setSelectedJobId(nextTab.jobId);
+			}
+			setTabToClose(null);
 		}
 	};
 
 	const handleCancelAction = () => {
 		setShowConfirmDialog(false);
 		setConfirmAction(null);
+		setTabToClose(null);
+	};
+
+	const handleToggleSidebar = () => {
+		if (window.innerWidth <= 1024) {
+			setSidebarOpen(!sidebarOpen);
+		} else {
+			setSidebarCollapsed(!sidebarCollapsed);
+		}
 	};
 
 	return (
 		<div className="admin-panel orange-theme">
 			<div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
-			<aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
+			<aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
 				<div className="sidebar-brand" onClick={() => { handleScreenChange('dashboard'); setSidebarOpen(false); }} style={{ cursor: 'pointer' }}>
-					<div className="brand-icon">🧾</div>
+					<img src="/logo.png" alt="Logo" style={{ maxWidth: '52px', maxHeight: '52px', objectFit: 'contain' }} />
 					<h2>StayBill pro</h2>
 				</div>
 
 				<nav className="sidebar-nav">
-					{(hasPermission('pos-billing') || hasPermission('pos-returns') || hasPermission('invoice-history')) && (
+					{(hasPermission('pos-billing') || hasPermission('pos-quotation') || hasPermission('pos-wholesale') || hasPermission('pos-returns') || hasPermission('invoice-history') || hasPermission('wholesale-history')) && (
 						<button
-							className={currentScreen === 'pos' || currentScreen === 'invoice-history' ? 'nav-item active' : 'nav-item'}
+							className={currentScreen === 'pos' || currentScreen === 'invoice-history' || currentScreen === 'wholesale-history' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('pos')}
 						>
 							<span className="nav-icon">⚡</span>
@@ -471,15 +516,23 @@ export default function AdminPanel({ onLogout }) {
 					{expandedGroups.pos && (
 						<div className="sub-nav-group">
 							{hasPermission('pos-billing') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'pos' && currentSubScreen === 'billing' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('pos', 'billing')}
 								>
-									<span>💳</span> Create Invoice
+									<span>💳</span> POS
+								</button>
+							)}
+							{hasPermission('pos-quotation') && (
+								<button
+									className={`sub-nav-item ${currentScreen === 'quotation' ? 'active' : ''}`}
+									onClick={() => handleScreenChange('quotation')}
+								>
+									<span>📄</span> Quotation
 								</button>
 							)}
 							{hasPermission('pos-wholesale') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'pos' && currentSubScreen === 'wholesale' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('pos', 'wholesale')}
 								>
@@ -487,7 +540,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('pos-returns') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'pos' && currentSubScreen === 'returns' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('pos', 'returns')}
 								>
@@ -495,11 +548,19 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('invoice-history') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'invoice-history' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('invoice-history')}
 								>
-									<span>📋</span> Invoice History
+									<span>📋</span> POS History
+								</button>
+							)}
+							{hasPermission('wholesale-history') && (
+								<button
+									className={`sub-nav-item ${currentScreen === 'wholesale-history' ? 'active' : ''}`}
+									onClick={() => handleScreenChange('wholesale-history')}
+								>
+									<span>📦</span> Wholesale History
 								</button>
 							)}
 						</div>
@@ -532,7 +593,7 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 					)}
 
-					{(hasPermission('inventory-sales-stock') || hasPermission('inventory-sales-categories') || hasPermission('inventory-sales-ledger')) && (
+					{(hasPermission('inventory-sales-stock') || hasPermission('inventory-sales-categories') || hasPermission('inventory-sales-ledger') || hasPermission('inventory-sales-expiry')) && (
 						<button
 							className={currentScreen === 'inventory-sales' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('inventorySales')}
@@ -547,6 +608,9 @@ export default function AdminPanel({ onLogout }) {
 						<div className="sub-nav-group">
 							{hasPermission('inventory-sales-stock') && (
 								<button className={`sub-nav-item ${currentScreen === 'inventory-sales' && (currentSubScreen === 'stock' || !currentSubScreen) ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-sales', 'stock')}><span>📦</span> Current Stock</button>
+							)}
+							{hasPermission('inventory-sales-expiry') && (
+								<button className={`sub-nav-item ${currentScreen === 'inventory-sales' && currentSubScreen === 'expiry' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-sales', 'expiry')}><span>⏳</span> Expiry Monitor</button>
 							)}
 							{hasPermission('inventory-sales-categories') && (
 								<button className={`sub-nav-item ${currentScreen === 'inventory-sales' && currentSubScreen === 'categories' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-sales', 'categories')}><span>🏷️</span> Categories</button>
@@ -592,7 +656,7 @@ export default function AdminPanel({ onLogout }) {
 					{expandedGroups.customers && (
 						<div className="sub-nav-group">
 							{hasPermission('customers-manage') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'manage' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('customers', 'manage')}
 								>
@@ -600,7 +664,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('customers-ledger') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'ledger' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('customers', 'ledger')}
 								>
@@ -608,7 +672,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('customers-dues') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'dues' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('customers', 'dues')}
 								>
@@ -616,7 +680,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('customers-payments') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'payments' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('customers', 'payments')}
 								>
@@ -624,7 +688,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('customers-orders') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'orders' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('customers', 'orders')}
 								>
@@ -632,7 +696,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('customers-returns') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'returns' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('customers', 'returns')}
 								>
@@ -642,7 +706,7 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 					)}
 
-					{(hasPermission('staff-manage') || hasPermission('staff-roles') || hasPermission('staff-attendance') || hasPermission('staff-salary')) && (
+					{(hasPermission('staff-manage') || hasPermission('staff-roles') || hasPermission('staff-attendance') || hasPermission('staff-salary') || hasPermission('staff-history')) && (
 						<button
 							className={currentScreen === 'staff' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('staff')}
@@ -666,6 +730,9 @@ export default function AdminPanel({ onLogout }) {
 							)}
 							{hasPermission('staff-salary') && (
 								<button className={`sub-nav-item ${currentScreen === 'staff' && currentSubScreen === 'salary' ? 'active' : ''}`} onClick={() => handleScreenChange('staff', 'salary')}><span>💰</span> Payroll & Salary</button>
+							)}
+							{hasPermission('staff-history') && (
+								<button className={`sub-nav-item ${currentScreen === 'staff' && currentSubScreen === 'history' ? 'active' : ''}`} onClick={() => handleScreenChange('staff', 'history')}><span>📜</span> Payment History</button>
 							)}
 						</div>
 					)}
@@ -701,7 +768,7 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 					)}
 
-					{(hasPermission('purchase-po') || hasPermission('purchase-grn') || hasPermission('purchase-due')) && (
+					{(hasPermission('purchase-po') || hasPermission('purchase-grn') || hasPermission('purchase-due') || hasPermission('purchase-returns')) && (
 						<button
 							className={currentScreen === 'purchase' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('purchase')}
@@ -723,6 +790,9 @@ export default function AdminPanel({ onLogout }) {
 							{hasPermission('purchase-due') && (
 								<button className={`sub-nav-item ${currentScreen === 'purchase' && currentSubScreen === 'due' ? 'active' : ''}`} onClick={() => handleScreenChange('purchase', 'due')}><span>💸</span> Due Tracking</button>
 							)}
+							{hasPermission('purchase-returns') && (
+								<button className={`sub-nav-item ${currentScreen === 'purchase' && currentSubScreen === 'returns' ? 'active' : ''}`} onClick={() => handleScreenChange('purchase', 'returns')}><span>↩️</span> Damaged / Returns</button>
+							)}
 						</div>
 					)}
 					{hasPermission('technicians') && (
@@ -734,7 +804,7 @@ export default function AdminPanel({ onLogout }) {
 							<span className="nav-text">Technicians</span>
 						</button>
 					)}
-					{(hasPermission('reports-sales') || hasPermission('reports-expenses') || hasPermission('reports-profit') || hasPermission('reports-stock') || hasPermission('reports-topCustomers')) && (
+					{(hasPermission('reports-sales') || hasPermission('reports-expenses') || hasPermission('reports-profit') || hasPermission('reports-stock') || hasPermission('reports-topCustomers') || hasPermission('customers-returns')) && (
 						<button
 							className={currentScreen === 'reports' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('reports')}
@@ -748,7 +818,7 @@ export default function AdminPanel({ onLogout }) {
 					{expandedGroups.reports && (
 						<div className="sub-nav-group">
 							{hasPermission('reports-sales') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'reports' && currentSubScreen === 'sales' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('reports', 'sales')}
 								>
@@ -756,7 +826,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('reports-expenses') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'reports' && currentSubScreen === 'expenses' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('reports', 'expenses')}
 								>
@@ -764,7 +834,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('reports-profit') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'reports' && currentSubScreen === 'profit' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('reports', 'profit')}
 								>
@@ -772,7 +842,7 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('reports-stock') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'reports' && currentSubScreen === 'stock' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('reports', 'stock')}
 								>
@@ -780,11 +850,19 @@ export default function AdminPanel({ onLogout }) {
 								</button>
 							)}
 							{hasPermission('reports-topCustomers') && (
-								<button 
+								<button
 									className={`sub-nav-item ${currentScreen === 'reports' && currentSubScreen === 'topCustomers' ? 'active' : ''}`}
 									onClick={() => handleScreenChange('reports', 'topCustomers')}
 								>
 									<span>⭐</span> Top Customers
+								</button>
+							)}
+							{hasPermission('customers-returns') && (
+								<button
+									className={`sub-nav-item ${currentScreen === 'customers' && currentSubScreen === 'returns' ? 'active' : ''}`}
+									onClick={() => handleScreenChange('customers', 'returns')}
+								>
+									<span>🔄</span> Return History
 								</button>
 							)}
 						</div>
@@ -874,6 +952,16 @@ export default function AdminPanel({ onLogout }) {
 							)}
 						</div>
 					)}
+
+					{/* Support Menu Item */}
+					<button
+						className={currentScreen === 'support' ? 'nav-item active' : 'nav-item'}
+						onClick={() => handleScreenChange('support')}
+						style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', borderRadius: '0' }}
+					>
+						<span className="nav-icon">🎧</span>
+						<span className="nav-text">Customer Support</span>
+					</button>
 				</nav>
 
 			</aside>
@@ -881,10 +969,10 @@ export default function AdminPanel({ onLogout }) {
 			<div className="main-wrapper">
 				<header className="admin-topbar">
 					<div className="topbar-left">
-						<button className="menu-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+						<button className="menu-toggle" onClick={handleToggleSidebar}>☰</button>
 						<div className="branch-selector-wrapper">
 							<span className="location-icon">📍</span>
-							<select 
+							<select
 								className="topbar-branch-switcher"
 								value={activeBranch}
 								onChange={handleBranchChange}
@@ -898,7 +986,7 @@ export default function AdminPanel({ onLogout }) {
 									<option>{activeBranch}</option>
 								)}
 							</select>
-							
+
 							{branches.length > 0 && activeBranchId && (
 								<div className="active-branch-details-mini">
 									{(() => {
@@ -918,6 +1006,27 @@ export default function AdminPanel({ onLogout }) {
 							<input type="text" placeholder="Global Search (Ctrl+K)..." />
 						</div>
 						<div className="notification-bell">🔔<span className="badge">3</span></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px' }}>
+                            <div style={{ background: '#f8fafc', padding: '4px 12px', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }} title="AI Scan Wallet Balance">
+                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Wallet:</span>
+                                <span style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '0.9rem' }}>₹{userProfile.scan_wallet_balance}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                    onClick={() => setShowWalletHistoryModal(true)}
+                                    style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '20px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                    title="View Wallet Ledger"
+                                >
+                                    History
+                                </button>
+                                <button 
+                                    onClick={() => setShowRechargeModal(true)}
+                                    style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '20px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                >
+                                    + Recharge
+                                </button>
+                            </div>
+                        </div>
 						<div className="top-user-info">
 							<div className="top-user-text">
 								<span className="top-user-name">{userProfile.name}</span>
@@ -927,23 +1036,24 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 						<button className="topbar-logout-btn" onClick={handleLogoutClick} title="Logout">
 							<span className="logout-icon">🚪</span>
+							<span className="logout-text">Logout</span>
 						</button>
 					</div>
 				</header>
 
 				<div className="admin-tab-bar">
 					{tabs.map(tab => (
-						<div 
-							key={tab.id} 
+						<div
+							key={tab.id}
 							className={`tab-item ${activeTabId === tab.id ? 'active' : ''}`}
 							onClick={() => switchTab(tab.id)}
 						>
 							<span className="tab-icon">
-								{tab.screen === 'dashboard' ? '🏠' : 
-								 tab.screen === 'pos' ? '⚡' : 
-								 tab.screen === 'jobs' ? '📋' : 
-								 tab.screen === 'inventory-sales' ? '🏬' :
-								 tab.screen === 'inventory-service' ? '🔧' : '📄'}
+								{tab.screen === 'dashboard' ? '🏠' :
+									tab.screen === 'pos' ? '⚡' :
+										tab.screen === 'jobs' ? '📋' :
+											tab.screen === 'inventory-sales' ? '🏬' :
+												tab.screen === 'inventory-service' ? '🔧' : '📄'}
 							</span>
 							<span className="tab-title">{tab.title}</span>
 							{tab.id !== 'dashboard' && (
@@ -956,23 +1066,25 @@ export default function AdminPanel({ onLogout }) {
 				<main className="admin-content">
 					{!hasPermission(
 						currentScreen === 'inventory-service' ? (currentSubScreen === 'ledger' ? 'inventory-service-log' : 'inventory-service') :
-						currentScreen === 'inventory-sales' ? (`inventory-sales-${currentSubScreen || 'stock'}`) :
-						currentScreen === 'customers' ? (`customers-${currentSubScreen || 'manage'}`) :
-						currentScreen === 'suppliers' ? (`suppliers-${currentSubScreen || 'manage'}`) :
-						currentScreen === 'staff' ? (`staff-${currentSubScreen}`) :
-						currentScreen === 'accounting' ? (`accounting-${currentSubScreen}`) :
-						currentScreen === 'branch' ? (`branch-${currentSubScreen}`) :
-						currentScreen === 'settings' ? (`settings-${currentSubScreen}`) :
-						currentScreen === 'pos' ? (currentSubScreen === 'settings' ? 'pos-settings' : `pos-${currentSubScreen}`) :
-						currentScreen === 'purchase' ? (`purchase-${currentSubScreen}`) :
-						currentScreen === 'reports' ? (`reports-${currentSubScreen}`) :
-						currentScreen === 'newJob' ? 'jobs-new' :
-						currentScreen === 'calendar' ? 'jobs-calendar' :
-						currentScreen === 'invoicing' ? 'jobs-invoicing' :
-						currentScreen === 'jobDetail' ? 'jobs' :
-						currentScreen === 'invoice-history' ? 'invoice-history' :
-						currentScreen
-					) && currentScreen !== 'dashboard' ? (
+							currentScreen === 'inventory-sales' ? (`inventory-sales-${currentSubScreen || 'stock'}`) :
+								currentScreen === 'customers' ? (`customers-${currentSubScreen || 'manage'}`) :
+									currentScreen === 'suppliers' ? (`suppliers-${currentSubScreen || 'manage'}`) :
+										currentScreen === 'staff' ? (`staff-${currentSubScreen}`) :
+											currentScreen === 'accounting' ? (`accounting-${currentSubScreen}`) :
+												currentScreen === 'branch' ? (`branch-${currentSubScreen}`) :
+													currentScreen === 'settings' ? (`settings-${currentSubScreen}`) :
+														currentScreen === 'quotation' ? 'pos-quotation' :
+														currentScreen === 'pos' ? (currentSubScreen === 'settings' ? 'pos-settings' : `pos-${currentSubScreen}`) :
+															currentScreen === 'purchase' ? (`purchase-${currentSubScreen === 'grn-new' ? 'grn' : currentSubScreen}`) :
+																currentScreen === 'reports' ? (`reports-${currentSubScreen}`) :
+																	currentScreen === 'newJob' ? 'jobs-new' :
+																		currentScreen === 'calendar' ? 'jobs-calendar' :
+																			currentScreen === 'invoicing' ? 'jobs-invoicing' :
+																				currentScreen === 'jobDetail' ? 'jobs' :
+																					currentScreen === 'invoice-history' ? 'invoice-history' :
+																						currentScreen === 'wholesale-history' ? 'wholesale-history' :
+																							currentScreen
+					) && currentScreen !== 'dashboard' && currentScreen !== 'support' ? (
 						<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
 							<span style={{ fontSize: '4rem' }}>🚫</span>
 							<h2>Access Denied</h2>
@@ -992,30 +1104,39 @@ export default function AdminPanel({ onLogout }) {
 									onViewJob={handleViewJob}
 									onOpenInventory={() => handleScreenChange('inventory')}
 									onOpenPOS={() => handleScreenChange('pos')}
+									onOpenGRN={() => handleScreenChange('purchase', 'grn-new')}
 									onLogout={onLogout}
 								/>
 							)}
 							{currentScreen === 'jobs' && <JobsList key={activeTabId} onViewJob={handleViewJob} onCreateJob={() => handleScreenChange('newJob')} />}
 							{currentScreen === 'newJob' && <NewJob key={activeTabId} onBack={() => handleScreenChange('jobs')} onSuccess={handleNewJobCreated} />}
 							{currentScreen === 'jobDetail' && selectedJobId && <JobDetail key={activeTabId} jobId={selectedJobId} onBack={handleBackFromJobDetail} />}
+							{currentScreen === 'quotation' && <QuotationScreen key={activeTabId} />}
 							{currentScreen === 'reports' && <ReportsScreen key={activeTabId} defaultTab={currentSubScreen} />}
-							{currentScreen === 'pos' && <POSManager key={activeTabId} activeTab={currentSubScreen} onTabChange={(s) => {/* Tab system handles this */}} />}
-							{currentScreen === 'invoice-history' && <InvoiceHistory key={activeTabId} />}
+							{currentScreen === 'pos' && <POSManager key={activeTabId} activeTab={currentSubScreen} onTabChange={(s) => {/* Tab system handles this */ }} />}
+							{currentScreen === 'invoice-history' && <InvoiceHistory key={activeTabId} invoiceType="pos" />}
+							{currentScreen === 'wholesale-history' && <InvoiceHistory key={activeTabId} invoiceType="wholesale" />}
 							{currentScreen === 'inventory-sales' && <InventoryScreen key={activeTabId} initialSection="sales" defaultTab={currentSubScreen} />}
 							{currentScreen === 'inventory-service' && <InventoryScreen key={activeTabId} initialSection="service" defaultTab={currentSubScreen} />}
 							{currentScreen === 'customers' && <CustomersScreen key={activeTabId} defaultTab={currentSubScreen} />}
 							{currentScreen === 'suppliers' && <SuppliersScreen key={activeTabId} defaultTab={currentSubScreen} />}
-							{currentScreen === 'purchase' && <PurchaseScreen key={activeTabId} defaultTab={currentSubScreen} />}
+							{currentScreen === 'purchase' && <PurchaseScreen key={activeTabId} defaultTab={currentSubScreen === 'grn-new' ? 'grn' : currentSubScreen} autoOpenModal={currentSubScreen === 'grn-new'} />}
 							{currentScreen === 'staff' && <StaffScreen key={activeTabId} defaultTab={currentSubScreen} />}
-							{currentScreen === 'accounting' && currentSubScreen === 'gst' && <GSTScreen key={activeTabId} defaultTab={currentSubScreen} />}
+							{currentScreen === 'accounting' && currentSubScreen === 'gst' && <GSTScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
 							{currentScreen === 'accounting' && currentSubScreen !== 'gst' && <AccountingScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
 							{currentScreen === 'branch' && <BranchScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
 							{currentScreen === 'calendar' && <CalendarScreen key={activeTabId} />}
 							{currentScreen === 'invoicing' && <InvoicingScreen key={activeTabId} />}
+							{currentScreen === 'support' && <SupportScreen key={activeTabId} />}
 							{currentScreen === 'technicians' && <TechniciansScreen key={activeTabId} />}
 							{currentScreen === 'settings' && <SettingsScreen key={activeTabId} defaultTab={currentSubScreen} />}
 						</>
 					)}
+
+					{/* Global Footer */}
+					<div style={{ textAlign: 'center', padding: '20px 0 10px 0', marginTop: 'auto', color: '#94a3b8', fontSize: '0.85rem' }}>
+						&copy; 2026 All rights reserved for SSquareG Tech Solutions Pvt Ltd.
+					</div>
 				</main>
 			</div>
 
@@ -1029,6 +1150,8 @@ export default function AdminPanel({ onLogout }) {
 						<div className="confirm-dialog-body">
 							{confirmAction === 'logout' ? (
 								<p>Are you sure you want to logout? You will need to login again to access the dashboard.</p>
+							) : confirmAction === 'closeTab' ? (
+								<p>Are you sure you want to close this tab? Any unsaved changes might be lost.</p>
 							) : (
 								<p>Are you sure you want to leave the dashboard? You can always come back by navigating to it again.</p>
 							)}
@@ -1038,12 +1161,36 @@ export default function AdminPanel({ onLogout }) {
 								Cancel
 							</button>
 							<button className="btn-confirm" onClick={handleConfirmAction}>
-								{confirmAction === 'logout' ? 'Yes, Logout' : 'Yes, Go Back'}
+								{confirmAction === 'logout' ? 'Yes, Logout' : confirmAction === 'closeTab' ? 'Yes, Close Tab' : 'Yes, Go Back'}
 							</button>
 						</div>
 					</div>
 				</div>
 			)}
+
+            {showRechargeModal && (
+                <RechargeModal 
+                    onClose={() => setShowRechargeModal(false)}
+                    onSuccess={(newBalance) => {
+                        setShowRechargeModal(false);
+                        setUserProfile(prev => ({
+                            ...prev,
+                            scan_wallet_balance: parseFloat(newBalance).toFixed(2)
+                        }));
+                        const saved = localStorage.getItem('adminUser');
+                        if (saved) {
+                            const user = JSON.parse(saved);
+                            user.scan_wallet_balance = newBalance;
+                            localStorage.setItem('adminUser', JSON.stringify(user));
+                        }
+                        popup.showSuccess(`Wallet successfully recharged! New Balance: ₹${newBalance}`);
+                    }}
+                />
+            )}
+            
+            {showWalletHistoryModal && (
+                <WalletHistoryModal onClose={() => setShowWalletHistoryModal(false)} />
+            )}
 		</div>
 	);
 }

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { usePopup } from '../ui/PopupProvider';
 
 /**
  * ReturnsRefundPage Component
  * Handle product returns and refund calculations
  */
 export default function ReturnsRefundPage() {
+  const popup = usePopup();
   const [invoiceId, setInvoiceId] = useState('');
   const [invoiceData, setInvoiceData] = useState(null);
   const [returnItems, setReturnItems] = useState([]);
@@ -48,12 +50,12 @@ export default function ReturnsRefundPage() {
         setRefundMode(data.invoice.payment_method);
         setReturnItems([]);
       } else {
-        alert(data.message || 'Invoice not found');
+        popup.showError(data.message || 'Invoice not found');
         setInvoiceData(null);
       }
     } catch (err) {
       console.error(err);
-      alert('Error searching for invoice');
+      popup.showError('Error searching for invoice');
     } finally {
       setLoading(false);
     }
@@ -106,18 +108,18 @@ export default function ReturnsRefundPage() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        alert('Refund Processed & Stock Updated!');
+        popup.showSuccess('Refund Processed & Stock Updated!');
         // Reset form
         setInvoiceId('');
         setInvoiceData(null);
         setReturnItems([]);
         setRefundReason('');
       } else {
-        alert(data.message || 'Error processing refund');
+        popup.showError(data.message || 'Error processing refund');
       }
     } catch (err) {
       console.error(err);
-      alert('Network error while processing refund');
+      popup.showError('Network error while processing refund');
     }
   };
 

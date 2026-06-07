@@ -31,8 +31,9 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 
 	const [activeSection, setActiveSection] = useState(initialSection);
 	const [selectedCategory, setSelectedCategory] = useState('All');
-	const [selectedBrand, setSelectedBrand] = useState('All');
 	const [searchQuery, setSearchQuery] = useState('');
+	const [startDate, setStartDate] = useState('');
+	const [endDate, setEndDate] = useState('');
 	const [viewMode, setViewMode] = useState('stock'); // stock, categories, ledger
 	const [showCategoryModal, setShowCategoryModal] = useState(false);
 	const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -66,6 +67,34 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	]);
 	const [managedCategories, setManagedCategories] = useState([]);
 
+	const [isScanning, setIsScanning] = useState(false);
+	const [scanMessageIndex, setScanMessageIndex] = useState(0);
+	const [showScanModal, setShowScanModal] = useState(false);
+	const [scanResults, setScanResults] = useState([]);
+	const [advancedEditIndex, setAdvancedEditIndex] = useState(null);
+	const fileInputRef = React.useRef(null);
+	const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+	const funnyMessages = [
+		"Waking up the AI...",
+		"Teaching it how to read...",
+		"Decoding the handwriting...",
+		"Crunching the numbers...",
+		"Counting the pixels...",
+		"Almost there..."
+	];
+
+	useEffect(() => {
+		let interval;
+		if (isScanning) {
+			setScanMessageIndex(0);
+			interval = setInterval(() => {
+				setScanMessageIndex((prev) => (prev + 1) % funnyMessages.length);
+			}, 3000);
+		}
+		return () => clearInterval(interval);
+	}, [isScanning]);
+
 	useEffect(() => {
 		fetchCategories();
 	}, [activeSection]);
@@ -85,16 +114,11 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 		}
 	};
 
-	// Extract unique categories and brands
+	// Extract unique categories
 	const categories = useMemo(() => {
 		const fromDB = allCategories.map(c => c.name);
 		return ['All', ...new Set(fromDB)];
 	}, [allCategories]);
-
-	const brands = useMemo(() => {
-		const uniqueBrands = ['All', ...new Set(items.map(item => item.brand || item.company).filter(Boolean))];
-		return uniqueBrands;
-	}, [items]);
 
 	const filteredItems = useMemo(() => {
 		let results = [...items];
@@ -102,11 +126,6 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 		// Category Filter
 		if (selectedCategory !== 'All') {
 			results = results.filter(s => (s.category_name || s.category || 'General') === selectedCategory);
-		}
-		
-		// Brand Filter
-		if (selectedBrand !== 'All') {
-			results = results.filter(s => (s.brand || s.company) === selectedBrand);
 		}
 		
 		// Search Filter (Name, SKU, Serial)
@@ -119,8 +138,31 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 			);
 		}
 		
+		// Date Filter
+		if (startDate) {
+			results = results.filter(s => new Date(s.created_at) >= new Date(startDate));
+		}
+		if (endDate) {
+			const end = new Date(endDate);
+			end.setHours(23, 59, 59, 999);
+			results = results.filter(s => new Date(s.created_at) <= end);
+		}
+		
 		return results;
-	}, [items, selectedCategory, selectedBrand, searchQuery]);
+	}, [items, selectedCategory, searchQuery, startDate, endDate]);
+
+	const filteredStockHistory = useMemo(() => {
+		let results = [...stockHistory];
+		if (startDate) {
+			results = results.filter(entry => new Date(entry.created_at) >= new Date(startDate));
+		}
+		if (endDate) {
+			const end = new Date(endDate);
+			end.setHours(23, 59, 59, 999);
+			results = results.filter(entry => new Date(entry.created_at) <= end);
+		}
+		return results;
+	}, [stockHistory, startDate, endDate]);
 
 	useEffect(() => {
 		setActiveSection(initialSection);
@@ -133,6 +175,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 			if (defaultTab === 'stock') setViewMode('stock');
 			else if (defaultTab === 'categories') setViewMode('categories');
 			else if (defaultTab === 'ledger') setViewMode('ledger');
+			else if (defaultTab === 'expiry') setViewMode('expiry');
 			else setViewMode('stock');
 		}
 	}, [defaultTab]);
@@ -243,6 +286,159 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 		} catch (error) {
 			console.error('Failed to adjust stock', error);
 			showMessage('Failed to adjust stock. Please try again.', 'error');
+		}
+	};
+
+	const handleFileUpload = async (e) => {
+		const file = e.target.files[0];
+		if (!file) return;
+
+		const formData = new FormData();
+		formData.append('document', file);
+
+		setIsScanning(true);
+		showMessage('Scanning document with AI... Please wait.', 'success');
+
+		try {
+			const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+			const response = await fetch(`${API_BASE}/ocr/scan-bill`, {
+				method: 'POST',
+				headers: { 'Authorization': `Bearer ${token}` },
+				body: formData
+			});
+
+			const data = await response.json();
+			if (data.success) {
+				if (data.newWalletBalance !== undefined) {
+					try {
+						const saved = localStorage.getItem('adminUser');
+						if (saved) {
+							const user = JSON.parse(saved);
+							user.scan_wallet_balance = data.newWalletBalance;
+							localStorage.setItem('adminUser', JSON.stringify(user));
+							window.dispatchEvent(new Event('walletUpdated'));
+						}
+					} catch (e) {}
+				}
+
+				if (data.items && data.items.length > 0) {
+					setScanResults(data.items);
+					setShowScanModal(true);
+				} else {
+					showMessage('No items could be read from the document.', 'error');
+				}
+			} else {
+				showMessage(data.message || 'Failed to scan document', 'error');
+			}
+		} catch (error) {
+			console.error('Scan error:', error);
+			showMessage(`Error: ${error.message || 'Failed to communicate with scanner'}`, 'error');
+		} finally {
+			setIsScanning(false);
+			if (fileInputRef.current) fileInputRef.current.value = '';
+		}
+	};
+
+	const handleConfirmScan = async () => {
+		try {
+			const api = activeSection === 'sales' ? productsAPI : sparesAPI;
+			for (const item of scanResults) {
+				await api.create({
+					name: item.name,
+					price: item.rate || 0,
+					purchase_price: item.netRate || 0,
+					wholesale_price: item.netRate || 0,
+					quantity: item.quantity || 0,
+					branch_id: selectedBranchId,
+					category: item.category || 'General',
+					status: 'available',
+					hsn_code: item.hsn || '',
+					gst_rate: item.gst || 0
+				});
+				
+				await stockLogAPI.create({
+					item_id: null,
+					item_type: activeSection,
+					item_name: item.name,
+					change_type: 'in',
+					quantity_changed: item.qty,
+					resulting_quantity: item.qty,
+					reason: `OCR Scan Added`,
+					branch_id: selectedBranchId
+				});
+			}
+			showMessage('All items successfully added from scan!');
+			setShowScanModal(false);
+			fetchItems();
+			fetchLogs();
+		} catch (err) {
+			console.error(err);
+			showMessage('Error saving scanned items', 'error');
+		}
+	};
+
+	const handleAdvancedEditSave = async (payload) => {
+		try {
+			const api = activeSection === 'sales' ? productsAPI : sparesAPI;
+			
+			// Extract numerical rate
+			const taxMatch = payload.taxRate && payload.taxRate.match(/\d+/);
+			const gstRate = taxMatch ? parseInt(taxMatch[0]) : 0;
+			
+			const mappedPayload = {
+				name: payload.name,
+				hsn_code: payload.hsn,
+				part_number: payload.code, // sku/code maps to part_number in DB
+				category: payload.category || 'General',
+				brand: payload.brand || 'Generic',
+				unit: payload.unit || 'Nos',
+				price: parseFloat(payload.salePrice) || 0,
+				wholesale_price: parseFloat(payload.wholesalePrice) || 0,
+				purchase_price: parseFloat(payload.purchasePrice) || 0,
+				min_wholesale_qty: parseInt(payload.minWholesaleQty) || 0,
+				quantity: parseFloat(payload.openingStock) || 0,
+				low_stock_warning: parseInt(payload.lowStockWarning) || 5,
+				gst_rate: gstRate,
+				dimensions: payload.dimensions,
+				size: payload.size,
+				serial_number: payload.serial_number,
+				status: payload.status || 'available',
+				has_expiry: payload.hasExpiry ? 1 : 0,
+				expiry_date: payload.expiryDate || null,
+				type: payload.type || (activeSection === 'sales' ? 'sales' : 'service')
+			};
+
+			let createdItem;
+			if (payload.image && payload.image instanceof File) {
+				const formData = new FormData();
+				Object.keys(mappedPayload).forEach(key => {
+					if (mappedPayload[key] !== null && mappedPayload[key] !== undefined) {
+						formData.append(key, mappedPayload[key]);
+					}
+				});
+				formData.append('branch_id', selectedBranchId);
+				formData.append('image', payload.image);
+				createdItem = await api.createWithImage(formData);
+			} else {
+				createdItem = await api.create({ ...mappedPayload, branch_id: selectedBranchId });
+			}
+			
+			// Remove from scan results since it's saved
+			const newRes = [...scanResults];
+			newRes.splice(advancedEditIndex, 1);
+			setScanResults(newRes);
+			
+			setAdvancedEditIndex(null);
+			showMessage('Item saved successfully');
+			fetchItems();
+			
+			// Close scan modal if no more items
+			if (newRes.length === 0) {
+				setShowScanModal(false);
+			}
+		} catch (error) {
+			console.error('Advanced edit save error:', error);
+			showMessage('Failed to save item', 'error');
 		}
 	};
 
@@ -414,8 +610,11 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 							<div style={{ padding: '6px', background: 'white', borderRadius: '8px', fontSize: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
 								{activeSection === 'sales' ? '🛒' : '🛠️'}
 							</div>
-							<h1 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold', color: '#1e293b' }}>
+							<h1 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 'bold', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
 								{activeSection === 'sales' ? 'Sales Stock' : 'Service Parts'}
+								<span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+									{filteredItems.length}
+								</span>
 							</h1>
 						</div>
 
@@ -430,15 +629,6 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								{categories.map(cat => <option key={cat} value={cat}>{cat === 'All' ? '📂 Categories' : cat}</option>)}
 							</select>
 
-							{/* Brand */}
-							<select 
-								value={selectedBrand} 
-								onChange={(e) => setSelectedBrand(e.target.value)}
-								style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: '600', background: 'white', outline: 'none', minWidth: '100px' }}
-							>
-								{brands.map(brand => <option key={brand} value={brand}>{brand === 'All' ? '🔖 Brands' : brand}</option>)}
-							</select>
-
 							{/* Search Bar */}
 							<div style={{ position: 'relative', marginLeft: '4px' }}>
 								<span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}>🔍</span>
@@ -450,26 +640,74 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 									style={{ padding: '4px 10px 4px 30px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.75rem', outline: 'none', width: '180px', background: '#f8fafc' }}
 								/>
 							</div>
+
+							{/* Date Filters */}
+							<div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '8px' }}>
+								<input 
+									type="date" 
+									value={startDate}
+									onChange={(e) => setStartDate(e.target.value)}
+									style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.75rem', outline: 'none', background: '#f8fafc', width: '110px' }}
+									title="Start Date"
+								/>
+								<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>-</span>
+								<input 
+									type="date" 
+									value={endDate}
+									onChange={(e) => setEndDate(e.target.value)}
+									style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.75rem', outline: 'none', background: '#f8fafc', width: '110px' }}
+									title="End Date"
+								/>
+								{(startDate || endDate) && (
+									<button 
+										onClick={() => { setStartDate(''); setEndDate(''); }}
+										style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 4px', title: 'Clear Dates' }}
+									>✕</button>
+								)}
+							</div>
 						</div>
 					</div>
 
 					{viewMode === 'stock' && (
-						<button 
-							onClick={handleToggleForm}
-							style={{ 
-								padding: '6px 14px', 
-								background: showForm ? '#f1f5f9' : '#14b8a6', 
-								color: showForm ? '#475569' : 'white', 
-								border: 'none', 
-								borderRadius: '6px', 
-								fontWeight: 'bold', 
-								cursor: 'pointer', 
-								fontSize: '0.75rem',
-								boxShadow: showForm ? 'none' : '0 2px 4px rgba(255, 126, 54, 0.2)'
-							}}
-						>
-							{showForm ? '✕ Close Form' : '＋ New Entry'}
-						</button>
+						<div style={{ display: 'flex', gap: '8px' }}>
+							<input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
+							<button 
+								onClick={() => fileInputRef.current && fileInputRef.current.click()}
+								disabled={isScanning}
+								style={{ 
+									padding: '6px 14px', 
+									background: '#f59e0b', 
+									color: 'white', 
+									border: 'none', 
+									borderRadius: '6px', 
+									fontWeight: 'bold', 
+									cursor: isScanning ? 'not-allowed' : 'pointer', 
+									fontSize: '0.75rem',
+									display: 'flex',
+									alignItems: 'center',
+									gap: '6px',
+									boxShadow: '0 2px 4px rgba(245, 158, 11, 0.2)'
+								}}
+							>
+								{isScanning ? '⏳ Scanning...' : '📷 Scan Bill'}
+							</button>
+							<button 
+								onClick={handleToggleForm}
+								style={{ 
+									padding: '6px 14px', 
+									background: showForm ? '#f1f5f9' : '#14b8a6', 
+									color: showForm ? '#475569' : 'white', 
+									border: 'none', 
+									borderRadius: '6px', 
+									fontWeight: 'bold', 
+									cursor: 'pointer', 
+									fontSize: '0.75rem',
+									boxShadow: showForm ? 'none' : '0 2px 4px rgba(20, 184, 166, 0.2)'
+								}}
+							>
+								{showForm ? '✕ Close Form' : '＋ New Entry'}
+							</button>
+						</div>
 					)}
 				</header>
 
@@ -499,6 +737,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 											<th style={{ padding: '8px 12px', color: '#64748b' }}>Serial No</th>
 											<th style={{ padding: '8px 12px', color: '#64748b' }}>Dimensions</th>
 											<th style={{ padding: '8px 12px', color: '#64748b' }}>Size</th>
+											<th style={{ padding: '8px 12px', color: '#64748b' }}>Expiry</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'right' }}>Pur. Price</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'right' }}>Whol. Price</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', textAlign: 'center' }}>Min Whol Qty</th>
@@ -539,6 +778,9 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												<td style={{ padding: '6px 12px', color: '#94a3b8', fontSize: '0.65rem' }}>{item.serial_number || '—'}</td>
 												<td style={{ padding: '6px 12px', color: '#64748b' }}>{item.dimensions || '—'}</td>
 												<td style={{ padding: '6px 12px', color: '#64748b', fontWeight: 'bold' }}>{item.size || '—'}</td>
+												<td style={{ padding: '6px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+													{item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '—'}
+												</td>
 												<td style={{ padding: '6px 12px', textAlign: 'right' }}>₹{(item.purchase_price || 0).toLocaleString()}</td>
 												<td style={{ padding: '6px 12px', textAlign: 'right' }}>{item.wholesale_price ? `₹${item.wholesale_price.toLocaleString()}` : '—'}</td>
 												<td style={{ padding: '6px 12px', textAlign: 'center' }}>{item.min_wholesale_qty || '—'}</td>
@@ -598,7 +840,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 										</tr>
 									</thead>
 									<tbody>
-										{stockHistory.map(entry => (
+										{filteredStockHistory.map(entry => (
 											<tr key={entry.id} style={{ borderBottom: '1px solid #f8fafc' }}>
 												<td style={{ padding: '10px 16px', color: '#94a3b8' }}>
 													{new Date(entry.created_at).toLocaleDateString()} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -664,6 +906,68 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 										</div>
 									))}
 								</div>
+							</div>
+						</div>
+					)}
+
+					{viewMode === 'expiry' && (
+						<div style={{ flex: 1, background: 'white', borderRadius: '12px', border: '1px solid #eef2f6', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+							<div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', fontWeight: 'bold', fontSize: '0.85rem' }}>Expiry Monitor</div>
+							<div style={{ flex: 1, overflow: 'auto' }}>
+								<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+									<thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
+										<tr style={{ textAlign: 'left', borderBottom: '1px solid #f1f5f9' }}>
+											<th style={{ padding: '12px 16px', color: '#64748b' }}>Item</th>
+											<th style={{ padding: '12px 16px', color: '#64748b' }}>Category</th>
+											<th style={{ padding: '12px 16px', color: '#64748b' }}>Stock</th>
+											<th style={{ padding: '12px 16px', color: '#64748b' }}>Expiry Date</th>
+											<th style={{ padding: '12px 16px', color: '#64748b' }}>Status</th>
+										</tr>
+									</thead>
+									<tbody>
+										{filteredItems
+											.filter(item => item.expiry_date)
+											.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date))
+											.map(item => {
+												const expiryDate = new Date(item.expiry_date);
+												const today = new Date();
+												today.setHours(0,0,0,0);
+												const isExpired = expiryDate < today;
+												const daysToExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+												const isExpiringSoon = !isExpired && daysToExpiry <= 30;
+
+												return (
+													<tr key={item.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+														<td style={{ padding: '10px 16px', fontWeight: 'bold' }}>{item.name}</td>
+														<td style={{ padding: '10px 16px' }}>{item.category_name || item.category || 'General'}</td>
+														<td style={{ padding: '10px 16px', fontWeight: 'bold' }}>{item.quantity || item.stock}</td>
+														<td style={{ padding: '10px 16px', fontWeight: 'bold', color: isExpired ? '#ef4444' : isExpiringSoon ? '#eab308' : '#15803d' }}>
+															{expiryDate.toLocaleDateString()}
+														</td>
+														<td style={{ padding: '10px 16px' }}>
+															<span style={{ 
+																padding: '4px 8px', 
+																borderRadius: '4px', 
+																background: isExpired ? '#fef2f2' : isExpiringSoon ? '#fefce8' : '#f0fdf4', 
+																color: isExpired ? '#ef4444' : isExpiringSoon ? '#ca8a04' : '#15803d', 
+																fontSize: '0.7rem', 
+																fontWeight: 'bold',
+															}}>
+																{isExpired ? 'EXPIRED' : isExpiringSoon ? `EXPIRING IN ${daysToExpiry} DAYS` : 'GOOD'}
+															</span>
+														</td>
+													</tr>
+												);
+											})}
+										{filteredItems.filter(item => item.expiry_date).length === 0 && (
+											<tr>
+												<td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+													No items with expiry dates found.
+												</td>
+											</tr>
+										)}
+									</tbody>
+								</table>
 							</div>
 						</div>
 					)}
@@ -823,6 +1127,229 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 					</div>
 				</div>
 			)}
+			
+			{/* OCR Review Modal */}
+			{showScanModal && (
+				<div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003, backdropFilter: 'blur(2px)' }}>
+					<div style={{ background: 'white', borderRadius: '16px', width: '95vw', height: '95vh', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+						<div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+							<h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b' }}>Review Scanned Items</h3>
+							<button onClick={() => setShowScanModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+						</div>
+						
+						<div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+							<p style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: '#64748b' }}>
+								The AI extracted the following items. Please verify and edit them before saving.
+							</p>
+							<div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+								<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+									<thead style={{ background: '#f8fafc' }}>
+										<tr>
+											<th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Item Name</th>
+											<th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', width: '100px' }}>HSN</th>
+											<th style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', width: '60px' }}>GST%</th>
+											<th style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', width: '60px' }}>Qty</th>
+											<th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', width: '80px' }}>Net Rate</th>
+											<th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', width: '80px' }}>Rate</th>
+											<th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', width: '80px' }}>Discount</th>
+											<th style={{ padding: '8px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', width: '80px' }}>Amount</th>
+											<th style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', width: '100px' }}>Actions</th>
+										</tr>
+									</thead>
+									<tbody>
+										{scanResults.map((item, index) => (
+											<tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="text" 
+														value={item.name} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].name = e.target.value;
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="text" 
+														value={item.hsn || ''} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].hsn = e.target.value;
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="number" 
+														value={item.gst || 0} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].gst = Number(e.target.value);
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem', textAlign: 'center' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="number" 
+														value={item.quantity || 0} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].quantity = Number(e.target.value);
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem', textAlign: 'center' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="number" 
+														value={item.netRate || 0} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].netRate = Number(e.target.value);
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem', textAlign: 'right' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="number" 
+														value={item.rate || 0} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].rate = Number(e.target.value);
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem', textAlign: 'right' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="number" 
+														value={item.discount || 0} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].discount = Number(e.target.value);
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem', textAlign: 'right' }}
+													/>
+												</td>
+												<td style={{ padding: '4px' }}>
+													<input 
+														type="number" 
+														value={item.amount || 0} 
+														onChange={e => {
+															const newRes = [...scanResults];
+															newRes[index].amount = Number(e.target.value);
+															setScanResults(newRes);
+														}}
+														style={{ width: '100%', padding: '4px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.75rem', textAlign: 'right' }}
+													/>
+												</td>
+												<td style={{ padding: '4px', textAlign: 'center', display: 'flex', gap: '4px', justifyContent: 'center' }}>
+													<button 
+														onClick={() => setAdvancedEditIndex(index)}
+														style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem' }}
+														title="Advanced Edit"
+													>
+														Edit
+													</button>
+													<button 
+														onClick={() => {
+															const newRes = [...scanResults];
+															newRes.splice(index, 1);
+															setScanResults(newRes);
+														}}
+														style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem' }}
+														title="Remove Item"
+													>
+														✕
+													</button>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+							{scanResults.length === 0 && (
+								<div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
+									No items left. Try scanning again.
+								</div>
+							)}
+						</div>
+						
+						<div style={{ padding: '20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: '#f8fafc', borderRadius: '0 0 16px 16px' }}>
+							<button onClick={() => setShowScanModal(false)} style={{ padding: '10px 20px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+							<button 
+								onClick={handleConfirmScan}
+								disabled={scanResults.length === 0}
+								style={{ padding: '10px 20px', border: 'none', background: '#10b981', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: scanResults.length === 0 ? 'not-allowed' : 'pointer', opacity: scanResults.length === 0 ? 0.5 : 1 }}
+							>Confirm & Save Items</button>
+						</div>
+					</div>
+				</div>
+			)}
+			
+			{/* Advanced Edit Modal inside Scanner */}
+			{advancedEditIndex !== null && (
+				<AddItemModal 
+					isOpen={true} 
+					onClose={() => setAdvancedEditIndex(null)} 
+					onSave={handleAdvancedEditSave}
+					categories={allCategories}
+					initialData={{
+						name: scanResults[advancedEditIndex]?.name || '',
+						hsn_code: scanResults[advancedEditIndex]?.hsn || '',
+						category: scanResults[advancedEditIndex]?.category || 'General',
+						price: scanResults[advancedEditIndex]?.rate || '',
+						purchase_price: scanResults[advancedEditIndex]?.netRate || '',
+						wholesale_price: scanResults[advancedEditIndex]?.netRate || '',
+						quantity: scanResults[advancedEditIndex]?.quantity || 0,
+						gst_rate: scanResults[advancedEditIndex]?.gst || 0,
+						type: activeSection === 'sales' ? 'sales' : 'service'
+					}}
+				/>
+			)}
+
+			{/* Funny Scanning Loading Overlay */}
+			{isScanning && (
+				<div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.9)', zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white', backdropFilter: 'blur(4px)' }}>
+					<style>{`
+						@keyframes bounceRobot {
+							0% { transform: translateY(0) rotate(0deg) scale(1); }
+							50% { transform: translateY(-30px) rotate(10deg) scale(1.1); }
+							100% { transform: translateY(0) rotate(-10deg) scale(1); }
+						}
+						@keyframes pulseGlow {
+							0% { text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+							50% { text-shadow: 0 0 30px rgba(59, 130, 246, 1), 0 0 50px rgba(59, 130, 246, 0.8); }
+							100% { text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+						}
+					`}</style>
+					<div style={{ fontSize: '6rem', animation: 'bounceRobot 2s infinite ease-in-out' }}>🤖</div>
+					<h2 style={{ marginTop: '30px', fontSize: '2rem', animation: 'pulseGlow 2s infinite', textAlign: 'center', transition: 'all 0.5s ease' }}>
+						{funnyMessages[scanMessageIndex]}
+					</h2>
+					<p style={{ marginTop: '20px', color: '#94a3b8', fontSize: '1.1rem' }}>
+						This usually takes 10 to 20 seconds. Please don't click away!
+					</p>
+					<div style={{ marginTop: '40px', display: 'flex', gap: '10px' }}>
+						<div style={{ width: '15px', height: '15px', background: '#3b82f6', borderRadius: '50%', animation: 'bounceRobot 1s infinite 0.1s' }}></div>
+						<div style={{ width: '15px', height: '15px', background: '#ec4899', borderRadius: '50%', animation: 'bounceRobot 1s infinite 0.2s' }}></div>
+						<div style={{ width: '15px', height: '15px', background: '#10b981', borderRadius: '50%', animation: 'bounceRobot 1s infinite 0.3s' }}></div>
+					</div>
+				</div>
+			)}
+
 		</div>
 	);
 }

@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS admins (
     features VARCHAR(50) DEFAULT 'Both Features',
     eula_accepted BOOLEAN DEFAULT FALSE,
     subscription_expiry DATETIME,
+    scan_wallet_balance DECIMAL(10, 2) DEFAULT 0.00,
+    last_wallet_recharge_date DATE DEFAULT NULL,
     is_active BOOLEAN DEFAULT FALSE,
     permissions TEXT DEFAULT NULL, -- JSON string of accessible screen IDs
     status VARCHAR(20) DEFAULT 'active', -- active, inactive, suspended
@@ -48,6 +50,18 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     start_date DATETIME,
     expiry_date DATETIME,
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+);
+
+-- Wallet Transactions Table (Ledger)
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    type ENUM('recharge', 'deduction', 'auto_recharge') NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    description VARCHAR(255),
+    reference_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
 );
 
@@ -86,7 +100,7 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Units Table
 CREATE TABLE IF NOT EXISTS units (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    admin_id INT NOT NULL,
+    admin_id INT NULL,
     name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
@@ -115,6 +129,7 @@ CREATE TABLE IF NOT EXISTS sales_inventory (
     quantity INT DEFAULT 0,
     image_url VARCHAR(255) DEFAULT NULL,
     status ENUM('available', 'unavailable', 'out_of_stock') DEFAULT 'available',
+    expiry_date DATE DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
@@ -144,6 +159,7 @@ CREATE TABLE IF NOT EXISTS service_inventory (
     quantity INT DEFAULT 0,
     image_url VARCHAR(255) DEFAULT NULL,
     status ENUM('available', 'unavailable', 'out_of_stock') DEFAULT 'available',
+    expiry_date DATE DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
@@ -326,6 +342,7 @@ CREATE TABLE IF NOT EXISTS pos_settings (
     gstin VARCHAR(50),
     theme VARCHAR(50) DEFAULT 'light',
     print_size VARCHAR(50) DEFAULT '80mm',
+    wholesale_print_size VARCHAR(50) DEFAULT 'A4',
     auto_print BOOLEAN DEFAULT TRUE,
     enable_gst BOOLEAN DEFAULT TRUE,
     inclusive_gst BOOLEAN DEFAULT FALSE,
@@ -453,5 +470,11 @@ CREATE TABLE IF NOT EXISTS grn_items (
     grn_id INT NOT NULL,
     product_name VARCHAR(255) NOT NULL,
     quantity_received INT DEFAULT 1,
+    damaged_quantity INT DEFAULT 0,
+    return_status ENUM('Pending', 'Returned') DEFAULT 'Pending',
+    return_date DATE NULL,
+    mapped_inventory_id INT NULL,
+    inventory_type ENUM('sales', 'service') DEFAULT 'sales',
+    pushed_to_stock BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (grn_id) REFERENCES grns(id) ON DELETE CASCADE
 );

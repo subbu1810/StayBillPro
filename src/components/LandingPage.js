@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles/LandingPage.css';
 
 function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPrivacy, onNavigateToTerms, onNavigateToAbout, onNavigateToContact, onNavigateToTrack }) {
     const [planType, setPlanType] = useState('both');
+    const [showSplash, setShowSplash] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowSplash(false);
+        }, 4000);
+        return () => clearTimeout(timer);
+    }, []);
 
     const getPrices = () => {
         if (planType === 'both') {
@@ -11,16 +19,22 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
             return { starter: 400, pro: 350, enterprise: 300, origStarter: 800, origPro: 700, origEnterprise: 600 };
         }
     };
-    
+
     const prices = getPrices();
 
     return (
         <div className="landing-page">
+            {/* Splash Screen */}
+            <div className={`splash-screen ${!showSplash ? 'fade-out' : ''}`}>
+                <img src="/splash-logo.png" alt="StayBillPro Loading" className="splash-logo" />
+                <div className="splash-loader"></div>
+            </div>
+
             {/* Header */}
             <header className="landing-header">
                 <div className="header-content">
                     <div className="logo">
-                        <span className="logo-icon">🔧</span>
+                        <img src="/logo.png" alt="Logo" className="logo-icon" style={{ height: '36px', width: 'auto', animation: 'none', background: 'white', padding: '4px', borderRadius: '6px' }} />
                         <span className="logo-text">StayBillPro</span>
                     </div>
                     <nav className="nav-menu">
@@ -362,7 +376,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                     <div className="footer-top">
                         <div className="footer-col">
                             <div className="footer-logo">
-                                <span className="logo-icon">🔧</span>
+                                <img src="/logo.png" alt="Logo" className="logo-icon" style={{ height: '32px', width: 'auto', animation: 'none', background: 'white', padding: '4px', borderRadius: '6px' }} />
                                 <span className="logo-text">StayBillPro</span>
                             </div>
                             <p>Manage your electronics service business with ease</p>
@@ -387,7 +401,7 @@ function LandingPage({ onNavigateToAuth, onNavigateToRegister, onNavigateToPriva
                         </div>
                     </div>
                     <div className="footer-bottom">
-                        <p>&copy; {new Date().getFullYear()} StayBillPro by <a href="https://ssquareg.com" target="_blank" rel="noopener noreferrer" style={{ color: '#20b2aa' }}>S Square G Tech Solutions</a>. All rights reserved.</p>
+                        <p>&copy; 2026 All rights reserved for SSquareG Tech Solutions</p>
                         <div className="footer-links">
                             <a href="#privacy" onClick={(e) => { e.preventDefault(); onNavigateToPrivacy(); }}>Privacy Policy</a>
                             <a href="#terms" onClick={(e) => { e.preventDefault(); onNavigateToTerms(); }}>Terms of Service</a>

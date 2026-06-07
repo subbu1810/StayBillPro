@@ -9,6 +9,20 @@ const CARD_DETAILS_INITIAL = {
     cvv: ''
 };
 
+const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+        if (window.Razorpay) {
+            resolve(true);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+};
+
 function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, selectedFeatures = 'both' }) {
     const [isLogin, setIsLogin] = useState(mode === 'login');
     const [loginData, setLoginData] = useState({
@@ -207,10 +221,12 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
             setError('');
             setSuccess('');
 
-            // BYPASS PAYMENT: Directly call registration and verification
-            console.log('Bypassing payment for direct registration...');
+            const isScriptLoaded = await loadRazorpayScript();
+            if (!isScriptLoaded) {
+                throw new Error('Failed to load Razorpay SDK. Check your internet connection.');
+            }
 
-            // 1. Create Admin Profile
+            // 1. Create Admin Profile (Pending Activation)
             const adminResponse = await adminAuthAPI.register({
                 business_name: registerData.businessName,
                 branch_name: registerData.branchName,
@@ -229,42 +245,63 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
                 features: registerData.selectedFeatures === 'both' ? 'Both Features' : registerData.selectedFeatures === 'billing' ? 'POS Billing' : 'Service Center'
             });
 
-            // 2. Verify payment (Mock) and activate subscription
-            await subscriptionAPI.verify({
-                admin_id: adminResponse.admin_id,
-                plan_name: currentPlanDetails.name,
-                features: registerData.selectedFeatures === 'both' ? 'Both Features' : registerData.selectedFeatures === 'billing' ? 'POS Billing' : 'Service Center',
-                transaction_id: 'MOCK_PAYMENT_' + Date.now(),
-                amount: currentPlanDetails.subtotal,
-                gst_amount: currentPlanDetails.gst,
-                total_paid: currentPlanDetails.total
-            });
+            // 2. Create Razorpay Order via backend
+            const orderResponse = await paymentAPI.createOrder(currentPlanDetails.total);
+            
+            if (!orderResponse.success) {
+                throw new Error(orderResponse.message || 'Failed to initialize payment.');
+            }
 
-            setSuccess('Account created successfully (Payment Bypassed)! Redirecting to login...');
-            
-            setTimeout(() => {
-                setIsLogin(true);
-                setSuccess('');
-            }, 2000);
-            
-            setRegisterData({
-                businessName: '',
-                branchName: '',
-                name: '',
-                email: '',
-                phone: '',
-                address: '',
-                city: '',
-                state: '',
-                country: 'India',
-                pincode: '',
-                gstn: '',
-                businessType: '',
-                password: '',
-                confirmPassword: '',
-                selectedPlan: registerData.selectedPlan,
-                selectedFeatures: registerData.selectedFeatures
+            // 3. Open Razorpay Checkout
+            const options = {
+                key: orderResponse.key_id,
+                amount: orderResponse.amount,
+                currency: orderResponse.currency,
+                name: "StayBillPro Subscription",
+                description: `${currentPlanDetails.name} Plan`,
+                order_id: orderResponse.order_id,
+                handler: async function (response) {
+                    try {
+                        // 4. Verify payment and activate subscription
+                        await subscriptionAPI.verify({
+                            admin_id: adminResponse.admin_id,
+                            plan_name: currentPlanDetails.name,
+                            features: registerData.selectedFeatures === 'both' ? 'Both Features' : registerData.selectedFeatures === 'billing' ? 'POS Billing' : 'Service Center',
+                            amount: currentPlanDetails.subtotal,
+                            gst_amount: currentPlanDetails.gst,
+                            total_paid: currentPlanDetails.total,
+                            transaction_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        });
+
+                        setSuccess('Account created and subscription activated successfully! Redirecting to login...');
+                        setTimeout(() => {
+                            setIsLogin(true);
+                            setSuccess('');
+                        }, 2000);
+                        
+                    } catch (verifyErr) {
+                        setError('Payment verification failed: ' + (verifyErr.message || verifyErr));
+                    }
+                },
+                prefill: {
+                    name: registerData.name,
+                    email: registerData.email,
+                    contact: registerData.phone
+                },
+                theme: {
+                    color: "#4f46e5"
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                setError('Payment failed: ' + response.error.description);
+                setIsSubmitting(false);
             });
+            rzp.open();
 
         } catch (err) {
             setError('Failed to complete registration: ' + err.message);
@@ -285,7 +322,7 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
                         </button>
                     )}
                     <div className="logo">
-                        <span className="logo-icon">🔧</span>
+                        <img src="/logo.png" alt="Logo" className="logo-icon" style={{ height: '40px', width: 'auto', marginBottom: '10px' }} />
                         <span className="logo-text">StayBillPro</span>
                     </div>
                     {isLogin ? (
@@ -495,7 +532,7 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
                                 </div>
                                 <div className="form-field">
                                     <label>Phone Number</label>
-                                    <input type="tel" name="phone" placeholder="+91 98765 43210" value={registerData.phone} onChange={handleRegisterChange} className="form-input" />
+                                    <input type="tel" maxLength="10" name="phone" placeholder="+91 98765 43210" value={registerData.phone} onChange={handleRegisterChange} className="form-input" />
                                 </div>
 
                                 <div className="form-field full-width">
@@ -562,6 +599,19 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
                         {/* RIGHT PANEL - SUMMARY & PAYMENT */}
                         <div className="register-right-panel">
                             <div className="plan-selector-box" style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1a1a1a' }}>Features</label>
+                                <select 
+                                    name="selectedFeatures" 
+                                    value={registerData.selectedFeatures} 
+                                    onChange={handleRegisterChange}
+                                    className="form-input"
+                                    style={{ width: '100%', borderColor: '#2563eb', fontWeight: '600', marginBottom: '1rem' }}
+                                >
+                                    <option value="both">Both Features (Billing + Service Center)</option>
+                                    <option value="billing">POS Billing Only</option>
+                                    <option value="service">Service Center Only</option>
+                                </select>
+
                                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1a1a1a' }}>Selected Plan</label>
                                 <select 
                                     name="selectedPlan" 
@@ -570,9 +620,19 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
                                     className="form-input"
                                     style={{ width: '100%', borderColor: '#2563eb', fontWeight: '600' }}
                                 >
-                                    <option value="Starter (1-Year)">Starter (1-Year) - ₹600/mo</option>
-                                    <option value="Professional (2-Year)">Professional (2-Year) - ₹500/mo</option>
-                                    <option value="Enterprise (3-Year)">Enterprise (3-Year) - ₹400/mo</option>
+                                    {registerData.selectedFeatures === 'both' ? (
+                                        <>
+                                            <option value="Starter (1-Year)">Starter (1-Year) - ₹800/mo</option>
+                                            <option value="Professional (2-Year)">Professional (2-Year) - ₹700/mo</option>
+                                            <option value="Enterprise (3-Year)">Enterprise (3-Year) - ₹600/mo</option>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <option value="Starter (1-Year)">Starter (1-Year) - ₹400/mo</option>
+                                            <option value="Professional (2-Year)">Professional (2-Year) - ₹350/mo</option>
+                                            <option value="Enterprise (3-Year)">Enterprise (3-Year) - ₹300/mo</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 

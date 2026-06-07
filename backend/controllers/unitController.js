@@ -1,13 +1,12 @@
-const db = require('../db');
+const db = require('../config/db');
 
 // Get all units for an admin
 exports.getUnits = async (req, res) => {
     try {
-        const { id, role, parent_admin_id } = req.admin;
-        const targetAdminId = role === 'SUPERADMIN' ? id : parent_admin_id;
+        const targetAdminId = req.user.businessId || req.user.id;
 
         const [units] = await db.query(
-            'SELECT id, name FROM units WHERE admin_id = ? ORDER BY name ASC',
+            'SELECT id, name FROM units WHERE admin_id = ? OR admin_id IS NULL ORDER BY name ASC',
             [targetAdminId]
         );
 
@@ -21,8 +20,7 @@ exports.getUnits = async (req, res) => {
 // Add a new unit
 exports.addUnit = async (req, res) => {
     try {
-        const { id, role, parent_admin_id } = req.admin;
-        const targetAdminId = role === 'SUPERADMIN' ? id : parent_admin_id;
+        const targetAdminId = req.user.businessId || req.user.id;
         const { name } = req.body;
 
         if (!name) {

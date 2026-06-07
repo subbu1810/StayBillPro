@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { accountingAPI, expenseAPI } from '../services/api';
 import '../styles/AccountingScreen.css';
+import { usePopup } from './ui/PopupProvider';
 
 const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
+    const popup = usePopup();
     const [entries, setEntries] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [pnlData, setPnlData] = useState({
@@ -103,7 +105,7 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
             setNewEntry(prev => ({ ...prev, voucher_no: '', particulars: '', amount: '' }));
             await fetchLedgerData();
         } catch (error) {
-            alert('Error adding entry: ' + error.message);
+            popup.showError('Error adding entry: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -127,7 +129,7 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
             });
             await fetchExpenseData();
         } catch (error) {
-            alert('Error adding expense: ' + error.message);
+            popup.showError('Error adding expense: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -298,8 +300,8 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
                                     <div className="form-group full-width">
                                         <label>Transaction Type</label>
                                         <select className="form-input" value={newEntry.transaction_type} onChange={e => setNewEntry({...newEntry, transaction_type: e.target.value})}>
-                                            <option value="receipt">Receipt (Cash In)</option>
-                                            <option value="payment">Payment (Cash Out)</option>
+                                            <option value="receipt">Receipt ({activeSubTab === 'cash' ? 'Cash In' : 'Bank In'})</option>
+                                            <option value="payment">Payment ({activeSubTab === 'cash' ? 'Cash Out' : 'Bank Out'})</option>
                                             <option value="initial">Initial Balance</option>
                                         </select>
                                     </div>

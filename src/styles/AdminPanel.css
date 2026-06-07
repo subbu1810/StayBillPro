@@ -34,6 +34,12 @@
 	box-shadow: var(--shadow-sm);
 }
 
+.admin-sidebar.collapsed {
+	width: 0;
+	overflow: hidden;
+	border-right: none;
+}
+
 .sidebar-brand {
 	display: flex;
 	align-items: center;
@@ -300,22 +306,27 @@
 }
 
 .topbar-logout-btn {
-	width: 36px;
 	height: 36px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	gap: 6px;
 	background: #fef2f2;
 	border: 1px solid #fee2e2;
-	border-radius: 10px;
+	border-radius: 8px;
 	color: #ef4444;
 	cursor: pointer;
 	transition: all 0.2s ease;
-	font-size: 1.1rem;
+	font-size: 0.9rem;
+	font-weight: 600;
 	margin-left: 8px;
-	padding: 0;
+	padding: 0 14px;
 	box-sizing: border-box;
 	flex-shrink: 0;
+}
+
+.logout-icon {
+	font-size: 1.1rem;
 }
 
 .topbar-logout-btn:hover {
@@ -584,21 +595,23 @@
 	box-shadow: 0 4px 6px rgba(255, 126, 54, 0.4);
 }
 
-/* Mobile Menu Toggle */
+/* Menu Toggle */
 .menu-toggle {
-	display: none;
+	display: block;
 	background: none;
 	border: none;
 	font-size: 1.5rem;
 	cursor: pointer;
 	color: var(--text-dark);
 	padding: 0;
+	transition: color 0.2s;
+}
+
+.menu-toggle:hover {
+	color: var(--primary-orange);
 }
 
 @media (max-width: 1024px) {
-	.menu-toggle {
-		display: block;
-	}
 
 	.admin-sidebar {
 		position: fixed;

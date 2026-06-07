@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import '../styles/AddItemModal.css';
+import { usePopup } from './ui/PopupProvider';
 
 const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = null }) => {
+    const popup = usePopup();
     const [isProduct, setIsProduct] = useState(initialData ? initialData.type === 'sales' : true);
     const [activeTab, setActiveTab] = useState('pricing');
+    const codeRef = useRef(null);
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
         hsn: initialData?.hsn_code || '',
@@ -29,11 +32,13 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
         dimensions: initialData?.dimensions || '',
         size: initialData?.size || '',
         serial_number: initialData?.serial_number || '',
-        status: initialData?.status || 'available'
+        status: initialData?.status || 'available',
+        hasExpiry: !!initialData?.expiry_date,
+        expiryDate: initialData?.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : ''
     });
     const [showWholesale, setShowWholesale] = useState(!!initialData?.wholesale_price);
     const [imagePreview, setImagePreview] = useState(initialData?.image || null);
-    const [unitsList, setUnitsList] = useState(['BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (Ml)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)']);
+    const [unitsList, setUnitsList] = useState([]);
     const [showAddUnit, setShowAddUnit] = useState(false);
     const [newUnit, setNewUnit] = useState('');
     const fileInputRef = React.useRef(null);
@@ -67,7 +72,9 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 dimensions: initialData.dimensions || '',
                 size: initialData.size || '',
                 serial_number: initialData.serial_number || '',
-                status: initialData.status || 'available'
+                status: initialData.status || 'available',
+                hasExpiry: !!initialData.expiry_date,
+                expiryDate: initialData.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : ''
             });
             setShowWholesale(!!initialData.wholesale_price);
             setImagePreview(initialData.image || null);
@@ -92,7 +99,9 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 dimensions: '',
                 size: '',
                 serial_number: '',
-                status: 'available'
+                status: 'available',
+                hasExpiry: false,
+                expiryDate: ''
             });
         }
     }, [initialData, isOpen]);
@@ -107,9 +116,8 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 if (response.ok) {
                     const data = await response.json();
                     if (data && data.length > 0) {
-                        const defaultUnits = ['BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (Ml)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
                         const fetchedUnits = data.map(u => u.name);
-                        const merged = [...new Set([...defaultUnits, ...fetchedUnits])].sort();
+                        const merged = [...new Set(fetchedUnits)].sort();
                         setUnitsList(merged);
                     }
                 }
@@ -168,8 +176,8 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
     };
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
 
         if (name === 'category') {
             const selectedCat = categories.find(c => c.name === value);
@@ -192,29 +200,26 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
 
     const handleSave = () => {
         if (!formData.name) {
-            alert('Please enter Item Name');
+            popup.showError('Please enter Item Name');
             return;
         }
         if (!formData.hsn) {
-            alert('Please enter HSN Code');
+            popup.showError('Please enter HSN Code');
             return;
         }
         if (!formData.unit || formData.unit === 'None') {
-            alert('Please select a Unit');
+            popup.showError('Please select a Unit');
             return;
         }
         if (!formData.category) {
-            alert('Please select a Category');
+            popup.showError('Please select a Category');
             return;
         }
         if (!formData.code) {
-            alert('Please enter Item Code');
+            popup.showError('Please enter Item Code');
             return;
         }
-        if (formData.openingStock === '' || formData.openingStock === null || formData.openingStock === undefined) {
-            alert('Please enter Quantity');
-            return;
-        }
+
         
         // Map local state to the schema expected by the API
         const payload = {
@@ -237,7 +242,8 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             dimensions: formData.dimensions,
             size: formData.size,
             serial_number: formData.serial_number,
-            status: formData.status
+            status: formData.status,
+            expiry_date: formData.hasExpiry && formData.expiryDate ? formData.expiryDate : null
         };
         onSave(payload);
     };
@@ -387,6 +393,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                         </div>
                         <div className="input-group code-group" style={{ flex: 1 }}>
                             <input 
+                                ref={codeRef}
                                 type="text" 
                                 name="code"
                                 placeholder={isProduct ? "Item Code *" : "Service Code *"}
@@ -394,26 +401,27 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                 onChange={handleInputChange}
                             />
                             {!formData.code && (
-                                <button 
-                                    type="button"
-                                    className="assign-code-btn" 
-                                    onClick={generateUniqueCode}
-                                >
-                                    Assign Code
-                                </button>
+                                <div className="code-actions">
+                                    <button 
+                                        type="button"
+                                        className="assign-code-btn" 
+                                        onClick={generateUniqueCode}
+                                    >
+                                        Assign Code
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        className="assign-code-btn scan-btn" 
+                                        onClick={() => codeRef.current?.focus()}
+                                        title="Click here, then use your barcode scanner"
+                                    >
+                                        📷 Scan
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
                     <div className="input-grid">
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <input 
-                                type="number" 
-                                name="openingStock"
-                                placeholder={isProduct ? "Quantity *" : "Quantity"}
-                                value={formData.openingStock}
-                                onChange={handleInputChange}
-                            />
-                        </div>
                         <div className="input-group" style={{ flex: 1 }}>
                             <input 
                                 type="text" 
@@ -667,6 +675,30 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                                     <option value="out_of_stock">Out of Stock</option>
                                                 </select>
                                             </div>
+                                        </div>
+                                        <div className="input-grid" style={{marginTop: '20px', alignItems: 'center'}}>
+                                            <div className="input-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="hasExpiry"
+                                                    checked={formData.hasExpiry}
+                                                    onChange={handleInputChange}
+                                                    id="hasExpiryCheck"
+                                                    style={{ width: 'auto' }}
+                                                />
+                                                <label htmlFor="hasExpiryCheck" style={{ fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>Item has an Expiry Date</label>
+                                            </div>
+                                            {formData.hasExpiry && (
+                                                <div className="input-group date-input-group">
+                                                    <label className="floating-label">Expiry Date</label>
+                                                    <input 
+                                                        type="date" 
+                                                        name="expiryDate"
+                                                        value={formData.expiryDate}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

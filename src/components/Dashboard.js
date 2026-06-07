@@ -3,9 +3,11 @@ import '../styles/Dashboard.css';
 import { useService } from '../hooks/useService';
 import EulaScreen from './EulaScreen';
 import { adminAuthAPI } from '../services/api';
+import { usePopup } from './ui/PopupProvider';
 
-function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians, onViewJob, onOpenInventory, onOpenPOS, onLogout }) {
-  const { jobs = [], jobsLoaded, technicians = [], customers = [], lowStockSpares = [] } = useService();
+function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians, onViewJob, onOpenInventory, onOpenPOS, onOpenGRN, onLogout }) {
+  const popup = usePopup();
+  const { jobs = [], jobsLoaded, technicians = [], customers = [], lowStockSpares = [], todaySummary = {}, invoiceSalesReport = [] } = useService();
   const [showEula, setShowEula] = useState(false);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
       setShowEula(false);
     } catch (err) {
       console.error("Failed to accept EULA:", err);
-      alert("There was an error saving your acceptance. Please try again.");
+      popup.showError("There was an error saving your acceptance. Please try again.");
     }
   };
 
@@ -51,7 +53,10 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
     return raw.replace(/\s+/g, '_');
   };
 
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const getLocalDate = (d) => {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  const todayISO = getLocalDate(new Date());
 
   const dashboardData = useMemo(() => {
     const counts = {
@@ -79,6 +84,10 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
         pendingPayments += amount;
       }
     }
+
+    // Today's sales only — resets each day automatically
+    const realTotalSales = Number(todaySummary.total_sales || 0);
+    const realInvoiceCount = Number(todaySummary.total_invoices || 0);
 
     const openJobs = jobs.filter((job) => {
       const key = normalizeStatus(job.status);
@@ -110,16 +119,46 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
     const last7Days = [...Array(7)].map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = getLocalDate(d);
       const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
       
       const created = jobs.filter(j => (j.createdDate || '').slice(0, 10) === iso).length;
       const completed = jobs.filter(j => (j.status || '').toLowerCase() === 'completed' && (j.dueDate || '').slice(0,10) === iso).length;
 
-      return { iso, dayName, created, completed, max: Math.max(created, completed, 5) };
+      // Get sales from invoiceSalesReport (array of { date, total_sales })
+      const reportEntry = invoiceSalesReport.find(r => (r.date || '').slice(0, 10) === iso);
+      const dailySales = reportEntry ? Number(reportEntry.total_sales || 0) : 0;
+
+      return { iso, dayName, created, completed, sales: dailySales, max: Math.max(created, completed, 5) };
     }).reverse();
 
     const maxChartValue = Math.max(...last7Days.map(d => d.max), 10);
+    const maxSalesValue = Math.max(...last7Days.map(d => d.sales), 1000); // minimum 1000 for scale
+    
+    // Generate dynamic SVG path for Sales Line
+    // Y maps from 250 (0) to 50 (maxSalesValue)
+    // X maps from 0 to 800 based on index (0 to 6)
+    const generatePath = (data, maxValue) => {
+        if (data.length === 0) return '';
+        let path = '';
+        data.forEach((point, i) => {
+            const x = (i / (data.length - 1)) * 800;
+            const y = 250 - (maxValue > 0 ? (point / maxValue) * 200 : 0);
+            if (i === 0) {
+                path += `M ${x} ${y} `;
+            } else {
+                // simple curve mapping, using previous point
+                const prevX = ((i - 1) / (data.length - 1)) * 800;
+                const prevY = 250 - (maxValue > 0 ? (data[i - 1] / maxValue) * 200 : 0);
+                const cpX = (x + prevX) / 2;
+                path += `C ${cpX} ${prevY}, ${cpX} ${y}, ${x} ${y} `;
+            }
+        });
+        return path;
+    };
+
+    const salesPath = generatePath(last7Days.map(d => d.sales), maxSalesValue);
+    const jobsPath = generatePath(last7Days.map(d => d.completed), maxChartValue);
 
     return {
       counts,
@@ -131,11 +170,16 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
       activeTechnicians,
       last7Days,
       maxChartValue,
+      maxSalesValue,
+      salesPath,
+      jobsPath,
+      realTotalSales,
+      realInvoiceCount,
       completionRate: jobs.length ? Math.round((counts.completed / jobs.length) * 100) : 0,
       salesStockAlerts: (lowStockSpares || []).filter(s => (s.section || 'sales') === 'sales'),
       serviceStockAlerts: (lowStockSpares || []).filter(s => (s.section || 'sales') === 'service')
     };
-  }, [jobs, technicians, todayISO]);
+  }, [jobs, technicians, todayISO, todaySummary, invoiceSalesReport]);
 
   return (
     <div className="os-dashboard">
@@ -146,15 +190,9 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
         
         <div className="os-metric-card">
           <div className="os-metric-info">
-            <span className="os-metric-label">Total Sales</span>
-            <div className="os-metric-value">₹{dashboardData.pendingPayments.toLocaleString()}</div>
-            <span className="os-metric-trend positive">+8.2%</span>
-          </div>
-          <div className="os-metric-chart placeholder-sparkline">
-            <svg viewBox="0 0 100 40">
-               <path d="M0 30 Q 15 10, 30 20 T 60 10 T 100 5 L 100 40 L 0 40 Z" fill="#ccfbf1" />
-               <path d="M0 30 Q 15 10, 30 20 T 60 10 T 100 5" fill="none" stroke="#14b8a6" strokeWidth="3" />
-            </svg>
+            <span className="os-metric-label">Today's Sales</span>
+            <div className="os-metric-value">₹{dashboardData.realTotalSales.toLocaleString()}</div>
+            <span className="os-metric-trend neutral">Today only</span>
           </div>
         </div>
 
@@ -184,18 +222,18 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
 
         <div className="os-metric-card">
           <div className="os-metric-info">
-            <span className="os-metric-label">Pending Service</span>
-            <div className="os-metric-value">{dashboardData.counts.pending + dashboardData.counts.scheduled}</div>
-            <span className="os-metric-subtext">tickets</span>
+            <span className="os-metric-label">Today's Invoices</span>
+            <div className="os-metric-value">{dashboardData.realInvoiceCount}</div>
+            <span className="os-metric-subtext">today</span>
           </div>
         </div>
 
         <div className="os-action-stack">
           <button className="os-btn primary" onClick={onOpenPOS}>
-            + Create Invoice
+            + POS
           </button>
-          <button className="os-btn outline" onClick={onCreateJob}>
-            + New Service Ticket
+          <button className="os-btn outline" onClick={onOpenGRN}>
+            ✨ Scan with AI
           </button>
         </div>
 
@@ -216,9 +254,9 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
          <div className="os-chart-placeholder">
             {/* Visual representation of the dual line chart using CSS/SVG for demo */}
             <div className="chart-grid">
-               {[2000, 1500, 1000, 500, 0].map(val => (
+               {[dashboardData.maxSalesValue, dashboardData.maxSalesValue * 0.75, dashboardData.maxSalesValue * 0.5, dashboardData.maxSalesValue * 0.25, 0].map(val => (
                  <div key={val} className="grid-line">
-                    <span className="y-label">${val}</span>
+                    <span className="y-label">₹{Math.round(val).toLocaleString()}</span>
                     <div className="line"></div>
                  </div>
                ))}
@@ -231,16 +269,25 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
             
             <svg className="chart-lines" viewBox="0 0 800 250" preserveAspectRatio="none">
                {/* Sales Line - Teal */}
-               <path d="M 0 220 C 150 180, 250 100, 400 150 C 500 200, 600 50, 800 100" fill="none" stroke="#14b8a6" strokeWidth="4" />
-               <path d="M 0 220 C 150 180, 250 100, 400 150 C 500 200, 600 50, 800 100 L 800 250 L 0 250 Z" fill="rgba(20, 184, 166, 0.1)" />
+               <path d={dashboardData.salesPath} fill="none" stroke="#14b8a6" strokeWidth="4" />
+               <path d={`${dashboardData.salesPath} L 800 250 L 0 250 Z`} fill="rgba(20, 184, 166, 0.1)" />
                
                {/* Jobs Line - Grey */}
-               <path d="M 0 250 C 150 100, 300 200, 500 150 C 650 50, 750 180, 800 150" fill="none" stroke="#9ca3af" strokeWidth="4" />
-               <path d="M 0 250 C 150 100, 300 200, 500 150 C 650 50, 750 180, 800 150 L 800 250 L 0 250 Z" fill="rgba(156, 163, 175, 0.1)" />
+               <path d={dashboardData.jobsPath} fill="none" stroke="#9ca3af" strokeWidth="4" />
+               <path d={`${dashboardData.jobsPath} L 800 250 L 0 250 Z`} fill="rgba(156, 163, 175, 0.1)" />
 
                {/* Data Points */}
-               <circle cx="400" cy="150" r="6" fill="#14b8a6" stroke="white" strokeWidth="3" />
-               <circle cx="500" cy="150" r="6" fill="#9ca3af" stroke="white" strokeWidth="3" />
+               {dashboardData.last7Days.map((d, i) => {
+                  const x = (i / 6) * 800;
+                  const salesY = 250 - (dashboardData.maxSalesValue > 0 ? (d.sales / dashboardData.maxSalesValue) * 200 : 0);
+                  const jobsY = 250 - (dashboardData.maxChartValue > 0 ? (d.completed / dashboardData.maxChartValue) * 200 : 0);
+                  return (
+                      <React.Fragment key={d.iso}>
+                          <circle cx={x} cy={salesY} r="5" fill="#14b8a6" stroke="white" strokeWidth="2" />
+                          <circle cx={x} cy={jobsY} r="5" fill="#9ca3af" stroke="white" strokeWidth="2" />
+                      </React.Fragment>
+                  );
+               })}
             </svg>
          </div>
       </div>

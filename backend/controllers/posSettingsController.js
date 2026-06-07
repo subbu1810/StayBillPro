@@ -29,7 +29,7 @@ exports.getSettings = async (req, res) => {
 exports.updateSettings = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const { branch_id, shop_name, gstin, theme, print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset } = req.body;
+        const { branch_id, shop_name, gstin, theme, print_size, wholesale_print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset } = req.body;
 
         if (!branch_id) {
             return res.status(400).json({ message: "branch_id is required" });
@@ -44,16 +44,16 @@ exports.updateSettings = async (req, res) => {
         if (existing.length > 0) {
             // Update
             await db.query(
-                `UPDATE pos_settings SET shop_name = ?, gstin = ?, theme = ?, print_size = ?, auto_print = ?, enable_gst = ?, inclusive_gst = ?, show_hsn = ?, default_gst_preset = ?
+                `UPDATE pos_settings SET shop_name = ?, gstin = ?, theme = ?, print_size = ?, wholesale_print_size = ?, auto_print = ?, enable_gst = ?, inclusive_gst = ?, show_hsn = ?, default_gst_preset = ?
                  WHERE admin_id = ? AND branch_id = ?`,
-                [shop_name, gstin, theme, print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset, adminId, branch_id]
+                [shop_name, gstin, theme, print_size, wholesale_print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset, adminId, branch_id]
             );
         } else {
             // Insert
             await db.query(
-                `INSERT INTO pos_settings (admin_id, branch_id, shop_name, gstin, theme, print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [adminId, branch_id, shop_name, gstin, theme, print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset]
+                `INSERT INTO pos_settings (admin_id, branch_id, shop_name, gstin, theme, print_size, wholesale_print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [adminId, branch_id, shop_name, gstin, theme, print_size, wholesale_print_size, auto_print, enable_gst, inclusive_gst, show_hsn, default_gst_preset]
             );
         }
 

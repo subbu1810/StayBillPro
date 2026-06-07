@@ -3,8 +3,10 @@ import '../styles/NewJob.css';
 import { useService } from '../hooks/useService';
 import { estimatedServiceTimes } from '../data/products';
 import { appliancesAPI, techniciansAPI } from '../services/api';
+import { usePopup } from './ui/PopupProvider';
 
 export default function NewJob({ onBack, onSuccess }) {
+	const popup = usePopup();
 	const { availableProducts: fallbackProducts, technicians: fallbackTechnicians, addJob, selectedBranchId } = useService();
 	const [availableProducts, setAvailableProducts] = useState([]);
 	const [availableTechnicians, setAvailableTechnicians] = useState([]);
@@ -147,7 +149,7 @@ export default function NewJob({ onBack, onSuccess }) {
 		e.preventDefault();
 		setSubmitError('');
 		if (!formData.customerName || !formData.mobile || !selectedProduct || !formData.problemType) {
-			alert('Please fill all required fields');
+			popup.showError('Please fill all required fields');
 			return;
 		}
 		const newJobData = {
@@ -202,6 +204,7 @@ export default function NewJob({ onBack, onSuccess }) {
 									<label>Mobile *</label>
 									<input
 										type="tel"
+										maxLength="10"
 										name="mobile"
 										value={formData.mobile}
 										onChange={handleInputChange}
@@ -216,6 +219,7 @@ export default function NewJob({ onBack, onSuccess }) {
 									<label>Alternate Mobile</label>
 									<input
 										type="tel"
+										maxLength="10"
 										name="altMobile"
 										value={formData.altMobile}
 										onChange={handleInputChange}

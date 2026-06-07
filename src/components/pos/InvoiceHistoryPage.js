@@ -48,7 +48,7 @@ export default function InvoiceHistoryPage() {
     <div className="pos-history-container">
 
       <div className="history-header">
-        <h2>Invoice History</h2>
+        <h2>POS History</h2>
 
         <input
           type="text"

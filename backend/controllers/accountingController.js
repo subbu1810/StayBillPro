@@ -181,7 +181,7 @@ exports.getGSTSummary = async (req, res) => {
 
     try {
         let salesGSTQuery = 'SELECT SUM(gst_amount) as outwardGST FROM invoices WHERE admin_id = ? AND status = "paid"';
-        let purchaseGSTQuery = 'SELECT SUM(gst_amount) as inwardGST FROM purchases WHERE admin_id = ? AND status = "paid"';
+        let purchaseGSTQuery = 'SELECT SUM(gst_amount) as inwardGST FROM purchases WHERE admin_id = ?';
         let params = [adminId];
 
         if (branchId) {
@@ -216,17 +216,29 @@ exports.getGSTR1Data = async (req, res) => {
     const adminId = req.user.id;
 
     try {
+        // Fetch business GSTIN and state code from POS settings
+        const [posSettings] = await db.execute(
+            'SELECT gstin, shop_name FROM pos_settings WHERE admin_id = ? LIMIT 1',
+            [adminId]
+        );
+        const businessGSTIN = posSettings[0]?.gstin || 'NOT_SET';
+        const shopName = posSettings[0]?.shop_name || '';
+
+        // Derive state code from GSTIN (first 2 chars)
+        const stateCode = businessGSTIN.length >= 2 ? businessGSTIN.substring(0, 2) : '29';
+
         let query = `
             SELECT 
                 i.created_at as invoiceDate,
-                CONCAT('INV-', i.id) as invoiceNo,
+                CONCAT('INV-', LPAD(i.id, 4, '0')) as invoiceNo,
                 i.customer_name,
                 'N/A' as customerGSTIN,
-                (i.total_amount - i.gst_amount) as taxableVal,
-                (i.gst_amount / 2) as cgst,
-                (i.gst_amount / 2) as sgst,
+                ROUND((i.total_amount - i.gst_amount), 2) as taxableVal,
+                ROUND((i.gst_amount / 2), 2) as cgst,
+                ROUND((i.gst_amount / 2), 2) as sgst,
                 0 as igst,
-                i.gst_amount as totalGST
+                i.gst_amount as totalGST,
+                i.total_amount as invoiceValue
             FROM invoices i
             WHERE i.admin_id = ? AND i.status = 'paid'
         `;
@@ -240,7 +252,14 @@ exports.getGSTR1Data = async (req, res) => {
         query += ' ORDER BY i.created_at DESC';
 
         const [invoices] = await db.execute(query, params);
-        res.json(invoices);
+
+        // Return invoices along with business metadata needed for JSON generation
+        res.json({
+            businessGSTIN,
+            shopName,
+            stateCode,
+            invoices
+        });
     } catch (error) {
         console.error('Error fetching GSTR-1 data:', error);
         res.status(500).json({ message: 'Error fetching GSTR-1 data' });

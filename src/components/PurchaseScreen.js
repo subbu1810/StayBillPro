@@ -6,9 +6,13 @@ import CreateGRNModal from './CreateGRNModal';
 import ViewPOModal from './ViewPOModal';
 import PrintBarcodeModal from './PrintBarcodeModal';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
+import { usePopup } from './ui/PopupProvider';
 
-const PurchaseScreen = ({ defaultTab = 'po' }) => {
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
+    const popup = usePopup();
     const [orders, setOrders] = useState([]);
     const [grns, setGrns] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -35,14 +39,25 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
     // Popup State
     const [popupMessage, setPopupMessage] = useState(null);
     
+    // Damaged Returns State
+    const [damagedItems, setDamagedItems] = useState([]);
+    const [filterDamagedDate, setFilterDamagedDate] = useState('');
+    const [filterDamagedSupplier, setFilterDamagedSupplier] = useState('');
+    const [filterDamagedItem, setFilterDamagedItem] = useState('');
+    
     useEffect(() => {
         fetchDropdownData();
         if (defaultTab === 'po') {
             fetchPurchaseOrders();
         } else if (defaultTab === 'grn') {
             fetchGRNs();
+            if (autoOpenModal) {
+                setShowGRNModal(true);
+            }
+        } else if (defaultTab === 'returns') {
+            fetchDamagedItems();
         }
-    }, [defaultTab]);
+    }, [defaultTab, autoOpenModal]);
 
     const fetchDropdownData = async () => {
         try {
@@ -95,6 +110,40 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
         }
     };
 
+    const fetchDamagedItems = async () => {
+        try {
+            setLoading(true);
+            const res = await purchaseAPI.getDamaged();
+            if (res.success) {
+                setDamagedItems(res.damagedItems);
+            }
+        } catch (err) {
+            console.error("Failed to fetch damaged items:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleProcessReturn = async (itemId) => {
+        const ok = await popup.confirm("Mark this item as returned to vendor?");
+        if (!ok) return;
+
+        try {
+            setLoading(true);
+            const res = await purchaseAPI.processReturn(itemId);
+            if (res.success) {
+                popup.showSuccess("Item marked as returned successfully!");
+                fetchDamagedItems(); // Refresh the list
+            } else {
+                popup.showError(res.message || "Failed to process return.");
+            }
+        } catch (err) {
+            popup.showError("An error occurred while processing the return.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleCheckboxChange = (e, item) => {
         if (e.target.checked) {
             setSelectedGRNItems([...selectedGRNItems, item]);
@@ -104,43 +153,88 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
     };
 
     const handleSelectAll = (e) => {
-        if (e.target.checked) {
-            setSelectedGRNItems(grns);
-        } else {
+        if (selectedGRNItems.length === grns.length) {
             setSelectedGRNItems([]);
+        } else {
+            setSelectedGRNItems(grns);
+        }
+    };
+
+    const handlePushToStock = async () => {
+        if (selectedGRNItems.length === 0) {
+            popup.showError("Please select at least one GRN item to push to stock.");
+            return;
+        }
+
+        // Only include items that haven't been pushed yet
+        const unpushedItems = selectedGRNItems.filter(i => !i.pushed_to_stock);
+        if (unpushedItems.length === 0) {
+            popup.showInfo("All selected items have already been pushed to stock.");
+            return;
+        }
+
+        const ok = await popup.confirm(`Are you sure you want to push ${unpushedItems.length} item(s) to the main inventory stock?`);
+        if (!ok) return;
+
+        try {
+            const itemIds = unpushedItems.map(i => i.grn_item_id);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/purchases/grn/push-to-stock`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ itemIds })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                popup.showSuccess(data.message || "Items successfully pushed to stock!");
+                setSelectedGRNItems([]);
+                fetchGRNs(); // Refresh the list to show updated status
+            } else {
+                throw new Error(data.message || "Failed to push to stock");
+            }
+        } catch (err) {
+            console.error("Error pushing to stock:", err);
+            popup.showError(err.message || "Failed to push items to stock");
         }
     };
 
     const handleDeleteGRNItem = async (grnItemId) => {
-        if (!window.confirm("Are you sure you want to delete this GRN item? This will remove it from inventory.")) return;
+        const ok = await popup.confirm("Are you sure you want to delete this GRN item? This will remove it from inventory.");
+        if (!ok) return;
         try {
             await purchaseAPI.deleteGRNItem(grnItemId);
             fetchGRNs(); // Refresh the list
         } catch (err) {
             console.error("Error deleting GRN item:", err);
-            alert("Failed to delete GRN item");
+            popup.showError("Failed to delete GRN item");
         }
     };
 
     const handleViewGRNItem = (item) => {
         setPopupMessage({
             title: "GRN Details",
-            content: `GRN Reference: ${item.grn_number}\nItem Name: ${item.item_name}\nSupplier: ${item.supplier_name}\nQuantity Received: ${item.recvd_qty}`
+            content: `GRN Reference: ${item.grn_number}\nItem Name: ${item.item_name}\nSupplier: ${item.supplier_name}\nQuantity Received: ${item.recvd_qty}\nDamaged Quantity: ${item.damaged_qty || 0}\nGood Quantity: ${item.recvd_qty - (item.damaged_qty || 0)}`
         });
     };
 
     const handleExportGRNs = () => {
         if (grns.length === 0) {
-            alert("No GRNs to export.");
+            popup.showInfo("No GRNs to export.");
             return;
         }
 
-        const headers = ["Sl No", "Branch", "Supplier", "GRN Ref#", "Date", "PO Ref#", "Item Code", "Item Name", "Order Qty", "Recvd Qty", "Due Qty", "Made By", "Status"];
+        const headers = ["Sl No", "Branch", "Supplier", "GRN Ref#", "Date", "PO Ref#", "Item Code", "Item Name", "Order Qty", "Recvd Qty", "Damaged Qty", "Good Qty", "Due Qty", "Made By", "Status"];
         const csvRows = [headers.join(',')];
 
         grns.forEach((item, index) => {
             const orderQty = item.order_qty || 0;
             const recvdQty = item.recvd_qty || 0;
+            const damagedQty = item.damaged_qty || 0;
+            const goodQty = recvdQty - damagedQty;
             const dueQty = Math.max(0, orderQty - recvdQty);
             const rowData = [
                 index + 1,
@@ -153,26 +247,107 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
                 `"${item.item_name || ''}"`,
                 orderQty,
                 recvdQty,
+                damagedQty,
+                goodQty,
                 dueQty,
                 `"${item.made_by || ''}"`,
-                `"${item.status || 'New'}"`
+                `"${item.status || ''}"`
             ];
             csvRows.push(rowData.join(','));
         });
 
-        const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\n');
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `GRN_Export_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `grn_report_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const handleExportDamagedItems = () => {
+        if (filteredDamagedItems.length === 0) {
+            popup.showInfo("No items to export.");
+            return;
+        }
+        
+        const headers = ["GRN No", "Date", "Supplier", "Branch", "Item Name", "Damaged Qty", "Status", "Returned Date"];
+        const csvRows = [headers.join(',')];
+        
+        filteredDamagedItems.forEach(item => {
+            const rowData = [
+                `"${item.grn_number}"`,
+                `"${new Date(item.grn_date).toLocaleDateString()}"`,
+                `"${item.supplier_name || ''}"`,
+                `"${item.branch_name || 'N/A'}"`,
+                `"${item.item_name || ''}"`,
+                item.damaged_quantity,
+                `"${item.return_status}"`,
+                `"${item.return_status === 'Returned' && item.return_date ? new Date(item.return_date).toLocaleDateString() : ''}"`
+            ];
+            csvRows.push(rowData.join(','));
+        });
+        
+        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `damaged_returns_report_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const handleExportDamagedPDF = () => {
+        if (filteredDamagedItems.length === 0) {
+            popup.showInfo("No items to export.");
+            return;
+        }
+
+        const doc = new jsPDF('landscape');
+        
+        doc.setFontSize(18);
+        doc.text("Damaged Goods & Returns Report", 14, 22);
+        
+        doc.setFontSize(11);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+        const tableColumn = ["GRN No", "Date", "Supplier", "Branch", "Item Name", "Damaged Qty", "Status", "Returned Date"];
+        const tableRows = [];
+
+        filteredDamagedItems.forEach(item => {
+            const rowData = [
+                item.grn_number,
+                new Date(item.grn_date).toLocaleDateString(),
+                item.supplier_name || '',
+                item.branch_name || 'N/A',
+                item.item_name || '',
+                item.damaged_quantity,
+                item.return_status,
+                item.return_status === 'Returned' && item.return_date ? new Date(item.return_date).toLocaleDateString() : ''
+            ];
+            tableRows.push(rowData);
+        });
+
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 40,
+            theme: 'grid',
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+
+        const pdfBlob = doc.output('blob');
+        const url = URL.createObjectURL(pdfBlob);
+        window.open(url, '_blank');
+    };
+
+    const generatePDF = () => {
     };
 
     const handleExportPDF = () => {
         if (grns.length === 0) {
-            alert("No GRNs to export.");
+            popup.showInfo("No GRNs to export.");
             return;
         }
 
@@ -182,12 +357,14 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
         doc.setFontSize(10);
         doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
 
-        const tableColumn = ["Sl No", "Branch", "Supplier", "GRN Ref#", "Date", "PO Ref#", "Item Name", "Order", "Recvd", "Due", "Status"];
+        const tableColumn = ["Sl No", "Branch", "Supplier", "GRN Ref#", "Date", "PO Ref#", "Item Name", "Order", "Recvd", "Damaged", "Good", "Due", "Status"];
         const tableRows = [];
 
         grns.forEach((item, index) => {
             const orderQty = item.order_qty || 0;
             const recvdQty = item.recvd_qty || 0;
+            const damagedQty = item.damaged_qty || 0;
+            const goodQty = recvdQty - damagedQty;
             const dueQty = Math.max(0, orderQty - recvdQty);
             const rowData = [
                 index + 1,
@@ -199,13 +376,15 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
                 item.item_name || '-',
                 orderQty,
                 recvdQty,
+                damagedQty,
+                goodQty,
                 dueQty,
                 item.status || 'New'
             ];
             tableRows.push(rowData);
         });
 
-        doc.autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 28,
@@ -214,7 +393,9 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
             headStyles: { fillColor: [52, 73, 94] }
         });
 
-        doc.save(`GRN_Export_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
+        const pdfBlob = doc.output('blob');
+        const url = URL.createObjectURL(pdfBlob);
+        window.open(url, '_blank');
     };
 
     const renderPurchaseOrders = () => (
@@ -271,35 +452,36 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
                 <button className="btn-primary" onClick={() => setShowGRNModal(true)} style={{ background: '#20b2aa' }}>+ New GRN</button>
             </div>
 
-            <div className="grn-filter-panel" style={{ background: '#f8f9fa', padding: '15px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '15px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', alignItems: 'center' }}>
-                    <input type="text" placeholder="GRN no" className="search-input" value={filterGrnNo} onChange={e => setFilterGrnNo(e.target.value)} />
-                    <select className="search-input" value={filterBranch} onChange={e => setFilterBranch(e.target.value)}>
+            <div className="grn-filter-panel" style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', border: '1px solid #dee2e6', marginBottom: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', alignItems: 'center' }}>
+                    <input type="text" placeholder="GRN no" className="search-input" style={{ padding: '6px' }} value={filterGrnNo} onChange={e => setFilterGrnNo(e.target.value)} />
+                    <select className="search-input" style={{ padding: '6px' }} value={filterBranch} onChange={e => setFilterBranch(e.target.value)}>
                         <option value="">Any Branch</option>
                         {branchList.map(b => (
                             <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                     </select>
-                    <input type="text" placeholder="All Pur. Order No" className="search-input" value={filterPoNo} onChange={e => setFilterPoNo(e.target.value)} />
-                    <select className="search-input" value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}>
+                    <input type="text" placeholder="All Pur. Order No" className="search-input" style={{ padding: '6px' }} value={filterPoNo} onChange={e => setFilterPoNo(e.target.value)} />
+                    <select className="search-input" style={{ padding: '6px' }} value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)}>
                         <option value="">All Supplier</option>
                         {supplierList.map(s => (
                             <option key={s.id} value={s.supplier_name}>{s.supplier_name}</option>
                         ))}
                     </select>
                     
-                    <input type="date" className="search-input" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} title="From Date" />
-                    <input type="date" className="search-input" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} title="To Date" />
+                    <input type="date" className="search-input" style={{ padding: '6px' }} value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} title="From Date" />
+                    <input type="date" className="search-input" style={{ padding: '6px' }} value={filterToDate} onChange={e => setFilterToDate(e.target.value)} title="To Date" />
                     
-                    <div style={{ gridColumn: '3 / 5', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                        <button className="btn-primary" onClick={fetchGRNs} style={{ background: '#34495e', padding: '8px 20px' }}>Search</button>
-                        <button className="btn-primary" onClick={handleExportGRNs} style={{ background: '#16a085', padding: '8px 20px' }}>Export CSV</button>
-                        <button className="btn-primary" onClick={handleExportPDF} style={{ background: '#c0392b', padding: '8px 20px' }}>Export PDF</button>
+                    <div style={{ gridColumn: '3 / 5', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button className="btn-primary" onClick={fetchGRNs} style={{ background: '#34495e', padding: '6px 15px', fontSize: '12px' }}>Search</button>
+                        <button className="btn-primary" onClick={handleExportGRNs} style={{ background: '#16a085', padding: '6px 15px', fontSize: '12px' }}>Export CSV</button>
+                        <button className="btn-primary" onClick={handleExportPDF} style={{ background: '#c0392b', padding: '6px 15px', fontSize: '12px' }}>Export PDF</button>
                     </div>
                 </div>
             </div>
 
             <div className="grn-actions-bar" style={{ display: 'flex', gap: '5px', marginBottom: '15px', alignItems: 'center' }}>
+                <button className="btn-primary" onClick={handlePushToStock} style={{ background: '#27ae60', padding: '6px 12px', fontSize: '12px' }}>📦 Push to Stock</button>
                 <button className="btn-primary" onClick={() => setShowBarcodeModal(true)} style={{ background: '#e74c3c', padding: '6px 12px', fontSize: '12px' }}>Print Barcode</button>
             </div>
 
@@ -327,8 +509,9 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
                             <th>Item Code ↕</th>
                             <th>Item Name ↕</th>
                             <th>Order Qty</th>
-                            <th>Recvd.Qty UOM</th>
-                            <th>Free.Qty UOM</th>
+                            <th>Recvd.Qty</th>
+                            <th>Damaged</th>
+                            <th>Good.Qty</th>
                             <th>Due Qty</th>
                             <th>Made By</th>
                             <th>Log</th>
@@ -364,14 +547,25 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
                                     <td>{item.po_number || '-'}</td>
                                     <td>{/* Placeholder Item Code */} 841030</td>
                                     <td>{item.item_name}</td>
-                                    <td>{orderQty} - Nos</td>
-                                    <td>{recvdQty} - Nos</td>
-                                    <td>0 - Nos</td>
+                                    <td>{orderQty}</td>
+                                    <td>{recvdQty}</td>
+                                    <td style={{ color: item.damaged_qty > 0 ? '#e74c3c' : 'inherit' }}>{item.damaged_qty || 0}</td>
+                                    <td style={{ fontWeight: 'bold', color: '#27ae60' }}>{recvdQty - (item.damaged_qty || 0)}</td>
                                     <td>{dueQty} - Nos</td>
                                     <td>{item.made_by}</td>
                                     <td><button className="btn-icon" style={{color:'#3498db', fontSize:'14px'}} onClick={() => setPopupMessage({ title: 'Log History', content: 'Log history is currently empty for this item.' })}>👁️</button></td>
                                     <td><button className="btn-icon" style={{color:'#e74c3c', fontSize:'14px'}} onClick={() => handleViewGRNItem(item)}>🔍</button></td>
-                                    <td><span style={{background: '#e74c3c', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px'}}>{item.status || 'New'}</span></td>
+                                    <td>
+                                        <span style={{
+                                            background: item.pushed_to_stock ? '#27ae60' : '#e74c3c', 
+                                            color: 'white', 
+                                            padding: '2px 6px', 
+                                            borderRadius: '4px', 
+                                            fontSize: '10px'
+                                        }}>
+                                            {item.pushed_to_stock ? 'In Stock' : (item.status || 'New')}
+                                        </span>
+                                    </td>
                                     <td><button className="btn-icon" style={{color:'#2ecc71', fontSize:'14px'}} onClick={() => setPopupMessage({ title: 'Editing Disabled', content: 'Editing GRN items directly is disabled to maintain integrity. Please delete and recreate if an error was made.' })}>✏️</button></td>
                                     <td><button className="btn-icon" style={{color:'#e74c3c', fontSize:'14px'}} onClick={() => handleDeleteGRNItem(item.grn_item_id)}>🗑️</button></td>
                                 </tr>
@@ -424,10 +618,106 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
         </div>
     );
 
+    const filteredDamagedItems = damagedItems.filter(item => {
+        const matchDate = filterDamagedDate ? item.grn_date.startsWith(filterDamagedDate) : true;
+        const matchSupplier = filterDamagedSupplier ? item.supplier_name.toLowerCase().includes(filterDamagedSupplier.toLowerCase()) : true;
+        const matchItem = filterDamagedItem ? item.item_name.toLowerCase().includes(filterDamagedItem.toLowerCase()) : true;
+        return matchDate && matchSupplier && matchItem;
+    });
+
+    const renderDamagedReturns = () => (
+        <div className="crm-content">
+            <div className="crm-toolbar" style={{ padding: '15px 15px 0 15px' }}>
+                <input 
+                    type="date" 
+                    className="crm-search" 
+                    value={filterDamagedDate}
+                    onChange={(e) => setFilterDamagedDate(e.target.value)}
+                    title="Filter by GRN Date"
+                    style={{ flex: '0 0 auto', width: '150px' }}
+                />
+                <input 
+                    type="text" 
+                    className="crm-search" 
+                    placeholder="Search by Supplier..." 
+                    value={filterDamagedSupplier}
+                    onChange={(e) => setFilterDamagedSupplier(e.target.value)}
+                />
+                <input 
+                    type="text" 
+                    className="crm-search" 
+                    placeholder="Search by Item Name..." 
+                    value={filterDamagedItem}
+                    onChange={(e) => setFilterDamagedItem(e.target.value)}
+                />
+                <button className="btn-add-customer" onClick={handleExportDamagedItems}>
+                    Export CSV
+                </button>
+                <button className="btn-add-customer" onClick={handleExportDamagedPDF} style={{ marginLeft: '10px', background: '#e74c3c' }}>
+                    Export PDF
+                </button>
+            </div>
+            <div className="table-responsive" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', padding: '15px' }}>
+                <table className="crm-table single-line-table">
+                    <thead>
+                        <tr>
+                            <th>GRN No</th>
+                            <th>Date</th>
+                            <th>Supplier</th>
+                            <th>Branch</th>
+                            <th>Item Name</th>
+                            <th>Damaged Qty</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan="8" style={{textAlign: 'center', padding: '20px'}}>Loading damaged items...</td></tr>
+                        ) : filteredDamagedItems.length > 0 ? (
+                            filteredDamagedItems.map((item) => (
+                                <tr key={item.grn_item_id}>
+                                    <td><strong>{item.grn_number}</strong></td>
+                                    <td>{new Date(item.grn_date).toLocaleDateString()}</td>
+                                    <td>{item.supplier_name}</td>
+                                    <td>{item.branch_name || 'N/A'}</td>
+                                    <td>{item.item_name}</td>
+                                    <td style={{ color: '#e74c3c', fontWeight: 'bold' }}>{item.damaged_quantity}</td>
+                                    <td>
+                                        <span className={`status-badge ${item.return_status === 'Returned' ? 'success' : 'warning'}`}>
+                                            {item.return_status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {item.return_status !== 'Returned' ? (
+                                            <button 
+                                                className="btn-small success" 
+                                                onClick={() => handleProcessReturn(item.grn_item_id)}
+                                            >
+                                                Process Return
+                                            </button>
+                                        ) : (
+                                            <span style={{ fontSize: '0.85rem', color: '#7f8c8d' }}>
+                                                Returned on {new Date(item.return_date).toLocaleDateString()}
+                                            </span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr><td colSpan="8" style={{textAlign: 'center', padding: '20px'}}>No damaged items found.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     const getTitle = () => {
         if (defaultTab === 'po') return 'Purchase Orders';
         if (defaultTab === 'grn') return 'Goods Received Note (GRN)';
         if (defaultTab === 'due') return 'Supplier Due Tracking';
+        if (defaultTab === 'returns') return 'Damaged Goods & Returns';
         return 'Management';
     };
 
@@ -442,6 +732,7 @@ const PurchaseScreen = ({ defaultTab = 'po' }) => {
             {defaultTab === 'po' && renderPurchaseOrders()}
             {defaultTab === 'grn' && renderGRN()}
             {defaultTab === 'due' && renderDueTracking()}
+            {defaultTab === 'returns' && renderDamagedReturns()}
 
             <CreatePOModal 
                 isOpen={showPOModal} 

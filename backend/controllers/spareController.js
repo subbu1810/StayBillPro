@@ -29,12 +29,12 @@ exports.getAllSpares = async (req, res) => {
 exports.createSpare = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const { branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty } = req.body;
+        const { branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
         const [result] = await db.query(
-            `INSERT INTO service_inventory (admin_id, branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [adminId, branch_id, category_id, name, brand, part_number, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null]
+            `INSERT INTO service_inventory (admin_id, branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [adminId, branch_id, category_id, name, brand, part_number, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null, expiry_date || null]
         );
         
         res.status(201).json({ message: "Spare part created successfully", id: result.insertId });
@@ -49,13 +49,13 @@ exports.updateSpare = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { id } = req.params;
-        const { branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty } = req.body;
+        const { branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
         await db.query(
             `UPDATE service_inventory 
-             SET category_id = ?, name = ?, brand = ?, part_number = ?, price = ?, quantity = ?, status = ?, hsn_code = ?, unit = ?, gst_rate = ?, serial_number = ?, dimensions = ?, size = ?, purchase_price = ?, wholesale_price = ?, min_wholesale_qty = ? 
+             SET category_id = ?, name = ?, brand = ?, part_number = ?, price = ?, quantity = ?, status = ?, hsn_code = ?, unit = ?, gst_rate = ?, serial_number = ?, dimensions = ?, size = ?, purchase_price = ?, wholesale_price = ?, min_wholesale_qty = ?, expiry_date = ? 
              WHERE id = ? AND admin_id = ?`,
-            [category_id, name, brand, part_number, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, id, adminId]
+            [category_id, name, brand, part_number, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, expiry_date || null, id, adminId]
         );
         
         res.json({ message: "Spare part updated successfully" });

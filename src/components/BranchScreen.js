@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/BranchScreen.css';
 import { branchesAPI } from '../services/api';
+import { usePopup } from './ui/PopupProvider';
 
 const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
+    const popup = usePopup();
     // Determine User Context
     const storedUser = localStorage.getItem('adminUser');
     let loggedInUser = null;
@@ -63,6 +65,10 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     const [showInvoicesModal, setShowInvoicesModal] = useState(false);
     const [showExpensesModal, setShowExpensesModal] = useState(false);
     const [loadingSubData, setLoadingSubData] = useState(false);
+    
+    // Cancellation Modal State
+    const [cancelTransferId, setCancelTransferId] = useState(null);
+    const [cancelReason, setCancelReason] = useState('');
 
     useEffect(() => {
         fetchBranches();
@@ -292,7 +298,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
             setNewBranch({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', gst_number: '', is_main: false });
             fetchBranches();
         } catch (error) {
-            alert(`Error ${editingBranchId ? 'updating' : 'creating'} branch: ` + error.message);
+            popup.showError(`Error ${editingBranchId ? 'updating' : 'creating'} branch: ` + error.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -333,19 +339,19 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
 
     const addTransferItem = () => {
         if (!transferData.from_branch_id || !transferData.to_branch_id) {
-            alert("Please select source and destination branches first.");
+            popup.showError("Please select source and destination branches first.");
             return;
         }
         if (transferData.from_branch_id === transferData.to_branch_id) {
-            alert("Source and destination branches must be different.");
+            popup.showError("Source and destination branches must be different.");
             return;
         }
         if (!transferData.product_id) {
-            alert("Please select a product to transfer.");
+            popup.showError("Please select a product to transfer.");
             return;
         }
         if (transferData.quantity <= 0 || transferData.quantity > selectedProductStock) {
-            alert(`Invalid quantity. Only ${selectedProductStock} units available.`);
+            popup.showError(`Invalid quantity. Only ${selectedProductStock} units available.`);
             return;
         }
 
@@ -353,7 +359,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         
         // Check if product is already in the transfer list
         if (transferItems.find(item => item.product_id === prod.id)) {
-            alert("Product already added to the transfer list. Remove it first if you want to change the quantity.");
+            popup.showError("Product already added to the transfer list. Remove it first if you want to change the quantity.");
             return;
         }
 
@@ -379,7 +385,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     const handleInitiateBatchTransfer = async (e) => {
         e.preventDefault();
         if (transferItems.length === 0) {
-            alert("Transfer list is empty. Add some products first.");
+            popup.showError("Transfer list is empty. Add some products first.");
             return;
         }
 
@@ -419,12 +425,12 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
                 fetchTransfers();
                 fetchProducts(); // Refresh stock counts
             } else {
-                alert(`Completed ${successCount} transfers. Failed ${failCount} transfers.`);
+                popup.showError(`Completed ${successCount} transfers. Failed ${failCount} transfers.`);
                 fetchTransfers();
                 fetchProducts();
             }
         } catch (error) {
-            alert("Error executing batch transfer: " + error.message);
+            popup.showError("Error executing batch transfer: " + error.message);
         } finally {
             setIsSubmitting(false);
         }
@@ -486,7 +492,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
                 fetchBranches(); // Refresh branch lists & stock values
                 fetchProducts(); // Refresh stock catalog
             } else {
-                alert(data.message || "Failed to update transfer status");
+                popup.showError(data.message || "Failed to update transfer status");
             }
         } catch (error) {
             console.error("Error updating transfer status:", error);
@@ -494,13 +500,18 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     };
 
     const handleCancelClick = (id) => {
-        const reason = window.prompt("Please enter the reason for cancelling this stock transfer:");
-        if (reason === null) return;
-        if (!reason.trim()) {
-            alert("A cancellation reason is required.");
+        setCancelTransferId(id);
+        setCancelReason('');
+    };
+
+    const confirmCancelTransfer = () => {
+        if (!cancelReason.trim()) {
+            popup.showError("A cancellation reason is required.");
             return;
         }
-        handleUpdateTransferStatus(id, 'CANCELLED', reason);
+        handleUpdateTransferStatus(cancelTransferId, 'CANCELLED', cancelReason);
+        setCancelTransferId(null);
+        setCancelReason('');
     };
 
     const renderStockTransfer = () => (
@@ -711,6 +722,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
                                     <label>Phone Number</label>
                                     <input 
                                         type="tel" 
+                                        maxLength="10"
                                         required 
                                         value={newBranch.phone} 
                                         onChange={e => setNewBranch({...newBranch, phone: e.target.value})}
@@ -1057,6 +1069,30 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
                         </div>
                         <div className="modal-footer">
                             <button className="btn-premium-cancel" onClick={() => setShowExpensesModal(false)}>Close Screen</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Transfer Modal */}
+            {cancelTransferId && (
+                <div className="premium-modal-overlay">
+                    <div className="premium-modal" style={{ maxWidth: '400px', padding: '24px', background: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                        <h3 style={{ marginTop: 0, color: '#0f172a' }}>❌ Cancel Transfer</h3>
+                        <p style={{ marginBottom: '16px', color: '#64748b', fontSize: '0.9rem' }}>
+                            Please enter the reason for cancelling this stock transfer:
+                        </p>
+                        <textarea
+                            className="premium-input"
+                            style={{ height: '80px', paddingTop: '8px', resize: 'none', width: '100%', boxSizing: 'border-box' }}
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            placeholder="Reason for cancellation..."
+                            autoFocus
+                        />
+                        <div className="modal-actions" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                            <button type="button" className="btn-cancel" onClick={() => setCancelTransferId(null)}>Close</button>
+                            <button type="button" className="btn-danger" style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }} onClick={confirmCancelTransfer}>Confirm Cancel</button>
                         </div>
                     </div>
                 </div>

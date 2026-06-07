@@ -156,6 +156,36 @@ exports.createReturn = async (req, res) => {
                         [totalRefundAmount, customers[0].id, adminId]
                     );
                 }
+            } else if (invoice.payment_method !== 'credit' && totalRefundAmount > 0) {
+                // 4. Update Ledger if it was a cash/bank refund
+                const accountType = paymentMethod === 'cash' ? 'cash' : 'bank';
+                
+                // Get current balance
+                const [lastEntry] = await connection.execute(
+                    'SELECT balance FROM ledger WHERE admin_id = ? AND branch_id = ? AND account_type = ? ORDER BY transaction_date DESC, created_at DESC LIMIT 1',
+                    [adminId, invoice.branch_id, accountType]
+                );
+                
+                const currentBalance = lastEntry.length > 0 ? parseFloat(lastEntry[0].balance) : 0;
+                const newBalance = currentBalance - totalRefundAmount;
+                
+                const particulars = `Refund for Invoice INV-${String(invoiceId).padStart(4, '0')}${reason ? ' - ' + reason : ''}`;
+                
+                await connection.execute(
+                    `INSERT INTO ledger (admin_id, branch_id, account_type, transaction_type, voucher_no, particulars, amount, balance, transaction_date) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        adminId, 
+                        invoice.branch_id, 
+                        accountType, 
+                        'payment',
+                        `RET-${returnId}`,
+                        particulars,
+                        totalRefundAmount,
+                        newBalance,
+                        new Date()
+                    ]
+                );
             }
 
             await connection.commit();

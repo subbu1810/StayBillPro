@@ -183,6 +183,7 @@ function CustomerFormModal({ onClose, onSuccess, editData }) {
                     <input
                       className="cf-input"
                       type="tel"
+                      maxLength="10"
                       name="mobile"
                       placeholder="e.g. 9876543210"
                       value={customer.mobile}

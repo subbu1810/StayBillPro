@@ -95,6 +95,7 @@ export const productsAPI = {
   update: (id, productData) => apiRequest(API_ENDPOINTS.PRODUCTS.UPDATE(id), HTTP_METHODS.PUT, productData),
   delete: (id) => apiRequest(API_ENDPOINTS.PRODUCTS.DELETE(id), HTTP_METHODS.DELETE),
   getLowStock: (params) => apiRequest(API_ENDPOINTS.PRODUCTS.LOW_STOCK, HTTP_METHODS.GET, null, params),
+  getExpiryStock: (params) => apiRequest(API_ENDPOINTS.PRODUCTS.EXPIRY_STOCK, HTTP_METHODS.GET, null, params),
 };
 
 // ========== SPARES API ==========
@@ -118,7 +119,12 @@ export const categoriesAPI = {
 
 // ========== REPORTS API ==========
 export const reportsAPI = {
-  getInventory: () => apiRequest(API_ENDPOINTS.REPORTS.INVENTORY),
+  getSales: (params) => apiRequest(`${API_ENDPOINTS.REPORTS.SALES}?${new URLSearchParams(params).toString()}`),
+  getExpenses: (params) => apiRequest(`${API_ENDPOINTS.REPORTS.EXPENSES}?${new URLSearchParams(params).toString()}`),
+  getProfit: (params) => apiRequest(`${API_ENDPOINTS.REPORTS.PROFIT}?${new URLSearchParams(params).toString()}`),
+  getTopCustomers: (params) => apiRequest(`${API_ENDPOINTS.REPORTS.TOP_CUSTOMERS}?${new URLSearchParams(params).toString()}`),
+  getInventory: (params) => apiRequest(`${API_ENDPOINTS.REPORTS.INVENTORY}?${new URLSearchParams(params).toString()}`),
+  getFirmDetails: () => apiRequest(API_ENDPOINTS.REPORTS.FIRM_DETAILS),
 };
 
 // ========== DEFAULT CHARGES API ==========
@@ -130,6 +136,13 @@ export const defaultChargesAPI = {
   delete: (id) => apiRequest(API_ENDPOINTS.DEFAULT_CHARGES.DELETE(id), HTTP_METHODS.DELETE),
   getByServiceAndAppliance: (serviceType, applianceType) =>
     apiRequest(API_ENDPOINTS.DEFAULT_CHARGES.BY_SERVICE_AND_APPLIANCE(serviceType, applianceType)),
+};
+
+// ========== WALLET API ==========
+export const walletAPI = {
+  createOrder: (data) => apiRequest(API_ENDPOINTS.WALLET.CREATE_ORDER, HTTP_METHODS.POST, data),
+  verifyRecharge: (data) => apiRequest(API_ENDPOINTS.WALLET.VERIFY, HTTP_METHODS.POST, data),
+  getHistory: () => apiRequest(API_ENDPOINTS.WALLET.HISTORY, HTTP_METHODS.GET),
 };
 
 // ========== JOBS API ==========
@@ -252,6 +265,17 @@ export const purchaseAPI = {
   getGRNs: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn`, HTTP_METHODS.GET, null, params),
   createGRN: (grnData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn`, HTTP_METHODS.POST, grnData),
   deleteGRNItem: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn/${id}`, HTTP_METHODS.DELETE),
+  getDamaged: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/damaged`, HTTP_METHODS.GET),
+  processReturn: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/damaged/${id}/return`, HTTP_METHODS.POST),
+};
+
+// ========== BILLING API ==========
+export const billingAPI = {
+  getAll: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/billing`, HTTP_METHODS.GET, null, params),
+  getToday: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/billing/today/list`, HTTP_METHODS.GET),
+  getDailySummary: (date) => apiRequest(`${API_ENDPOINTS.BASE_URL}/billing/summary/daily`, HTTP_METHODS.GET, null, date ? { date } : {}),
+  getSalesReport: (startDate, endDate) => apiRequest(`${API_ENDPOINTS.BASE_URL}/billing/reports/sales`, HTTP_METHODS.GET, null, { startDate, endDate }),
+  getStatistics: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/billing/statistics/overview`, HTTP_METHODS.GET),
 };
 
 // ========== HEALTH CHECK API ==========
@@ -269,6 +293,9 @@ export const posSettingsAPI = {
 export const staffManagementAPI = {
   getAttendance: (date) => apiRequest(API_ENDPOINTS.STAFF_MGMT.ATTENDANCE, HTTP_METHODS.GET, null, { date }),
   markAllPresent: (date) => apiRequest(API_ENDPOINTS.STAFF_MGMT.ATTENDANCE_BULK, HTTP_METHODS.POST, { date }),
+  updateAttendance: (data) => apiRequest(API_ENDPOINTS.STAFF_MGMT.ATTENDANCE_UPDATE, HTTP_METHODS.POST, data),
   getPayroll: (month) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL, HTTP_METHODS.GET, null, { month }),
+  getPayrollHistory: (params) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_HISTORY, HTTP_METHODS.GET, null, params),
+  savePayrollDraft: (data) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_SAVE_DRAFT, HTTP_METHODS.POST, data),
   processPayment: (paymentData) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_PAY, HTTP_METHODS.POST, paymentData),
 };

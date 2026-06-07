@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/SuppliersScreen.css';
+import { usePopup } from './ui/PopupProvider';
 
 export default function SuppliersScreen({ defaultTab }) {
+    const popup = usePopup();
     const [viewMode, setViewMode] = useState(defaultTab || 'manage');
     const [search, setSearch] = useState('');
     const [vendors, setVendors] = useState([]);
@@ -128,13 +130,21 @@ export default function SuppliersScreen({ defaultTab }) {
 
             fetchSuppliers();
             setShowModal(false);
+            popup.showSuccess('Supplier saved successfully');
         } catch (err) {
-            alert(err.message);
+            popup.showError(err.message);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to remove this supplier?')) return;
+        const ok = await popup.confirm({
+            title: 'Delete Supplier',
+            message: 'Are you sure you want to remove this supplier?',
+            confirmText: 'Delete',
+            cancelText: 'Cancel'
+        });
+        if (!ok) return;
+        
         try {
             const token = localStorage.getItem('token');
             const res = await fetch(`${API_BASE}/suppliers/${id}`, {
@@ -143,8 +153,9 @@ export default function SuppliersScreen({ defaultTab }) {
             });
             if (!res.ok) throw new Error('Failed to delete supplier');
             fetchSuppliers();
+            popup.showSuccess('Supplier removed');
         } catch (err) {
-            alert(err.message);
+            popup.showError(err.message);
         }
     };
 
@@ -421,11 +432,11 @@ export default function SuppliersScreen({ defaultTab }) {
                                 </div>
                                 <div className="form-group">
                                     <label>Mobile Number</label>
-                                    <input type="text" value={formData.mobile} onChange={e => setFormData({ ...formData, mobile: e.target.value })} />
+                                    <input type="text" maxLength="10" value={formData.mobile} onChange={e => setFormData({ ...formData, mobile: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label>Alternate Mobile</label>
-                                    <input type="text" value={formData.alternate_mobile} onChange={e => setFormData({ ...formData, alternate_mobile: e.target.value })} />
+                                    <input type="text" maxLength="10" value={formData.alternate_mobile} onChange={e => setFormData({ ...formData, alternate_mobile: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label>Email Address</label>

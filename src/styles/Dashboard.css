@@ -148,11 +148,14 @@
   font-weight: 500;
 }
 
+.os-metric-chart {
+  margin-top: auto;
+  align-self: flex-end;
+}
+
 .os-metric-chart svg {
   width: 100px;
   height: 40px;
-  margin-top: -10px;
-  margin-left: -10px;
 }
 
 /* Progress Bar */

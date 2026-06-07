@@ -231,6 +231,7 @@ export default function TechniciansScreen() {
 							<label>Mobile Number *</label>
 							<input
 								type="tel"
+								maxLength="10"
 								name="mobile"
 								value={formData.mobile}
 								onChange={handleInputChange}

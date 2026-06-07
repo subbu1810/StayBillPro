@@ -23,7 +23,10 @@ export const API_ENDPOINTS = {
   STAFF_MGMT: {
     ATTENDANCE: `${API_BASE_URL}/staff-mgmt/attendance`,
     ATTENDANCE_BULK: `${API_BASE_URL}/staff-mgmt/attendance/bulk`,
+    ATTENDANCE_UPDATE: `${API_BASE_URL}/staff-mgmt/attendance/update`,
     PAYROLL: `${API_BASE_URL}/staff-mgmt/payroll`,
+    PAYROLL_HISTORY: `${API_BASE_URL}/staff-mgmt/payroll/history`,
+    PAYROLL_SAVE_DRAFT: `${API_BASE_URL}/staff-mgmt/payroll/save-draft`,
     PAYROLL_PAY: `${API_BASE_URL}/staff-mgmt/payroll/pay`,
   },
 
@@ -65,6 +68,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id) => `${API_BASE_URL}/products/${id}`,
     DELETE: (id) => `${API_BASE_URL}/products/${id}`,
     LOW_STOCK: `${API_BASE_URL}/products/low-stock`,
+    EXPIRY_STOCK: `${API_BASE_URL}/products/expiry-stock`,
   },
 
   // Spares
@@ -80,7 +84,12 @@ export const API_ENDPOINTS = {
 
   // Reports
   REPORTS: {
+    SALES: `${API_BASE_URL}/reports/sales`,
+    EXPENSES: `${API_BASE_URL}/reports/expenses`,
+    PROFIT: `${API_BASE_URL}/reports/profit`,
+    TOP_CUSTOMERS: `${API_BASE_URL}/reports/top-customers`,
     INVENTORY: `${API_BASE_URL}/reports/inventory`,
+    FIRM_DETAILS: `${API_BASE_URL}/reports/firm-details`,
   },
 
   // Default Charges
@@ -120,6 +129,13 @@ export const API_ENDPOINTS = {
   PAYMENT: {
     CREATE_ORDER: `${API_BASE_URL}/payment/create-order`,
     VERIFY: `${API_BASE_URL}/payment/verify`,
+  },
+
+  // Wallet
+  WALLET: {
+    CREATE_ORDER: `${API_BASE_URL}/wallet/create-recharge-order`,
+    VERIFY: `${API_BASE_URL}/wallet/verify-recharge`,
+    HISTORY: `${API_BASE_URL}/wallet/history`,
   },
 
   // Admin Auth

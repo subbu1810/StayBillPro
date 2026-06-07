@@ -17,6 +17,20 @@ function App() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedFeatures, setSelectedFeatures] = useState('both');
 
+  // Check for existing session on load
+  useEffect(() => {
+    const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+    if (token) {
+      setIsAuthenticated(true);
+      setCurrentView('dashboard');
+      window.history.replaceState(
+        { view: 'dashboard', selectedPlan: null, selectedFeatures: 'both', isAuthenticated: true },
+        '',
+        window.location.pathname
+      );
+    }
+  }, []);
+
   // Browser back button functionality
   useEffect(() => {
     const handlePopState = (event) => {
@@ -111,6 +125,10 @@ function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    localStorage.removeItem('user');
     setIsAuthenticated(false);
     setCurrentView('landing');
     updateHistory('landing', null, false);

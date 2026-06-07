@@ -17,7 +17,7 @@ import {
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
-export default function POSBillingPage() {
+export default function POSBillingPage({ mode = 'billing' }) {
   const [products, setProducts] = useState([]);
 
   const fetchProducts = async () => {
@@ -44,10 +44,20 @@ export default function POSBillingPage() {
 
       const combined = [...prodResults, ...spareResults];
 
-      const formatted = combined.map(p => ({
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const unexpiredProducts = combined.filter(p => {
+        if (!p.expiry_date) return true;
+        const expDate = new Date(p.expiry_date);
+        return expDate >= today;
+      });
+
+      const formatted = unexpiredProducts.map(p => ({
         id: p.id,
         name: p.name || 'Unnamed Product',
         category: p.category_name || p.category || 'Uncategorized',
+        sku: p.sku || p.part_number || '',
         price: parseFloat(p.price) || 0,
         wholesalePrice: parseFloat(p.wholesale_price) || parseFloat(p.price) || 0,
         stock: Math.max(0, parseInt(p.quantity || p.stock) || 0),
@@ -148,9 +158,18 @@ export default function POSBillingPage() {
   const categories = ['All', ...new Set(products.map(p => p.category))];
 
   const filteredProducts = products.filter(
-    p =>
-      (activeCategory === 'All' || p.category === activeCategory) &&
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    p => {
+      if (activeCategory !== 'All' && p.category !== activeCategory) return false;
+      const query = searchQuery.toLowerCase();
+      if (!query) return true;
+      
+      return (
+        (p.name && p.name.toLowerCase().includes(query)) ||
+        (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.category && p.category.toLowerCase().includes(query)) ||
+        (p.price && p.price.toString().includes(query))
+      );
+    }
   );
 
   const addToCart = product => {
@@ -273,7 +292,7 @@ export default function POSBillingPage() {
   };
 
   const handleCompletePayment = async () => {
-    if (!paymentMode) {
+    if (mode !== 'quotation' && !paymentMode) {
       showToast('Please select a payment method', 'error');
       return;
     }
@@ -314,30 +333,38 @@ export default function POSBillingPage() {
         gstAmount: parseFloat(gstTotal.toFixed(2)),
         discountAmount: parseFloat(discountAmount.toFixed(2)),
         paymentMethod: paymentMode,
-        notes: notes
+        notes: notes,
+        invoiceType: 'pos'
       };
 
-      const response = await fetch(`${API_BASE}/billing`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      let data = {};
+      let invoiceId = 'NEW';
+      
+      if (mode !== 'quotation') {
+        const response = await fetch(`${API_BASE}/billing`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
 
-      const data = await response.json();
+        data = await response.json();
 
-      if (!response.ok) {
-        showToast(data.message || 'Failed to save invoice', 'error');
-        return;
+        if (!response.ok) {
+          showToast(data.message || 'Failed to save invoice', 'error');
+          return;
+        }
+
+        showToast('Invoice created successfully!', 'success');
+        invoiceId = data.invoiceId || (data.invoice && data.invoice.id) || 'NEW';
+      } else {
+        showToast('Quotation generated successfully!', 'success');
+        invoiceId = `QUOTE-${Date.now().toString().slice(-6)}`;
       }
-
-      showToast('Invoice created successfully!', 'success');
       
       // Auto-print receipt
-      const printWindow = window.open('', '_blank');
-      const invoiceId = data.invoiceId || (data.invoice && data.invoice.id) || 'NEW';
       
       let htmlContent = '';
       if (printSize === 'A4') {
@@ -399,9 +426,14 @@ export default function POSBillingPage() {
                   <p><strong>Address:</strong> ${customerAddress || '—'}</p>
                 </div>
                 <div style="text-align: right;">
-                  <h3>Payment Details</h3>
-                  <p><strong>Payment Method:</strong> ${paymentMode.toUpperCase()}</p>
-                  <p><strong>Status:</strong> ${paymentMode === 'credit' ? 'PENDING' : 'PAID'}</p>
+                  ${mode === 'quotation' ? `
+                    <h3>Quote Details</h3>
+                    <p><strong>Valid Until:</strong> ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
+                  ` : `
+                    <h3>Payment Details</h3>
+                    <p><strong>Payment Method:</strong> ${paymentMode.toUpperCase()}</p>
+                    <p><strong>Status:</strong> ${paymentMode === 'credit' ? 'PENDING' : 'PAID'}</p>
+                  `}
                 </div>
               </div>
               <table>
@@ -444,20 +476,87 @@ export default function POSBillingPage() {
                 <p>Thank you for your business!</p>
               </div>
               <script>
-                window.onload = function() { window.print(); window.close(); }
+                window.onload = function() { window.print(); }
               </script>
             </body>
           </html>
         `;
       } else {
-        const width = printSize === '50mm' ? '50mm' : '80mm';
-        const itemsHtml = cart.map(item => `
-          <tr>
-            <td>${item.name.substring(0, 15)}</td>
-            <td style="text-align: center;">${item.qty}</td>
-            <td style="text-align: right;">${(item.price * item.qty).toLocaleString('en-IN')}</td>
-          </tr>
-        `).join('');
+        const taxGroups = {};
+        cart.forEach(item => {
+          const rate = Number(item.gst || 0);
+          const amt = item.price * item.qty;
+          if (!taxGroups[rate]) {
+            taxGroups[rate] = { items: [], taxable: 0, cgst: 0, sgst: 0, totalTax: 0 };
+          }
+          taxGroups[rate].items.push(item);
+          taxGroups[rate].taxable += amt;
+          const itemGst = amt * (rate / 100);
+          taxGroups[rate].cgst += itemGst / 2;
+          taxGroups[rate].sgst += itemGst / 2;
+          taxGroups[rate].totalTax += itemGst;
+        });
+
+        const totalItemsCount = cart.length;
+        const totalQtyCount = cart.reduce((sum, i) => sum + Number(i.qty || 0), 0);
+
+        let itemsHtml = '';
+        let groupIndex = 1;
+        for (const [rate, group] of Object.entries(taxGroups)) {
+          const halfRate = (Number(rate) / 2).toFixed(2);
+          itemsHtml += `
+            <tr>
+              <td colspan="4" style="padding: 4px 0 2px 0; font-weight: bold; font-style: italic;">
+                ${groupIndex}) CGST @ ${halfRate}%, SGST @ ${halfRate}%
+              </td>
+            </tr>
+          `;
+          group.items.forEach(item => {
+            itemsHtml += `
+              <tr>
+                <td style="padding-right: 2px;">${item.name.substring(0, 16)}</td>
+                <td style="text-align: center; white-space: nowrap;">${item.qty}</td>
+                <td style="text-align: right; white-space: nowrap;">${item.price.toFixed(2)}</td>
+                <td style="text-align: right; white-space: nowrap;">${(item.price * item.qty).toFixed(2)}</td>
+              </tr>
+            `;
+          });
+          groupIndex++;
+        }
+
+        let taxBreakdownHtml = '';
+        let taxIdx = 1;
+        let grandTaxable = 0;
+        let grandCgst = 0;
+        let grandSgst = 0;
+        let grandTotalWithTax = 0;
+
+        for (const [rate, group] of Object.entries(taxGroups)) {
+          taxBreakdownHtml += `
+            <tr>
+              <td>${taxIdx}</td>
+              <td style="text-align: right; white-space: nowrap;">${group.taxable.toFixed(2)}</td>
+              <td style="text-align: right; white-space: nowrap;">${group.cgst.toFixed(2)}</td>
+              <td style="text-align: right; white-space: nowrap;">${group.sgst.toFixed(2)}</td>
+              <td style="text-align: right; white-space: nowrap;">${(group.taxable + group.totalTax).toFixed(2)}</td>
+            </tr>
+          `;
+          grandTaxable += group.taxable;
+          grandCgst += group.cgst;
+          grandSgst += group.sgst;
+          grandTotalWithTax += (group.taxable + group.totalTax);
+          taxIdx++;
+        }
+        
+        taxBreakdownHtml += `
+            <tr style="border-top: 1px dashed #000; font-weight: bold;">
+              <td>T:</td>
+              <td style="text-align: right; white-space: nowrap;">${grandTaxable.toFixed(2)}</td>
+              <td style="text-align: right; white-space: nowrap;">${grandCgst.toFixed(2)}</td>
+              <td style="text-align: right; white-space: nowrap;">${grandSgst.toFixed(2)}</td>
+              <td style="text-align: right; white-space: nowrap;">${grandTotalWithTax.toFixed(2)}</td>
+            </tr>
+        `;
 
         htmlContent = `
           <!DOCTYPE html>
@@ -465,37 +564,45 @@ export default function POSBillingPage() {
             <head>
               <title>Invoice - ${invoiceId}</title>
               <style>
-                body { font-family: 'Courier New', Courier, monospace; padding: 10px; margin: 0; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; }
-                .header { text-align: center; margin-bottom: 10px; }
-                .header h2 { margin: 0; font-size: 16px; }
+                body { font-family: 'Courier New', Courier, monospace; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; max-width: ${printSize === '50mm' ? '58mm' : '100%'}; box-sizing: border-box; }
+                .center { text-align: center; }
+                .header-name { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
+                .header-address { font-size: 10px; margin-bottom: 2px; }
                 .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { text-align: left; padding: 2px 0; }
-                .totals { margin-top: 10px; }
-                .totals-row { display: flex; justify-content: space-between; }
+                .flex-between { display: flex; flex-wrap: wrap; justify-content: space-between; }
+                .flex-between span { margin-right: 5px; }
+                table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                th, td { text-align: left; padding: 2px 0; word-wrap: break-word; vertical-align: top; }
                 .bold { font-weight: bold; }
-                .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                .tax-table { font-size: 9px; margin-top: 10px; }
+                .tax-table th { padding-bottom: 4px; }
+                @media print { 
+                  @page { margin: 0; }
+                  body { width: 100%; max-width: 100%; padding: 0 5px; } 
+                }
               </style>
             </head>
             <body>
-              <div style="max-width: ${width}; margin: 0 auto;">
-                <div class="header">
-                  <h2>${shopName}</h2>
-                  <div>TAX INVOICE</div>
-                  <div>GSTIN: ${gstin}</div>
-                  <div>INV-${String(invoiceId).padStart(4, '0')}</div>
-                  <div>${new Date().toLocaleString()}</div>
+              <div style="width: 100%; margin: 0 auto; padding: 10px 5px;">
+                <div class="center">
+                  <div class="header-name">${shopName}</div>
+                  <div class="header-address">Phone: ${finalCustomerPhone || '—'}</div>
+                  <div class="header-address">GSTIN: ${gstin}</div>
                 </div>
                 <div class="divider"></div>
-                <div>Customer: ${finalCustomerName}</div>
-                <div>Payment: ${paymentMode.toUpperCase()}</div>
+                <div class="center bold" style="font-size: 14px; margin: 4px 0;">${mode === 'quotation' ? 'QUOTATION' : 'TAX INVOICE'}</div>
+                <div class="flex-between">
+                  <span>${mode === 'quotation' ? 'Quote No' : 'Bill No'} : ${String(invoiceId).padStart(4, '0')}</span>
+                  <span>Date : ${new Date().toLocaleDateString('en-GB')}</span>
+                </div>
                 <div class="divider"></div>
                 <table>
                   <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th style="text-align: center;">Qty</th>
-                      <th style="text-align: right;">Amt</th>
+                    <tr style="border-bottom: 1px dashed #000;">
+                      <th style="width: 44%;">Particulars</th>
+                      <th style="width: 12%; text-align: center;">Qty</th>
+                      <th style="width: 20%; text-align: right;">Rate</th>
+                      <th style="width: 24%; text-align: right;">Value</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -503,40 +610,99 @@ export default function POSBillingPage() {
                   </tbody>
                 </table>
                 <div class="divider"></div>
-                <div class="totals">
-                  <div class="totals-row">
-                    <span>Subtotal:</span>
-                    <span>${subtotal.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div class="totals-row">
-                    <span>GST:</span>
-                    <span>${gstTotal.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div class="totals-row">
-                    <span>Discount:</span>
-                    <span>-${discountAmount.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div class="divider"></div>
-                  <div class="totals-row bold" style="font-size: 14px;">
-                    <span>Total:</span>
-                    <span>Rs. ${total.toLocaleString('en-IN')}</span>
-                  </div>
+                <div class="flex-between" style="padding-top: 4px;">
+                  <span>Subtotal:</span>
+                  <span>${subtotal.toFixed(2)}</span>
                 </div>
-                <div class="footer">
-                  <div>Thank you for your business!</div>
+                <div class="flex-between">
+                  <span>CGST:</span>
+                  <span>${cgst.toFixed(2)}</span>
+                </div>
+                <div class="flex-between">
+                  <span>SGST:</span>
+                  <span>${sgst.toFixed(2)}</span>
+                </div>
+                ${discountAmount > 0 ? `
+                <div class="flex-between">
+                  <span>Discount (${discount}%):</span>
+                  <span>-${discountAmount.toFixed(2)}</span>
+                </div>
+                ` : ''}
+                <div class="divider"></div>
+                <div class="flex-between bold" style="font-size: 14px; padding: 4px 0;">
+                  <span>Items: ${totalItemsCount} &nbsp;&nbsp;&nbsp; Qty: ${totalQtyCount}</span>
+                  <span>Total: ${total.toFixed(2)}</span>
+                </div>
+                <div class="divider"></div>
+                
+                <div class="center" style="font-size: 10px; margin-top: 8px;">
+                  &lt;------- GST Breakup Details -------&gt;
+                </div>
+                <table class="tax-table">
+                  <thead>
+                    <tr style="border-bottom: 1px dashed #000;">
+                      <th style="width: 10%;">GST<br>IND</th>
+                      <th style="width: 25%; text-align: right;">Taxable<br>Amt</th>
+                      <th style="width: 20%; text-align: right;">CGST<br>Amt</th>
+                      <th style="width: 20%; text-align: right;">SGST<br>Amt</th>
+                      <th style="width: 25%; text-align: right;">Total<br>Amt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${taxBreakdownHtml}
+                  </tbody>
+                </table>
+                
+                <div class="divider"></div>
+                ${discountAmount > 0 ? `
+                <div class="center bold" style="margin-top: 10px; margin-bottom: 5px; font-size: 13px; border: 1px dashed #000; padding: 4px; border-radius: 4px;">
+                  *** YOU SAVED: ₹${discountAmount.toFixed(2)} ***
+                </div>
+                ` : ''}
+                <div class="center bold" style="margin-top: 10px; font-style: italic; font-size: 14px;">
+                  *** Thank You Visit Again ***
                 </div>
               </div>
               <script>
-                window.onload = function() { window.print(); window.close(); }
+                window.onload = function() { 
+                  window.print(); 
+                }
               </script>
             </body>
           </html>
         `;
       }
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-      }
+      const wasFullscreen = !!document.fullscreenElement;
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      iframe.contentWindow.addEventListener('afterprint', () => {
+        if (wasFullscreen && !document.fullscreenElement) {
+          const elem = document.querySelector('.pos-wrapper');
+          if (elem && elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => console.log('Fullscreen restore failed', err));
+          }
+        }
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      });
+
+      // Fallback cleanup just in case afterprint doesn't fire
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 300000); // 10 seconds is usually enough time to let the user print
       
       // Refresh product stock levels from database
       await fetchProducts();
@@ -564,11 +730,57 @@ export default function POSBillingPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const barcodeBuffer = React.useRef('');
+  const barcodeTimeout = React.useRef(null);
+
   useEffect(() => {
     const handleKey = e => {
+      // Ignore key events if the user is typing into an input or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+
       if (e.key === 'F9') {
         e.preventDefault();
         setPaymentModal(true);
+        return;
+      }
+
+      // Barcode Scanner Logic
+      if (e.key.length === 1) {
+        barcodeBuffer.current += e.key;
+        if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
+        barcodeTimeout.current = setTimeout(() => {
+          barcodeBuffer.current = '';
+        }, 50); // 50ms interval max between keys, normal typing is slower, scanner is faster
+      } else if (e.key === 'Enter' && barcodeBuffer.current.length > 0) {
+        e.preventDefault();
+        
+        const scannedSku = barcodeBuffer.current.trim();
+        const product = products.find(p => p.sku && p.sku.toString().toLowerCase() === scannedSku.toLowerCase());
+        
+        if (product) {
+            setCart(prevCart => {
+                const exists = prevCart.find(i => i.id === product.id);
+                if (exists) {
+                    if (exists.qty >= product.stock) {
+                        showToast(`Cannot add more. Only ${product.stock} units available in stock.`, 'error');
+                        return prevCart;
+                    }
+                    return prevCart.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
+                } else {
+                    if (product.stock <= 0) {
+                        showToast(`Product is out of stock.`, 'error');
+                        return prevCart;
+                    }
+                    return [...prevCart, { ...product, qty: 1 }];
+                }
+            });
+        } else {
+            showToast(`Product with SKU ${scannedSku} not found`, 'error');
+        }
+        
+        barcodeBuffer.current = '';
       }
     };
 
@@ -576,8 +788,9 @@ export default function POSBillingPage() {
 
     return () => {
       window.removeEventListener('keydown', handleKey);
+      if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
     };
-  }, []);
+  }, [products]);
 
   return (
     <div className="pos-wrapper">
@@ -817,7 +1030,10 @@ export default function POSBillingPage() {
 
               {cart.length === 0 ? (
                 <div className="empty-cart">
-                  <Receipt size={60} />
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: '#94a3b8', marginBottom: '10px'}}>
+                    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/>
+                    <text x="12" y="16" fontSize="12" fontWeight="bold" stroke="none" fill="currentColor" textAnchor="middle" fontFamily="sans-serif">₹</text>
+                  </svg>
                   <p>No items added</p>
                 </div>
               ) : (
@@ -924,11 +1140,11 @@ export default function POSBillingPage() {
 
               <button
                 className="pay-btn"
-                onClick={() => setPaymentModal(true)}
+                onClick={() => mode === 'quotation' ? handleCompletePayment() : setPaymentModal(true)}
                 disabled={cart.length === 0 || loading}
               >
-                <CreditCard size={18} />
-                Pay (F9)
+                {mode === 'quotation' ? <Receipt size={18} /> : <CreditCard size={18} />}
+                {mode === 'quotation' ? 'Print Quote (F9)' : 'Pay (F9)'}
               </button>
 
             </div>

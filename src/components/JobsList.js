@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import '../styles/JobsList.css';
 import { useService } from '../hooks/useService';
+import { usePopup } from './ui/PopupProvider';
 
 export default function JobsList({ onViewJob, onCreateJob }) {
+	const popup = usePopup();
 	const { jobs, jobsLoaded, technicians, availableProducts, allSpares, updateJob, deleteJob, jobsAPI } = useService();
 	const [filters, setFilters] = useState({ status: 'all', product: 'all', technician: 'all', search: '' });
 	const [editingJob, setEditingJob] = useState(null);
@@ -180,7 +182,7 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 			await updateJob(editingJob.id, jobPayload);
 			setEditingJob(null);
 		} catch (error) {
-			alert(error.message || 'Failed to update job');
+			popup.showError(error.message || 'Failed to update job');
 		} finally {
 			setIsSaving(false);
 		}
@@ -259,11 +261,12 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 	};
 
 	const handleDelete = async (jobId) => {
-		if (!window.confirm('Are you sure you want to delete this job?')) return;
+		const ok = await popup.confirm('Are you sure you want to delete this job?');
+		if (!ok) return;
 		try {
 			await deleteJob(jobId);
 		} catch (error) {
-			alert(error.message || 'Failed to delete job');
+			popup.showError(error.message || 'Failed to delete job');
 		}
 	};
 
@@ -387,7 +390,7 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 										</div>
 										<div className="jobs-modal-row">
 											<label>Mobile</label>
-											<input type="text" value={editFormData.customerMobile} onChange={(e) => setEditFormData({...editFormData, customerMobile: e.target.value})} />
+											<input type="text" maxLength="10" value={editFormData.customerMobile} onChange={(e) => setEditFormData({...editFormData, customerMobile: e.target.value})} />
 										</div>
 										<div className="jobs-modal-row">
 											<label>Address</label>

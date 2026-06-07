@@ -197,14 +197,23 @@
 
 .code-group {
     position: relative;
-    max-width: 250px;
+    max-width: 280px; /* slightly wider to fit both buttons comfortably */
 }
 
-.assign-code-btn {
+.code-group input {
+    padding-right: 170px !important; /* Make room for the buttons */
+}
+
+.code-actions {
     position: absolute;
     right: 2px;
     top: 2px;
     bottom: 2px;
+    display: flex;
+    gap: 4px;
+}
+
+.assign-code-btn {
     background: #f1f5f9;
     border: none;
     padding: 0 10px;
@@ -213,6 +222,12 @@
     font-weight: 600;
     border-radius: 2px;
     cursor: pointer;
+    white-space: nowrap; /* prevent text wrapping */
+}
+
+.assign-code-btn.scan-btn {
+    background: #eef2ff;
+    color: #4f46e5;
 }
 
 .tabs {

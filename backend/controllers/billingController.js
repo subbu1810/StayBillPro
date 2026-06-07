@@ -14,7 +14,8 @@ exports.createInvoice = async (req, res) => {
             totalAmount,
             gstAmount,
             discountAmount,
-            paymentMethod
+            paymentMethod,
+            invoiceType = 'pos'
         } = req.body;
 
         console.log('Creating invoice with data:', { adminId, customerId, customerName, customerPhone, items, totalAmount, paymentMethod });
@@ -53,9 +54,9 @@ exports.createInvoice = async (req, res) => {
 
             // Insert invoice
             const [invoiceResult] = await connection.execute(
-                `INSERT INTO invoices (admin_id, branch_id, customer_name, customer_phone, total_amount, gst_amount, discount_amount, payment_method, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [adminId, branchId, customerName || 'Walk-in', customerPhone || '', totalAmount, gstAmount || 0, discountAmount || 0, paymentMethod, status]
+                `INSERT INTO invoices (admin_id, branch_id, customer_name, customer_phone, total_amount, gst_amount, discount_amount, payment_method, status, invoice_type)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [adminId, branchId, customerName || 'Walk-in', customerPhone || '', totalAmount, gstAmount || 0, discountAmount || 0, paymentMethod, status, invoiceType]
             );
 
             const invoiceId = invoiceResult.insertId;
@@ -63,9 +64,9 @@ exports.createInvoice = async (req, res) => {
             // Insert invoice items
             for (const item of items) {
                 await connection.execute(
-                    `INSERT INTO invoice_items (invoice_id, product_id, item_name, quantity, unit_price, total_price)
-                     VALUES (?, ?, ?, ?, ?, ?)`,
-                    [invoiceId, item.id || null, item.name, item.qty, item.price, item.price * item.qty]
+                    `INSERT INTO invoice_items (invoice_id, product_id, item_name, quantity, unit_price, total_price, gst_rate)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [invoiceId, item.id || null, item.name, item.qty, item.price, item.price * item.qty, item.gst || item.gst_rate || 0]
                 );
 
                 // Update stock if product_id exists
@@ -82,6 +83,31 @@ exports.createInvoice = async (req, res) => {
                 await connection.execute(
                     `UPDATE customers SET balance = balance + ? WHERE id = ? AND admin_id = ?`,
                     [totalAmount, customerId, adminId]
+                );
+            }
+
+            // Record entry in ledger if paid via cash, upi, or card
+            if (['cash', 'upi', 'card'].includes(paymentMethod.toLowerCase())) {
+                const accountType = paymentMethod.toLowerCase() === 'cash' ? 'cash' : 'bank';
+                
+                // Get current balance
+                const [lastEntry] = await connection.execute(
+                    `SELECT balance FROM ledger 
+                     WHERE admin_id = ? AND branch_id = ? AND account_type = ? 
+                     ORDER BY id DESC LIMIT 1`,
+                    [adminId, branchId, accountType]
+                );
+                
+                const currentBalance = lastEntry.length > 0 ? parseFloat(lastEntry[0].balance) : 0;
+                const newBalance = currentBalance + parseFloat(totalAmount);
+                const voucherNo = `INV-${invoiceId}`;
+                const particulars = `Sales Invoice #${invoiceId} - ${customerName || 'Walk-in'}`;
+                const txnDate = new Date().toISOString().split('T')[0];
+
+                await connection.execute(
+                    `INSERT INTO ledger (admin_id, branch_id, account_type, transaction_type, voucher_no, particulars, amount, balance, transaction_date)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [adminId, branchId, accountType, 'receipt', voucherNo, particulars, totalAmount, newBalance, txnDate]
                 );
             }
 
@@ -347,7 +373,12 @@ exports.searchInvoices = async (req, res) => {
         const {
             searchTerm = '',
             page = 1,
-            limit = 50
+            limit = 50,
+            invoiceType = '',
+            status = 'all',
+            paymentMethod = 'all',
+            startDate = '',
+            endDate = ''
         } = req.query;
 
         const offset = (Number(page) - 1) * Number(limit);
@@ -356,7 +387,6 @@ exports.searchInvoices = async (req, res) => {
         let where = `WHERE 1=1`;
         let params = [];
 
-        // SEARCH FILTER
         if (searchTerm.trim()) {
             where += `
                 AND (
@@ -368,6 +398,32 @@ exports.searchInvoices = async (req, res) => {
             const like = `%${searchTerm}%`;
             params.push(like, like, like);
         }
+
+        if (invoiceType) {
+            where += ` AND i.invoice_type = ? `;
+            params.push(invoiceType);
+        }
+
+        if (status && status !== 'all') {
+            where += ` AND i.status = ? `;
+            params.push(status);
+        }
+
+        if (paymentMethod && paymentMethod !== 'all') {
+            where += ` AND i.payment_method = ? `;
+            params.push(paymentMethod);
+        }
+
+        if (startDate) {
+            where += ` AND DATE(i.created_at) >= ? `;
+            params.push(startDate);
+        }
+
+        if (endDate) {
+            where += ` AND DATE(i.created_at) <= ? `;
+            params.push(endDate);
+        }
+
 
         // COUNT QUERY
         const countQuery = `
@@ -389,7 +445,8 @@ exports.searchInvoices = async (req, res) => {
                 i.payment_method,
                 i.status,
                 i.created_at,
-                b.name AS branch_name
+                b.name AS branch_name,
+                (SELECT COUNT(*) FROM invoice_items ii WHERE ii.invoice_id = i.id) AS item_count
             FROM invoices i
             LEFT JOIN branches b ON i.branch_id = b.id
             ${where}

@@ -124,7 +124,7 @@ function Login({ onLogin }) {
         <div className="login-container">
             <div className="login-card centered-card">
                 <div className="login-header">
-                    <div className="login-icon">🔧</div>
+                    <img src="/logo.png" alt="Logo" className="login-icon" style={{ height: '40px', width: 'auto', marginBottom: '10px' }} />
                     <h1>Welcome Back!</h1>
                     <p className="login-subtitle">Service Management System</p>
                 </div>

@@ -31,16 +31,16 @@ exports.getAllProducts = async (req, res) => {
 exports.createProduct = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const { branch_id, category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty } = req.body;
+        const { branch_id, category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
         if (!branch_id) {
             return res.status(400).json({ message: "branch_id is required" });
         }
 
         const [result] = await db.query(
-            `INSERT INTO sales_inventory (admin_id, branch_id, category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [adminId, branch_id, category_id, name, brand, sku, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null]
+            `INSERT INTO sales_inventory (admin_id, branch_id, category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [adminId, branch_id, category_id, name, brand, sku, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null, expiry_date || null]
         );
         
         res.status(201).json({ message: "Product created successfully", id: result.insertId });
@@ -55,13 +55,13 @@ exports.updateProduct = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { id } = req.params;
-        const { category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty } = req.body;
+        const { category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
         await db.query(
             `UPDATE sales_inventory 
-             SET category_id = ?, name = ?, brand = ?, sku = ?, price = ?, quantity = ?, status = ?, hsn_code = ?, unit = ?, gst_rate = ?, serial_number = ?, dimensions = ?, size = ?, purchase_price = ?, wholesale_price = ?, min_wholesale_qty = ? 
+             SET category_id = ?, name = ?, brand = ?, sku = ?, price = ?, quantity = ?, status = ?, hsn_code = ?, unit = ?, gst_rate = ?, serial_number = ?, dimensions = ?, size = ?, purchase_price = ?, wholesale_price = ?, min_wholesale_qty = ?, expiry_date = ? 
              WHERE id = ? AND admin_id = ?`,
-            [category_id, name, brand, sku, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, id, adminId]
+            [category_id, name, brand, sku, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, expiry_date || null, id, adminId]
         );
         
         res.json({ message: "Product updated successfully" });
@@ -104,5 +104,34 @@ exports.getLowStockProducts = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error fetching low stock products", error: error.message });
+    }
+};
+
+// Expiry stock products
+exports.getExpiryStock = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const { branch_id } = req.query;
+        
+        let query = `
+            SELECT p.*, c.name as category_name 
+            FROM sales_inventory p 
+            LEFT JOIN categories c ON p.category_id = c.id 
+            WHERE p.admin_id = ? AND p.expiry_date IS NOT NULL
+        `;
+        let params = [adminId];
+        
+        if (branch_id) {
+            query += ' AND p.branch_id = ?';
+            params.push(branch_id);
+        }
+
+        query += ' ORDER BY p.expiry_date ASC';
+
+        const [products] = await db.query(query, params);
+        res.json(products);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error fetching expiry stock products", error: error.message });
     }
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/InvoiceHistory.css';
+import { getWholesaleInvoiceHtml, getPosInvoiceHtml } from '../utils/printFormat';
 import {
   Search,
   Download,
@@ -15,7 +16,7 @@ import {
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
-export default function InvoiceHistory() {
+export default function InvoiceHistory({ invoiceType }) {
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,7 @@ export default function InvoiceHistory() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit] = useState(20);
+  const [printSize, setPrintSize] = useState('80mm');
 
   // Fetch invoices
   const fetchInvoices = async (pageNum = 1) => {
@@ -59,6 +61,10 @@ export default function InvoiceHistory() {
 
       if (dateTo) {
         url += `&endDate=${dateTo}`;
+      }
+
+      if (invoiceType) {
+        url += `&invoiceType=${invoiceType}`;
       }
 
       console.log('Fetching invoices from:', url);
@@ -97,6 +103,25 @@ export default function InvoiceHistory() {
   // Initial fetch
   useEffect(() => {
     fetchInvoices(1);
+    
+    // Fetch printSize setting
+    const fetchSettings = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const storedBranch = localStorage.getItem('selectedBranchId');
+        const branchId = (storedBranch && storedBranch !== 'undefined' && storedBranch !== 'null') ? storedBranch : '1';
+        const response = await fetch(`${API_BASE}/settings/pos/${branchId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data && data.print_size) {
+          setPrintSize(data.print_size);
+        }
+      } catch (error) {
+        console.error('Failed to fetch print settings', error);
+      }
+    };
+    fetchSettings();
   }, []);
 
   // Search and filter
@@ -165,9 +190,48 @@ export default function InvoiceHistory() {
       setIsPrinting(true);
       setShowModal(true);
       
-      // Wait a tick for React to render the modal, then trigger print
       setTimeout(() => {
-        window.print();
+        if (data.invoice.invoice_type === 'wholesale') {
+          const html = getWholesaleInvoiceHtml({ ...data.invoice, items: data.items || [] });
+          const printWindow = window.open('', 'PRINT', 'height=600,width=800');
+          if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.onload = function() {
+              printWindow.focus();
+              printWindow.print();
+              printWindow.close();
+            };
+            setTimeout(() => {
+              if (!printWindow.closed) {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+              }
+            }, 2500);
+          }
+        } else if (data.invoice.invoice_type === 'pos') {
+          const html = getPosInvoiceHtml({ ...data.invoice, items: data.items || [] }, printSize);
+          const printWindow = window.open('', 'PRINT', 'height=600,width=800');
+          if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.onload = function() {
+              printWindow.focus();
+              printWindow.print();
+              printWindow.close();
+            };
+            setTimeout(() => {
+              if (!printWindow.closed) {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+              }
+            }, 2500);
+          }
+        } else {
+          window.print();
+        }
         setIsPrinting(false);
         setShowModal(false);
       }, 300);
@@ -250,8 +314,8 @@ export default function InvoiceHistory() {
       {/* HEADER */}
       <div className="ih-header">
         <div>
-          <h1>Invoice History</h1>
-          <p>Search and manage your generated bills</p>
+          <h1>{invoiceType === 'wholesale' ? 'Wholesale History' : 'POS History'}</h1>
+          <p>Search and manage your generated {invoiceType === 'wholesale' ? 'wholesale bills' : 'retail bills'}</p>
         </div>
         <button className="refresh-btn" onClick={handleRefresh}>
           <RefreshCw size={18} />
@@ -388,7 +452,7 @@ export default function InvoiceHistory() {
                     </td>
                     <td>
                       <span className="items-count">
-                        {invoice.items ? invoice.items.length : 0} items
+                        {invoice.item_count || 0} items
                       </span>
                     </td>
                     <td className="amount">
@@ -439,26 +503,6 @@ export default function InvoiceHistory() {
               </tbody>
             </table>
 
-            {/* PAGINATION */}
-            <div className="pagination">
-              <button
-                disabled={page === 1}
-                onClick={() => fetchInvoices(page - 1)}
-              >
-                Previous
-              </button>
-
-              <span className="page-info">
-                Page {page} of {totalPages}
-              </span>
-
-              <button
-                disabled={page === totalPages}
-                onClick={() => fetchInvoices(page + 1)}
-              >
-                Next
-              </button>
-            </div>
           </>
         )}
       </div>
@@ -472,6 +516,23 @@ export default function InvoiceHistory() {
               <button onClick={() => setShowModal(false)}>×</button>
             </div>
 
+            {selectedInvoice.invoice_type === 'wholesale' ? (
+            <div style={{ width: '100%', height: 'calc(100vh - 150px)', border: 'none' }}>
+              <iframe 
+                srcDoc={getWholesaleInvoiceHtml(selectedInvoice)} 
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Wholesale Invoice Preview"
+              />
+            </div>
+          ) : selectedInvoice.invoice_type === 'pos' ? (
+            <div style={{ width: '100%', height: 'calc(100vh - 150px)', border: 'none', display: 'flex', justifyContent: 'center' }}>
+              <iframe 
+                srcDoc={getPosInvoiceHtml(selectedInvoice, printSize)} 
+                style={{ width: printSize === '80mm' ? '350px' : '100%', height: '100%', border: printSize === '80mm' ? '1px solid #ccc' : 'none', boxShadow: printSize === '80mm' ? '0 0 10px rgba(0,0,0,0.1)' : 'none' }}
+                title="POS Invoice Preview"
+              />
+            </div>
+          ) : (
             <div className="invoice-paper" id="printable-invoice">
               <div className="invoice-header-company">
                 <div className="company-details">
@@ -566,6 +627,7 @@ export default function InvoiceHistory() {
                 <p>Authorized Signatory</p>
               </div>
             </div>
+          )}
 
             <div className="modal-actions-ih no-print">
               <button className="btn-print" onClick={() => handlePrintInvoice(selectedInvoice.id)}>

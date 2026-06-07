@@ -10,7 +10,9 @@ import {
   CreditCard,
   Receipt,
   PauseCircle,
-  ScanLine
+  ScanLine,
+  Maximize,
+  Minimize
 } from 'lucide-react';
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
@@ -59,7 +61,16 @@ export default function WholesaleBillingPage() {
 
       const combined = [...prodResults, ...spareResults];
 
-      const formatted = combined.map(p => ({
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const unexpiredProducts = combined.filter(p => {
+        if (!p.expiry_date) return true;
+        const expDate = new Date(p.expiry_date);
+        return expDate >= today;
+      });
+
+      const formatted = unexpiredProducts.map(p => ({
         id: p.id,
         name: p.name || 'Unnamed Product',
         category: p.category_name || p.category || 'Uncategorized',
@@ -69,6 +80,7 @@ export default function WholesaleBillingPage() {
         stock: Math.max(0, parseInt(p.quantity || p.stock) || 0),
         gst: parseFloat(p.gst_rate) || 0,
         image: p.image || 'https://via.placeholder.com/300x200',
+        sku: p.sku || p.part_number || '',
         hsn: p.hsn_code || '—'
       }));
       
@@ -96,12 +108,29 @@ export default function WholesaleBillingPage() {
       try {
         const storedBranch = localStorage.getItem('selectedBranchId');
         const branchId = (storedBranch && storedBranch !== 'undefined' && storedBranch !== 'null') ? storedBranch : '1';
-        const { posSettingsAPI } = require('../../services/api');
+        const { posSettingsAPI, branchesAPI } = require('../../services/api');
+        
         const data = await posSettingsAPI.get(branchId);
         if (data && Object.keys(data).length > 0) {
           if (data.shop_name) setShopName(data.shop_name);
           if (data.gstin) setGstin(data.gstin);
-          if (data.print_size) setPrintSize(data.print_size);
+          if (data.wholesale_print_size) setPrintSize(data.wholesale_print_size);
+          else if (data.print_size) setPrintSize(data.print_size);
+        }
+        
+        try {
+          const branches = await branchesAPI.getAll();
+          if (branches && branches.length > 0) {
+            const branch = branches.find(b => b.id == branchId) || branches[0];
+            if (branch.address || branch.city) {
+              setBranchAddress(`${branch.address || ''}${branch.address && branch.city ? ', ' : ''}${branch.city || ''}`);
+            }
+            if (branch.city) setBranchCity(branch.city);
+            if (branch.phone) setBranchPhone(branch.phone);
+            if (branch.email) setBranchEmail(branch.email);
+          }
+        } catch (branchErr) {
+          console.error('Failed to fetch branch details:', branchErr);
         }
       } catch (err) {
         console.error('Failed to fetch POS settings:', err);
@@ -132,18 +161,55 @@ export default function WholesaleBillingPage() {
   const [shopName, setShopName] = useState('Electronics Hub India');
   const [gstin, setGstin] = useState('27AAACH9999Z1Z5');
   const [printSize, setPrintSize] = useState('80mm');
+  const [branchAddress, setBranchAddress] = useState('VENKATESHWARA NAGAR, SINDHANUR');
+  const [branchPhone, setBranchPhone] = useState('9845122669');
+  const [branchEmail, setBranchEmail] = useState('mohan.mv2@gmail.com');
+  const [branchCity, setBranchCity] = useState('Sindhanur');
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
   const [addingCustomer, setAddingCustomer] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    const elem = document.querySelector('.pos-wrapper');
+    if (!document.fullscreenElement) {
+      if (elem?.requestFullscreen) {
+        elem.requestFullscreen().catch(err => {
+          console.error("Error attempting to enable fullscreen:", err);
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const categories = ['All', ...new Set(products.map(p => p.category))];
 
   const filteredProducts = products.filter(
-    p =>
-      (activeCategory === 'All' || p.category === activeCategory) &&
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    p => {
+      if (activeCategory !== 'All' && p.category !== activeCategory) return false;
+      const query = searchQuery.toLowerCase();
+      if (!query) return true;
+      
+      return (
+        (p.name && p.name.toLowerCase().includes(query)) ||
+        (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.category && p.category.toLowerCase().includes(query)) ||
+        (p.price && p.price.toString().includes(query))
+      );
+    }
   );
 
   const addToCart = product => {
@@ -303,7 +369,8 @@ export default function WholesaleBillingPage() {
         gstAmount: parseFloat(gstTotal.toFixed(2)),
         discountAmount: parseFloat(discountAmount.toFixed(2)),
         paymentMethod: paymentMode,
-        notes: notes
+        notes: notes,
+        invoiceType: 'wholesale'
       };
 
       const response = await fetch(`${API_BASE}/billing`, {
@@ -325,8 +392,11 @@ export default function WholesaleBillingPage() {
       showToast('Invoice created successfully!', 'success');
       
       // Auto-print receipt
-      const printWindow = window.open('', '_blank');
       const invoiceId = data.invoiceId || (data.invoice && data.invoice.id) || 'NEW';
+      
+      const adminUserStr = localStorage.getItem('adminUser');
+      const bProf = adminUserStr ? JSON.parse(adminUserStr) : {};
+      const bLogo = bProf.logo_url || '';
       
       let htmlContent = '';
       if (printSize === 'A4') {
@@ -352,18 +422,18 @@ export default function WholesaleBillingPage() {
 
         // Rows for the main items table
         const tableRowsHtml = cart.map((item, idx) => `
-          <tr style="border-bottom: 1px solid #cbd5e1;">
-            <td style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
-            <td style="padding: 8px 6px; text-align: left; font-weight: 600; border-right: 1px solid #cbd5e1;">${item.name}</td>
-            <td style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.hsn || '—'}</td>
-            <td style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.gst}%</td>
-            <td style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.qty.toFixed(2)}</td>
-            <td style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">Units</td>
-            <td style="padding: 8px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${(item.retailPrice || item.price).toFixed(2)}</td>
-            <td style="padding: 8px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${item.price.toFixed(2)}</td>
-            <td style="padding: 8px 6px; text-align: right; font-weight: 600;">₹${(item.price * item.qty).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-          </tr>
-        `).join('');
+    <tr style="border-bottom: 1px solid #cbd5e1; font-size: 11px;">
+      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
+      <td style="padding: 3px 6px; text-align: left; font-weight: 600; border-right: 1px solid #cbd5e1;">${item.name || item.item_name}</td>
+      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.hsn || item.hsn_code || '—'}</td>
+      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.gst || item.gst_rate || 0}%</td>
+      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${Number(item.qty || item.quantity).toFixed(2)}</td>
+      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.unit || 'Units'}</td>
+      <td style="padding: 3px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${Number(item.retailPrice || item.price || item.unit_price || 0).toFixed(2)}</td>
+      <td style="padding: 3px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${Number(item.price || item.unit_price || 0).toFixed(2)}</td>
+      <td style="padding: 3px 6px; text-align: right; font-weight: 600;">₹${(Number(item.price || item.unit_price || 0) * Number(item.qty || item.quantity || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+    </tr>
+  `).join('');
 
 
 
@@ -401,6 +471,10 @@ export default function WholesaleBillingPage() {
           `;
         }).join('');
 
+        const bUpiId = bProf.upi_id || '';
+        const upiString = bUpiId ? `upi://pay?pa=${bUpiId}&pn=${encodeURIComponent(shopName)}&am=${total.toFixed(2)}&cu=INR` : '';
+        const upiQrUrl = bUpiId ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiString)}` : '';
+
         htmlContent = `
           <!DOCTYPE html>
           <html>
@@ -429,7 +503,7 @@ export default function WholesaleBillingPage() {
                 .bill-details { line-height: 1.4; }
 
                 .items-table { width: 100%; border-collapse: collapse; border-bottom: 1px solid #000; }
-                .items-table th { background: #f1f5f9; padding: 8px 4px; font-weight: bold; font-size: 12px; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #000; text-align: center; }
+                .items-table th { background: #f1f5f9; padding: 4px 4px; font-weight: bold; font-size: 11px; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #000; text-align: center; }
                 .items-table th:last-child { border-right: none; }
 
                 .summary-outer { display: flex; width: 100%; border-bottom: 1px solid #000; }
@@ -469,9 +543,11 @@ export default function WholesaleBillingPage() {
                     <div style="font-size: 14px; text-decoration: underline;">TAX INVOICE</div>
                     <div>Original Copy</div>
                   </div>
-                  <div class="company-name">${shopName.toUpperCase()}</div>
-                  <div class="company-details">VENKATESHWARA NAGAR, SINDHANUR</div>
-                  <div class="company-details">Tel. : 9845122669 &nbsp;&nbsp; email : mohan.mv2@gmail.com</div>
+                  ${bLogo ? `<div style="position: absolute; left: 10px; top: 35px;"><img src="${bLogo}" alt="Logo" style="max-height: 70px; max-width: 150px; object-fit: contain;" /></div>` : ''}
+                  ${upiQrUrl ? `<div style="position: absolute; right: 10px; top: 35px; text-align: center;"><img src="${upiQrUrl}" alt="UPI QR" style="max-height: 70px; max-width: 70px;" /><div style="font-size: 8px; margin-top: 2px; font-weight: bold;">Scan to Pay</div></div>` : ''}
+                  <div class="company-name" style="margin-top: -5px;">${shopName.toUpperCase()}</div>
+                  <div class="company-details">${branchAddress}</div>
+                  <div class="company-details">Tel. : ${branchPhone} &nbsp;&nbsp; email : ${branchEmail}</div>
                 </div>
 
                 <!-- METADATA BOX -->
@@ -601,7 +677,7 @@ export default function WholesaleBillingPage() {
                     <div>E.& O.E.</div>
                     <div>1. Goods once sold will not be taken back.</div>
                     <div>2. Interest @ 18% p.a. will be charged if the payment is not made within the stipulated time.</div>
-                    <div>3. Subject to 'Sindhanoor' Jurisdiction only.</div>
+                    <div>3. Subject to '${branchCity}' Jurisdiction only.</div>
                   </div>
                   <div class="sign-box">
                     <div style="font-weight: bold;">Receiver's Signature :</div>
@@ -614,7 +690,7 @@ export default function WholesaleBillingPage() {
 
               </div>
               <script>
-                window.onload = function() { window.print(); window.close(); }
+                window.onload = function() { window.print(); }
               </script>
             </body>
           </html>
@@ -635,20 +711,24 @@ export default function WholesaleBillingPage() {
             <head>
               <title>Invoice - ${invoiceId}</title>
               <style>
-                body { font-family: 'Courier New', Courier, monospace; padding: 10px; margin: 0; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; }
+                body { font-family: 'Courier New', Courier, monospace; padding: 10px; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; max-width: ${printSize === '50mm' ? '58mm' : '100%'}; box-sizing: border-box; }
                 .header { text-align: center; margin-bottom: 10px; }
                 .header h2 { margin: 0; font-size: 16px; }
                 .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { text-align: left; padding: 2px 0; }
+                table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                th, td { text-align: left; padding: 2px 0; word-wrap: break-word; }
                 .totals { margin-top: 10px; }
                 .totals-row { display: flex; justify-content: space-between; }
                 .bold { font-weight: bold; }
                 .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                @media print { 
+                  @page { margin: 0; }
+                  body { padding: 5px; width: 100%; max-width: 100%; } 
+                }
               </style>
             </head>
             <body>
-              <div style="max-width: ${width}; margin: 0 auto;">
+              <div style="width: 100%; margin: 0 auto;">
                 <div class="header">
                   <h2>${shopName}</h2>
                   <div>TAX INVOICE</div>
@@ -663,9 +743,9 @@ export default function WholesaleBillingPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Item</th>
-                      <th style="text-align: center;">Qty</th>
-                      <th style="text-align: right;">Amt</th>
+                      <th style="width: 55%;">Item</th>
+                      <th style="width: 15%; text-align: center;">Qty</th>
+                      <th style="width: 30%; text-align: right;">Amt</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -697,16 +777,43 @@ export default function WholesaleBillingPage() {
                 </div>
               </div>
               <script>
-                window.onload = function() { window.print(); window.close(); }
+                window.onload = function() { window.print(); }
               </script>
             </body>
           </html>
         `;
       }
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-      }
+      const wasFullscreen = !!document.fullscreenElement;
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      iframe.contentWindow.addEventListener('afterprint', () => {
+        if (wasFullscreen && !document.fullscreenElement) {
+          const elem = document.querySelector('.pos-wrapper');
+          if (elem && elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => console.log('Fullscreen restore failed', err));
+          }
+        }
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      });
+
+      // Fallback cleanup just in case afterprint doesn't fire
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 300000);
       
       // Refresh product stock levels from database
       await fetchProducts();
@@ -734,8 +841,16 @@ export default function WholesaleBillingPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const barcodeBuffer = React.useRef('');
+  const barcodeTimeout = React.useRef(null);
+
   useEffect(() => {
     const handleKey = e => {
+      // Ignore key events if the user is typing into an input or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+
       if (e.key === 'F9') {
         e.preventDefault();
         if (!selectedCustomer) {
@@ -743,6 +858,44 @@ export default function WholesaleBillingPage() {
           return;
         }
         setPaymentModal(true);
+        return;
+      }
+
+      // Barcode Scanner Logic
+      if (e.key.length === 1) {
+        barcodeBuffer.current += e.key;
+        if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
+        barcodeTimeout.current = setTimeout(() => {
+          barcodeBuffer.current = '';
+        }, 50); // 50ms interval max between keys, normal typing is slower, scanner is faster
+      } else if (e.key === 'Enter' && barcodeBuffer.current.length > 0) {
+        e.preventDefault();
+        
+        const scannedSku = barcodeBuffer.current.trim();
+        const product = products.find(p => p.sku && p.sku.toString().toLowerCase() === scannedSku.toLowerCase());
+        
+        if (product) {
+            setCart(prevCart => {
+                const exists = prevCart.find(i => i.id === product.id);
+                if (exists) {
+                    if (exists.qty >= product.stock) {
+                        showToast(`Cannot add more. Only ${product.stock} units available in stock.`, 'error');
+                        return prevCart;
+                    }
+                    return prevCart.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
+                } else {
+                    if (product.stock <= 0) {
+                        showToast(`Product is out of stock.`, 'error');
+                        return prevCart;
+                    }
+                    return [...prevCart, { ...product, qty: 1 }];
+                }
+            });
+        } else {
+            showToast(`Product with SKU ${scannedSku} not found`, 'error');
+        }
+        
+        barcodeBuffer.current = '';
       }
     };
 
@@ -750,8 +903,9 @@ export default function WholesaleBillingPage() {
 
     return () => {
       window.removeEventListener('keydown', handleKey);
+      if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
     };
-  }, [selectedCustomer]);
+  }, [selectedCustomer, products]);
 
   return (
     <div className="pos-wrapper">
@@ -781,6 +935,21 @@ export default function WholesaleBillingPage() {
               <ScanLine size={18} />
               Scanner Active
             </div>
+
+            <button 
+              onClick={toggleFullscreen}
+              className="fullscreen-btn"
+              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 12px', background: isFullscreen ? '#20b2aa' : '#f1f5f9', 
+                color: isFullscreen ? '#fff' : '#475569',
+                border: '1px solid #cbd5e1', borderRadius: '8px', 
+                cursor: 'pointer', marginLeft: '10px', transition: 'all 0.2s'
+              }}
+            >
+              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+            </button>
 
           </div>
 
@@ -826,8 +995,8 @@ export default function WholesaleBillingPage() {
                   <span className="category-tag">
                     {product.category}
                   </span>
-                  <h3>{product.name}</h3>
-                  <div className="price-stock">
+                  <h4>{product.name}</h4>
+                  <div className="price-row">
                     <span className="price">₹{product.wholesalePrice.toLocaleString()}</span>
                     <span className="stock">Stock: {product.stock}</span>
                   </div>

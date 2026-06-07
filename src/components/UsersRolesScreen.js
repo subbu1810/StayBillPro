@@ -22,10 +22,12 @@ export default function UsersRolesScreen() {
 		{ id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'Main' },
 
 		// Sales (POS)
-		{ id: 'pos-billing', label: 'Create Invoice', icon: '💳', group: 'Sales (POS)' },
+		{ id: 'pos-billing', label: 'POS', icon: '💳', group: 'Sales (POS)' },
+		{ id: 'pos-quotation', label: 'Quotation', icon: '📄', group: 'Sales (POS)' },
 		{ id: 'pos-wholesale', label: 'Wholesale Bill', icon: '📦', group: 'Sales (POS)' },
 		{ id: 'pos-returns', label: 'Returns & Refunds', icon: '↩️', group: 'Sales (POS)' },
-		{ id: 'invoice-history', label: 'Invoice History', icon: '📋', group: 'Sales (POS)' },
+		{ id: 'invoice-history', label: 'POS History', icon: '📋', group: 'Sales (POS)' },
+		{ id: 'wholesale-history', label: 'Wholesale History', icon: '📦', group: 'Sales (POS)' },
 		
 		// Jobs
 		{ id: 'jobs', label: 'Active Jobs List', icon: '📋', group: 'Service Jobs' },
@@ -35,6 +37,7 @@ export default function UsersRolesScreen() {
 		
 		// Store Stock
 		{ id: 'inventory-sales-stock', label: 'Current Stock', icon: '📦', group: 'Store Stock' },
+		{ id: 'inventory-sales-expiry', label: 'Expiry Monitor', icon: '⏳', group: 'Store Stock' },
 		{ id: 'inventory-sales-categories', label: 'Categories', icon: '🏷️', group: 'Store Stock' },
 		{ id: 'inventory-sales-ledger', label: 'Stock Log', icon: '📜', group: 'Store Stock' },
 
@@ -65,11 +68,13 @@ export default function UsersRolesScreen() {
 		{ id: 'staff-roles', label: 'Roles & Access', icon: '🛡️', group: 'Staff Management' },
 		{ id: 'staff-attendance', label: 'Attendance Tracking', icon: '🕒', group: 'Staff Management' },
 		{ id: 'staff-salary', label: 'Payroll & Salary', icon: '💰', group: 'Staff Management' },
+		{ id: 'staff-history', label: 'Payment History', icon: '📜', group: 'Staff Management' },
 		
 		// Purchase
 		{ id: 'purchase-po', label: 'Purchase Orders', icon: '📜', group: 'Purchase Management' },
 		{ id: 'purchase-grn', label: 'GRN / Receiving', icon: '📥', group: 'Purchase Management' },
 		{ id: 'purchase-due', label: 'Due Tracking', icon: '💸', group: 'Purchase Management' },
+		{ id: 'purchase-returns', label: 'Damaged / Returns', icon: '↩️', group: 'Purchase Management' },
 
 		// Reports
 		{ id: 'reports-sales', label: 'Sales Report', icon: '📊', group: 'Insight Reports' },
@@ -420,6 +425,7 @@ export default function UsersRolesScreen() {
 									<label className="premium-input-label">Phone Number</label>
 									<input 
 										type="tel" 
+										maxLength="10"
 										className="premium-input"
 										placeholder="9876543210"
 										value={newUser.phone} 
@@ -557,6 +563,7 @@ export default function UsersRolesScreen() {
 									<label className="premium-input-label">Phone Number</label>
 									<input 
 										type="tel" 
+										maxLength="10"
 										className="premium-input"
 										placeholder="9876543210"
 										value={editingUser.phone} 

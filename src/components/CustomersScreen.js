@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/CustomersScreen.css';
 import CustomerFormModal from './CustomersForm';
+import { usePopup } from './ui/PopupProvider';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -8,6 +9,7 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
    LedgerTab — full customer ledger with running balance
 ───────────────────────────────────────────────────────────── */
 function LedgerTab({ customers }) {
+  const popup = usePopup();
   const [customerId, setCustomerId] = useState('');
   const [ledgerData, setLedgerData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -318,10 +320,10 @@ function LedgerTab({ customers }) {
               style={{ background: '#ea4335', padding: '5px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
               onClick={async () => {
                 if (!ledgerData.customer.email) {
-                  alert('This customer does not have an email address configured.');
+                  popup.showError('This customer does not have an email address configured.');
                   return;
                 }
-                const confirmSend = window.confirm(`Send ledger statement email directly to ${ledgerData.customer.email}?`);
+                const confirmSend = await popup.confirm(`Send ledger statement email directly to ${ledgerData.customer.email}?`);
                 if (!confirmSend) return;
 
                 try {
@@ -336,13 +338,13 @@ function LedgerTab({ customers }) {
                   });
                   const data = await res.json();
                   if (res.ok) {
-                    alert('Email sent successfully directly to the customer!');
+                    popup.showSuccess('Email sent successfully directly to the customer!');
                   } else {
-                    alert(`Failed to send email: ${data.message || 'Unknown error'}`);
+                    popup.showError(`Failed to send email: ${data.message || 'Unknown error'}`);
                   }
                 } catch (err) {
                   console.error(err);
-                  alert('Error sending email. Please verify backend configurations.');
+                  popup.showError('Error sending email. Please verify backend configurations.');
                 }
               }}
             >
@@ -531,6 +533,7 @@ function LedgerTab({ customers }) {
 }
 
 export default function CustomersScreen({ defaultTab }) {
+  const popup = usePopup();
   const [viewMode, setViewMode] = useState(defaultTab || 'manage');
   const [search, setSearch] = useState('');
   const [customers, setCustomers] = useState([]);
@@ -558,7 +561,7 @@ export default function CustomersScreen({ defaultTab }) {
       setLedgerData(await res.json());
     } catch (err) {
       console.error(err);
-      alert('Could not load ledger. Please try again.');
+      popup.showError('Could not load ledger. Please try again.');
     } finally {
       setLedgerLoading(false);
     }
@@ -668,7 +671,8 @@ export default function CustomersScreen({ defaultTab }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this customer? This cannot be undone.')) return;
+    const ok = await popup.confirm('Delete this customer? This cannot be undone.');
+    if (!ok) return;
     setDeletingId(id);
     try {
       const token = localStorage.getItem('token');
@@ -678,7 +682,7 @@ export default function CustomersScreen({ defaultTab }) {
       });
       setCustomers((prev) => prev.filter((c) => c.id !== id));
     } catch {
-      alert('Failed to delete customer.');
+      popup.showError('Failed to delete customer.');
     } finally {
       setDeletingId(null);
     }
@@ -985,7 +989,7 @@ export default function CustomersScreen({ defaultTab }) {
                               const mobileNum = c.mobile || c.phone || '';
                               const cleanPhone = mobileNum.replace(/\D/g, '');
                               if (!cleanPhone) {
-                                alert('Customer phone number is invalid.');
+                                popup.showError('Customer phone number is invalid.');
                                 return;
                               }
                               const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;

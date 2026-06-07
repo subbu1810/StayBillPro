@@ -7,7 +7,8 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -48,6 +49,10 @@ const returnRoutes = require('./routes/returnRoutes');
 const staffManagementRoutes = require('./routes/staffManagementRoutes');
 const barcodeSettingsRoutes = require('./routes/barcodeSettingsRoutes');
 const unitRoutes = require('./routes/unitRoutes');
+const reportsRoutes = require('./routes/reportsRoutes');
+const ocrRoutes = require('./routes/ocrRoutes');
+const walletRoutes = require('./routes/walletRoutes');
+const quotationRoutes = require('./routes/quotationRoutes');
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/branches', branchRoutes);
@@ -70,6 +75,10 @@ app.use('/api/returns', returnRoutes);
 app.use('/api/staff-mgmt', staffManagementRoutes);
 app.use('/api/barcode-settings', barcodeSettingsRoutes);
 app.use('/api/units', unitRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/ocr', ocrRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/quotations', quotationRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

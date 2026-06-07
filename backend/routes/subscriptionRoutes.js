@@ -1,14 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Verify Payment and Activate Subscription
 router.post('/verify', async (req, res) => {
     try {
         const { 
             admin_id, plan_name, features, transaction_id, 
-            amount, gst_amount, total_paid 
+            amount, gst_amount, total_paid,
+            razorpay_order_id, razorpay_payment_id, razorpay_signature
         } = req.body;
+
+        // Verify Signature
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'dummy_secret')
+            .update(body.toString())
+            .digest('hex');
+
+        if (expectedSignature !== razorpay_signature) {
+            return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+        }
 
         // 1. Calculate validity based on plan
         let months = 12;
@@ -33,9 +46,10 @@ router.post('/verify', async (req, res) => {
             `UPDATE admins SET 
                 is_active = TRUE, 
                 current_plan = ?, 
+                features = ?,
                 subscription_expiry = ? 
             WHERE id = ?`,
-            [plan_name, expiryDate, admin_id]
+            [plan_name, features || 'Both Features', expiryDate, admin_id]
         );
 
         res.json({ message: "Payment verified. Subscription activated until " + expiryDate.toDateString() });

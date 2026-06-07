@@ -50,6 +50,10 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                         email: user.email || '',
                         phone: user.phone || '',
                         logoBase64: user.logo_url || null,
+                        bankName: user.bank_name || '',
+                        bankAccount: user.bank_account || '',
+                        ifscCode: user.ifsc_code || '',
+                        upiId: user.upi_id || '',
                         logo: '🧾'
                     };
                 }
@@ -61,6 +65,10 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
             address: 'Sector 4, Corporate Park, Mumbai - 400001',
             email: 'billing@staybill.com',
             phone: '+91 98765 43210',
+            bankName: '',
+            bankAccount: '',
+            ifscCode: '',
+            upiId: '',
             logo: '🧾'
         };
     });
@@ -116,7 +124,11 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                 address: corporateInfo.address,
                 email: corporateInfo.email,
                 phone: corporateInfo.phone,
-                logo_url: corporateInfo.logoBase64 || null
+                logo_url: corporateInfo.logoBase64 || null,
+                bank_name: corporateInfo.bankName,
+                bank_account: corporateInfo.bankAccount,
+                ifsc_code: corporateInfo.ifscCode,
+                upi_id: corporateInfo.upiId
             });
 
             setCorporateInfo(prev => {
@@ -127,7 +139,11 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                     address: response.address || prev.address,
                     email: response.email || prev.email,
                     phone: response.phone || prev.phone,
-                    logoBase64: response.logo_url !== undefined ? response.logo_url : prev.logoBase64
+                    logoBase64: response.logo_url !== undefined ? response.logo_url : prev.logoBase64,
+                    bankName: response.bank_name !== undefined ? response.bank_name : prev.bankName,
+                    bankAccount: response.bank_account !== undefined ? response.bank_account : prev.bankAccount,
+                    ifscCode: response.ifsc_code !== undefined ? response.ifsc_code : prev.ifscCode,
+                    upiId: response.upi_id !== undefined ? response.upi_id : prev.upiId
                 };
                 
                 // Update localStorage so it persists across refreshes
@@ -141,6 +157,10 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                         user.email = updated.email;
                         user.phone = updated.phone;
                         user.logo_url = updated.logoBase64;
+                        user.bank_name = updated.bankName;
+                        user.bank_account = updated.bankAccount;
+                        user.ifsc_code = updated.ifscCode;
+                        user.upi_id = updated.upiId;
                         localStorage.setItem('adminUser', JSON.stringify(user));
                     }
                 } catch(e) { console.error('Error updating localStorage', e); }
@@ -252,7 +272,7 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                             </div>
                             <div className="st-form-group">
                                 <label>Phone Number</label>
-                                <input type="tel" className="st-input" disabled={!isEditing} value={adminProfile.phone} onChange={e => setAdminProfile({...adminProfile, phone: e.target.value})} />
+                                <input type="tel" maxLength="10" className="st-input" disabled={!isEditing} value={adminProfile.phone} onChange={e => setAdminProfile({...adminProfile, phone: e.target.value})} />
                             </div>
                         </div>
                     </div>
@@ -400,8 +420,31 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                             </div>
                             <div className="st-form-group">
                                 <label>Support Phone</label>
-                                <input type="tel" className="st-input" value={corporateInfo.phone} onChange={e => setCorporateInfo({...corporateInfo, phone: e.target.value})} />
+                                <input type="tel" maxLength="10" className="st-input" value={corporateInfo.phone} onChange={e => setCorporateInfo({...corporateInfo, phone: e.target.value})} />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Payment Details Section */}
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Payment Details</h4>
+                        <div className="st-form-group full-width">
+                            <label>Bank Name</label>
+                            <input type="text" className="st-input" value={corporateInfo.bankName} onChange={e => setCorporateInfo({...corporateInfo, bankName: e.target.value})} placeholder="Enter Bank Name" />
+                        </div>
+                        <div className="st-form-row" style={{ marginTop: '16px' }}>
+                            <div className="st-form-group">
+                                <label>Bank Account Number</label>
+                                <input type="text" className="st-input" value={corporateInfo.bankAccount} onChange={e => setCorporateInfo({...corporateInfo, bankAccount: e.target.value})} placeholder="Enter Account Number" />
+                            </div>
+                            <div className="st-form-group">
+                                <label>IFSC Code</label>
+                                <input type="text" className="st-input" value={corporateInfo.ifscCode} onChange={e => setCorporateInfo({...corporateInfo, ifscCode: e.target.value})} placeholder="Enter IFSC Code" />
+                            </div>
+                        </div>
+                        <div className="st-form-group full-width" style={{ marginTop: '16px' }}>
+                            <label>UPI ID</label>
+                            <input type="text" className="st-input" value={corporateInfo.upiId} onChange={e => setCorporateInfo({...corporateInfo, upiId: e.target.value})} placeholder="merchant@upi" />
                         </div>
                     </div>
 

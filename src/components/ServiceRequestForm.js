@@ -78,6 +78,7 @@ function ServiceRequestForm() {
             </label>
             <input
               type="tel"
+              maxLength="10"
               className="modern-input"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}

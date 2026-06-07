@@ -135,6 +135,49 @@ exports.loginAdmin = async (req, res) => {
         // If staff, use parent_admin_id as the primary business context
         const businessId = user.role === 'SUPERADMIN' ? user.id : user.parent_admin_id;
         
+        // Auto-recharge Wallet Logic
+        let currentWalletBalance = 0.00;
+        try {
+            const [bizUsers] = await db.query('SELECT scan_wallet_balance, last_wallet_recharge_date FROM admins WHERE id = ?', [businessId]);
+            if (bizUsers.length > 0) {
+                const bizUser = bizUsers[0];
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                
+                let needsRecharge = false;
+                let isInitialRecharge = false;
+                if (!bizUser.last_wallet_recharge_date) {
+                    needsRecharge = true;
+                    isInitialRecharge = true;
+                } else {
+                    const lastRecharge = new Date(bizUser.last_wallet_recharge_date);
+                    if (lastRecharge.getMonth() !== currentMonth || lastRecharge.getFullYear() !== currentYear) {
+                        needsRecharge = true;
+                    }
+                }
+
+                if (needsRecharge) {
+                    const rechargeAmount = isInitialRecharge ? 5000.00 : 10.00;
+                    currentWalletBalance = parseFloat(bizUser.scan_wallet_balance || 0) + rechargeAmount;
+                    await db.query(
+                        'UPDATE admins SET scan_wallet_balance = ?, last_wallet_recharge_date = ? WHERE id = ?',
+                        [currentWalletBalance, now, businessId]
+                    );
+                    
+                    // Log transaction
+                    await db.query(
+                        'INSERT INTO wallet_transactions (admin_id, type, amount, description) VALUES (?, ?, ?, ?)',
+                        [businessId, 'auto_recharge', rechargeAmount, isInitialRecharge ? 'Initial Wallet Bonus' : 'Monthly Auto-Recharge']
+                    );
+                } else {
+                    currentWalletBalance = parseFloat(bizUser.scan_wallet_balance || 0);
+                }
+            }
+        } catch (walletErr) {
+            console.error('Wallet recharge error:', walletErr);
+        }
+
         const token = jwt.sign(
             { 
                 id: user.id, 
@@ -158,9 +201,18 @@ exports.loginAdmin = async (req, res) => {
                 branchId: user.branch_id,
                 permissions: user.permissions,
                 plan: user.current_plan,
+                features: user.features,
                 expiry: user.subscription_expiry,
                 logo_url: user.logo_url,
-                eula_accepted: user.eula_accepted
+                eula_accepted: user.eula_accepted,
+                phone: user.phone,
+                address: user.address,
+                gst_number: user.gst_number,
+                bank_name: user.bank_name,
+                bank_account: user.bank_account,
+                ifsc_code: user.ifsc_code,
+                upi_id: user.upi_id,
+                scan_wallet_balance: currentWalletBalance
             }
         });
     } catch (error) {
@@ -218,7 +270,11 @@ exports.updateAdminProfile = async (req, res) => {
             country,
             business_type,
             gst_number,
-            logo_url
+            logo_url,
+            bank_name,
+            bank_account,
+            ifsc_code,
+            upi_id
         } = req.body;
 
         // Check for email conflicts if email is being changed
@@ -245,7 +301,11 @@ exports.updateAdminProfile = async (req, res) => {
                 country = COALESCE(?, country),
                 business_type = COALESCE(?, business_type),
                 gst_number = COALESCE(?, gst_number),
-                logo_url = COALESCE(?, logo_url)
+                logo_url = COALESCE(?, logo_url),
+                bank_name = COALESCE(?, bank_name),
+                bank_account = COALESCE(?, bank_account),
+                ifsc_code = COALESCE(?, ifsc_code),
+                upi_id = COALESCE(?, upi_id)
              WHERE id = ?`,
             [
                 business_name,
@@ -260,6 +320,10 @@ exports.updateAdminProfile = async (req, res) => {
                 business_type,
                 gst_number,
                 logo_url,
+                bank_name,
+                bank_account,
+                ifsc_code,
+                upi_id,
                 adminId
             ]
         );

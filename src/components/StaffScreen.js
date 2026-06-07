@@ -3,8 +3,10 @@ import '../styles/StaffScreen.css';
 import '../styles/SettingsScreen.css';
 import { staffAPI, branchesAPI, staffManagementAPI } from '../services/api';
 import UsersRolesScreen from './UsersRolesScreen';
+import { usePopup } from './ui/PopupProvider';
 
 const StaffScreen = ({ defaultTab = 'manage' }) => {
+    const popup = usePopup();
     const [staff, setStaff] = useState([]);
     const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,9 +25,11 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         { id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'Main' },
 
         // Sales (POS)
-        { id: 'pos-billing', label: 'Create Invoice', icon: '💳', group: 'Sales (POS)' },
+        { id: 'pos-billing', label: 'POS', icon: '💳', group: 'Sales (POS)' },
+        { id: 'pos-wholesale', label: 'Wholesale Bill', icon: '📦', group: 'Sales (POS)' },
         { id: 'pos-returns', label: 'Returns & Refunds', icon: '↩️', group: 'Sales (POS)' },
-        { id: 'invoice-history', label: 'Invoice History', icon: '📋', group: 'Sales (POS)' },
+        { id: 'invoice-history', label: 'POS History', icon: '📋', group: 'Sales (POS)' },
+        { id: 'wholesale-history', label: 'Wholesale History', icon: '📦', group: 'Sales (POS)' },
         
         // Jobs
         { id: 'jobs', label: 'Active Jobs List', icon: '📋', group: 'Service Jobs' },
@@ -35,6 +39,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         
         // Store Stock
         { id: 'inventory-sales-stock', label: 'Current Stock', icon: '📦', group: 'Store Stock' },
+        { id: 'inventory-sales-expiry', label: 'Expiry Monitor', icon: '⏳', group: 'Store Stock' },
         { id: 'inventory-sales-categories', label: 'Categories', icon: '🏷️', group: 'Store Stock' },
         { id: 'inventory-sales-ledger', label: 'Stock Log', icon: '📜', group: 'Store Stock' },
 
@@ -65,11 +70,13 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         { id: 'staff-roles', label: 'Roles & Access', icon: '🛡️', group: 'Staff Management' },
         { id: 'staff-attendance', label: 'Attendance Tracking', icon: '🕒', group: 'Staff Management' },
         { id: 'staff-salary', label: 'Payroll & Salary', icon: '💰', group: 'Staff Management' },
+        { id: 'staff-history', label: 'Payment History', icon: '📜', group: 'Staff Management' },
         
         // Purchase
         { id: 'purchase-po', label: 'Purchase Orders', icon: '📜', group: 'Purchase Management' },
         { id: 'purchase-grn', label: 'GRN / Receiving', icon: '📥', group: 'Purchase Management' },
         { id: 'purchase-due', label: 'Due Tracking', icon: '💸', group: 'Purchase Management' },
+        { id: 'purchase-returns', label: 'Damaged / Returns', icon: '↩️', group: 'Purchase Management' },
 
         // Reports
         { id: 'reports-sales', label: 'Sales Report', icon: '📊', group: 'Insight Reports' },
@@ -108,6 +115,13 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
     // Payroll state
     const [payrollMonth, setPayrollMonth] = useState(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
     const [payrollList, setPayrollList] = useState([]);
+
+    // Payment History state
+    const [historyList, setHistoryList] = useState([]);
+    const [historyTotal, setHistoryTotal] = useState(0);
+    const [historySearch, setHistorySearch] = useState('');
+    const [historyFromMonth, setHistoryFromMonth] = useState('');
+    const [historyToMonth, setHistoryToMonth] = useState('');
 
     useEffect(() => {
         fetchData();
@@ -167,6 +181,25 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         if (defaultTab === 'salary') fetchPayroll();
     }, [defaultTab, payrollMonth]);
 
+    const fetchPayrollHistory = async (params = {}) => {
+        try {
+            setLoading(true);
+            const res = await staffManagementAPI.getPayrollHistory(params);
+            if (res.success) {
+                setHistoryList(res.history);
+                setHistoryTotal(res.totalDisbursed);
+            }
+        } catch (err) {
+            setError('Error fetching history: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (defaultTab === 'history') fetchPayrollHistory();
+    }, [defaultTab]);
+
     const toggleGroupPermissions = (screens, isAllChecked) => {
         const screenIds = screens.map(s => s.id);
         let current = [...newStaff.permissions];
@@ -181,7 +214,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
     const handleCreateStaff = async (e) => {
         e.preventDefault();
         if (!newStaff.branch_id) {
-            alert("Please select a branch for this staff member.");
+            popup.showError("Please select a branch for this staff member.");
             return;
         }
         setIsSubmitting(true);
@@ -232,15 +265,14 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                 <td>₹0</td>
                                 <td>
                                     <button className="btn-icon">✏️</button>
-                                    <button className="btn-icon" onClick={() => {
-                                        if(window.confirm('Remove this staff member?')) {
+                                    <button className="btn-icon" onClick={async () => {
+                                        const ok = await popup.confirm('Remove this staff member?');
+                                        if(ok) {
                                             staffAPI.delete(s.id).then(() => {
-                                                setSuccess('Staff member removed successfully!');
-                                                setTimeout(() => setSuccess(null), 4000);
+                                                popup.showSuccess('Staff member removed successfully!');
                                                 fetchData();
                                             }).catch(err => {
-                                                setError('Failed to remove staff: ' + err.message);
-                                                setTimeout(() => setError(null), 4000);
+                                                popup.showError('Failed to remove staff: ' + err.message);
                                             });
                                         }
                                     }}>🗑️</button>
@@ -260,6 +292,32 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
             <UsersRolesScreen />
         </div>
     );
+
+    const handleAttendanceChange = (staffId, field, value) => {
+        setAttendanceList(prev => prev.map(a => 
+            a.staff_id === staffId ? { ...a, [field]: value } : a
+        ));
+    };
+
+    const handleSaveAttendance = async (record) => {
+        try {
+            setLoading(true);
+            await staffManagementAPI.updateAttendance({
+                staff_id: record.staff_id,
+                date: attendanceDate,
+                status: record.status,
+                check_in: record.check_in,
+                check_out: record.check_out
+            });
+            setSuccess(`Attendance saved for ${record.name}`);
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (err) {
+            setError('Error saving attendance: ' + err.message);
+            setTimeout(() => setError(null), 3000);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const renderAttendance = () => (
         <div className="crm-content">
@@ -295,8 +353,8 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                         <th>Employee</th>
                         <th>Check-in</th>
                         <th>Check-out</th>
-                        <th>Work Hours</th>
                         <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -305,11 +363,47 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                     ) : attendanceList.length > 0 ? (
                         attendanceList.map(a => (
                             <tr key={a.staff_id}>
-                                <td>{a.name}</td>
-                                <td>{a.check_in}</td>
-                                <td>{a.check_out}</td>
-                                <td>{a.work_hours} Hrs</td>
-                                <td><span className={`method-pill ${a.status === 'Present' ? 'success' : 'warning'}`}>{a.status}</span></td>
+                                <td style={{ fontWeight: '500' }}>{a.name}</td>
+                                <td>
+                                    <input 
+                                        type="time" 
+                                        className="premium-input"
+                                        style={{ width: '120px', padding: '4px 8px', margin: 0 }}
+                                        value={a.check_in}
+                                        onChange={(e) => handleAttendanceChange(a.staff_id, 'check_in', e.target.value)}
+                                    />
+                                </td>
+                                <td>
+                                    <input 
+                                        type="time" 
+                                        className="premium-input"
+                                        style={{ width: '120px', padding: '4px 8px', margin: 0 }}
+                                        value={a.check_out}
+                                        onChange={(e) => handleAttendanceChange(a.staff_id, 'check_out', e.target.value)}
+                                    />
+                                </td>
+                                <td>
+                                    <select 
+                                        className="premium-input"
+                                        style={{ width: '130px', padding: '4px 8px', margin: 0 }}
+                                        value={a.status}
+                                        onChange={(e) => handleAttendanceChange(a.staff_id, 'status', e.target.value)}
+                                    >
+                                        <option value="Present">Present</option>
+                                        <option value="Absent">Absent</option>
+                                        <option value="Half-Day">Half-Day</option>
+                                        <option value="Leave">Leave</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button 
+                                        className="btn-primary"
+                                        style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                                        onClick={() => handleSaveAttendance(a)}
+                                    >
+                                        Save
+                                    </button>
+                                </td>
                             </tr>
                         ))
                     ) : (
@@ -320,58 +414,167 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         </div>
     );
 
+    const handlePayrollChange = (staffId, field, value) => {
+        setPayrollList(prev => prev.map(p => {
+            if (p.staff_id === staffId) {
+                const updated = { ...p, [field]: value };
+                const base = Number(updated.base_salary) || 0;
+                const allow = Number(updated.allowances) || 0;
+                const deduc = Number(updated.deductions) || 0;
+                updated.net_payable = base + allow - deduc;
+                return updated;
+            }
+            return p;
+        }));
+    };
+
+    const handleSavePayrollDraft = async (record) => {
+        try {
+            setLoading(true);
+            await staffManagementAPI.savePayrollDraft({
+                staff_id: record.staff_id,
+                month: payrollMonth,
+                base_salary: record.base_salary,
+                allowances: record.allowances,
+                deductions: record.deductions,
+                net_payable: record.net_payable
+            });
+            setSuccess(`Payroll draft saved for ${record.name}`);
+            setTimeout(() => setSuccess(null), 3000);
+            fetchPayroll();
+        } catch (err) {
+            setError('Error saving payroll draft: ' + err.message);
+            setTimeout(() => setError(null), 3000);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const renderSalary = () => {
         const totalPayroll = payrollList.reduce((acc, p) => acc + Number(p.net_payable), 0);
+        const pendingCount = payrollList.filter(p => p.status === 'Pending').length;
+        const paidCount = payrollList.filter(p => p.status === 'Paid').length;
         const pendingPayroll = payrollList.filter(p => p.status === 'Pending').reduce((acc, p) => acc + Number(p.net_payable), 0);
         
+        const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'S';
+
         return (
             <div className="crm-content">
-                <div className="crm-filters" style={{ marginBottom: '16px' }}>
-                    <input 
-                        type="month" 
-                        className="search-input" 
-                        value={payrollMonth}
-                        onChange={(e) => setPayrollMonth(e.target.value)}
-                    />
-                </div>
-                <div className="crm-grid-4">
-                    <div className="report-card">
-                        <span className="card-title">Total Payroll</span>
-                        <div className="card-value">₹{totalPayroll.toLocaleString()}</div>
+                {/* ── Header Row ── */}
+                <div className="payroll-header">
+                    <div className="payroll-month-selector">
+                        <label>Month</label>
+                        <input 
+                            type="month" 
+                            className="payroll-month-input"
+                            value={payrollMonth}
+                            onChange={(e) => setPayrollMonth(e.target.value)}
+                        />
                     </div>
-                    <div className="report-card">
-                        <span className="card-title">Pending Salaries</span>
-                        <div className="card-value warning">₹{pendingPayroll.toLocaleString()}</div>
+                    <div className="payroll-stats">
+                        <div className="payroll-stat-chip">
+                            <span className="stat-label">Total Payroll</span>
+                            <span className="stat-value">₹{totalPayroll.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="payroll-stat-chip">
+                            <span className="stat-label">Pending</span>
+                            <span className="stat-value orange">₹{pendingPayroll.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="payroll-stat-chip">
+                            <span className="stat-label">Employees</span>
+                            <span className="stat-value">{paidCount} / {paidCount + pendingCount}</span>
+                        </div>
                     </div>
                 </div>
-                <table className="crm-table" style={{ marginTop: '12px' }}>
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <th>Base Salary</th>
-                            <th>Allowances</th>
-                            <th>Deductions</th>
-                            <th>Net Payable</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? (
-                            <tr><td colSpan="6">Loading payroll data...</td></tr>
-                        ) : payrollList.length > 0 ? (
-                            payrollList.map(p => (
-                                <tr key={p.id}>
-                                    <td>{p.name}</td>
-                                    <td>₹{Number(p.base_salary).toLocaleString()}</td>
-                                    <td>₹{Number(p.allowances).toLocaleString()}</td>
-                                    <td>₹{Number(p.deductions).toLocaleString()}</td>
-                                    <td style={{ fontWeight: 'bold' }}>₹{Number(p.net_payable).toLocaleString()}</td>
-                                    <td>
+
+                {/* ── Salary Cards Grid ── */}
+                <div className="payroll-grid">
+                    {loading ? (
+                        <div className="payroll-empty-state">Loading payroll data...</div>
+                    ) : payrollList.length > 0 ? (
+                        payrollList.map(p => (
+                            <div className="salary-card" key={p.id}>
+                                {/* Coloured top banner */}
+                                <div className={`salary-card-banner ${p.status === 'Paid' ? 'paid' : ''}`} />
+
+                                {/* Header: Avatar + Name + Status */}
+                                <div className="salary-card-header">
+                                    <div className="salary-employee-info">
+                                        <div className="salary-avatar">{getInitials(p.name)}</div>
+                                        <div>
+                                            <div className="salary-card-name">{p.name}</div>
+                                            <div className="salary-card-role">Staff Member</div>
+                                        </div>
+                                    </div>
+                                    <span className={`salary-status-badge ${p.status === 'Paid' ? 'paid' : 'pending'}`}>
+                                        {p.status}
+                                    </span>
+                                </div>
+                                
+                                {/* Body: Salary Fields */}
+                                <div className="salary-body">
+                                    <div className="salary-field">
+                                        <span className="salary-field-label">Base Salary</span>
                                         {p.status === 'Paid' ? (
-                                            <span className="status-pill success">Paid</span>
+                                            <span className="salary-field-value">₹{Number(p.base_salary).toLocaleString('en-IN')}</span>
                                         ) : (
+                                            <input 
+                                                type="number" 
+                                                className="salary-input"
+                                                value={p.base_salary}
+                                                onChange={(e) => handlePayrollChange(p.staff_id, 'base_salary', e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="salary-field">
+                                        <span className="salary-field-label">Allowances</span>
+                                        {p.status === 'Paid' ? (
+                                            <span className="salary-field-value" style={{color:'#059669'}}>+ ₹{Number(p.allowances).toLocaleString('en-IN')}</span>
+                                        ) : (
+                                            <input 
+                                                type="number" 
+                                                className="salary-input"
+                                                value={p.allowances}
+                                                onChange={(e) => handlePayrollChange(p.staff_id, 'allowances', e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="salary-field">
+                                        <span className="salary-field-label">Deductions</span>
+                                        {p.status === 'Paid' ? (
+                                            <span className="salary-field-value" style={{color:'#ef4444'}}>− ₹{Number(p.deductions).toLocaleString('en-IN')}</span>
+                                        ) : (
+                                            <input 
+                                                type="number" 
+                                                className="salary-input"
+                                                value={p.deductions}
+                                                onChange={(e) => handlePayrollChange(p.staff_id, 'deductions', e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer: Net Payable + Actions */}
+                                <div className="salary-card-footer">
+                                    <div className="net-payable-row">
+                                        <span className="net-payable-label">Net Payable</span>
+                                        <span className="net-payable-amount">
+                                            <span>₹</span>{Number(p.net_payable).toLocaleString('en-IN')}
+                                        </span>
+                                    </div>
+                                    
+                                    {p.status !== 'Paid' && (
+                                        <div className="salary-actions">
                                             <button 
-                                                className="btn-small"
+                                                className="salary-btn salary-btn-save"
+                                                onClick={() => handleSavePayrollDraft(p)}
+                                            >
+                                                Save Draft
+                                            </button>
+                                            <button 
+                                                className="salary-btn salary-btn-pay"
                                                 onClick={async () => {
                                                     try {
                                                         await staffManagementAPI.processPayment({
@@ -391,17 +594,17 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                                     }
                                                 }}
                                             >
-                                                Pay Now
+                                                Process Payment
                                             </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr><td colSpan="6">No payroll records found.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="payroll-empty-state">No payroll records found for this month.</div>
+                    )}
+                </div>
             </div>
         );
     };
@@ -411,7 +614,120 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         if (defaultTab === 'roles') return 'Roles & Permissions';
         if (defaultTab === 'attendance') return 'Attendance Tracking';
         if (defaultTab === 'salary') return 'Payroll & Salary';
+        if (defaultTab === 'history') return 'Payment History';
         return 'Management';
+    };
+
+    const renderPayrollHistory = () => {
+        const filtered = historyList.filter(r =>
+            r.name.toLowerCase().includes(historySearch.toLowerCase())
+        );
+
+        const months = [...new Set(filtered.map(r => r.month))].sort((a,b) => b.localeCompare(a));
+
+        return (
+            <div className="crm-content">
+                {/* Filters */}
+                <div className="payroll-header" style={{ flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                    <input
+                        type="text"
+                        className="payroll-month-input"
+                        placeholder="🔍  Search employee..."
+                        value={historySearch}
+                        onChange={e => setHistorySearch(e.target.value)}
+                        style={{ minWidth: '200px' }}
+                    />
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="payroll-month-selector">
+                            <label>From</label>
+                            <input type="month" className="payroll-month-input" value={historyFromMonth} onChange={e => setHistoryFromMonth(e.target.value)} />
+                        </div>
+                        <div className="payroll-month-selector">
+                            <label>To</label>
+                            <input type="month" className="payroll-month-input" value={historyToMonth} onChange={e => setHistoryToMonth(e.target.value)} />
+                        </div>
+                        <button
+                            className="salary-btn salary-btn-pay"
+                            style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '0.85rem' }}
+                            onClick={() => fetchPayrollHistory({
+                                ...(historySearch ? { } : {}),
+                                ...(historyFromMonth ? { from_month: historyFromMonth } : {}),
+                                ...(historyToMonth ? { to_month: historyToMonth } : {}),
+                            })}
+                        >
+                            Apply Filter
+                        </button>
+                        <button
+                            className="salary-btn salary-btn-save"
+                            style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '0.85rem' }}
+                            onClick={() => { setHistoryFromMonth(''); setHistoryToMonth(''); setHistorySearch(''); fetchPayrollHistory(); }}
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                {/* Summary chip */}
+                <div className="payroll-stats" style={{ marginBottom: '20px' }}>
+                    <div className="payroll-stat-chip">
+                        <span className="stat-label">Total Disbursed</span>
+                        <span className="stat-value">₹{historyTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="payroll-stat-chip">
+                        <span className="stat-label">Records Found</span>
+                        <span className="stat-value">{filtered.length}</span>
+                    </div>
+                </div>
+
+                {/* History Table grouped by Month */}
+                {loading ? (
+                    <div className="payroll-empty-state">Loading history...</div>
+                ) : filtered.length === 0 ? (
+                    <div className="payroll-empty-state">No payment records found.</div>
+                ) : (
+                    months.map(month => {
+                        const monthRecords = filtered.filter(r => r.month === month);
+                        const monthTotal = monthRecords.reduce((acc, r) => acc + Number(r.net_payable), 0);
+                        return (
+                            <div key={month} style={{ marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                        {new Date(month + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                    </h4>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>₹{monthTotal.toLocaleString('en-IN')}</span>
+                                </div>
+                                <table className="crm-table" style={{ width: '100%' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>Employee</th>
+                                            <th>Base Salary</th>
+                                            <th>Allowances</th>
+                                            <th>Deductions</th>
+                                            <th>Net Paid</th>
+                                            <th>Payment Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {monthRecords.map(r => (
+                                            <tr key={r.id}>
+                                                <td style={{ fontWeight: '600' }}>{r.name}</td>
+                                                <td>₹{Number(r.base_salary).toLocaleString('en-IN')}</td>
+                                                <td style={{ color: '#059669' }}>+₹{Number(r.allowances).toLocaleString('en-IN')}</td>
+                                                <td style={{ color: '#ef4444' }}>−₹{Number(r.deductions).toLocaleString('en-IN')}</td>
+                                                <td style={{ fontWeight: '800', color: '#0f172a' }}>₹{Number(r.net_payable).toLocaleString('en-IN')}</td>
+                                                <td style={{ color: '#64748b', fontSize: '0.82rem' }}>
+                                                    {r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        );
     };
 
     return (
@@ -436,6 +752,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
             {defaultTab === 'roles' && renderRoles()}
             {defaultTab === 'attendance' && renderAttendance()}
             {defaultTab === 'salary' && renderSalary()}
+            {defaultTab === 'history' && renderPayrollHistory()}
 
             {/* Add Staff Modal */}
             {showModal && (
@@ -470,6 +787,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                     <label className="premium-input-label">Phone Number *</label>
                                     <input 
                                         type="tel" 
+                                        maxLength="10"
                                         className="premium-input"
                                         required 
                                         value={newStaff.phone} 
