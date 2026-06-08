@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/SuppliersScreen.css';
 import { usePopup } from './ui/PopupProvider';
-import { suppliersAPI } from '../services/api';
+import { suppliersAPI, purchaseAPI } from '../services/api';
 
 export default function SuppliersScreen({ defaultTab }) {
     const popup = usePopup();
@@ -29,6 +29,10 @@ export default function SuppliersScreen({ defaultTab }) {
 
     const [paymentHistory, setPaymentHistory] = useState([]);
     const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+
+    // Purchase History State
+    const [purchaseHistory, setPurchaseHistory] = useState([]);
+    const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState(false);
 
     const API_BASE = process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech/api';
 
@@ -105,6 +109,20 @@ export default function SuppliersScreen({ defaultTab }) {
         }
     };
 
+    const fetchPurchaseHistory = async () => {
+        setPurchaseHistoryLoading(true);
+        try {
+            const res = await purchaseAPI.getOrders();
+            if (res.success) {
+                setPurchaseHistory(res.purchaseOrders);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setPurchaseHistoryLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchSupplierLedger(selectedVendorForLedger);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,6 +138,8 @@ export default function SuppliersScreen({ defaultTab }) {
             fetchDuesData();
         } else if (viewMode === 'payments') {
             fetchPaymentHistory();
+        } else if (viewMode === 'purchases') {
+            fetchPurchaseHistory();
         }
     }, [viewMode]);
 
@@ -576,7 +596,46 @@ export default function SuppliersScreen({ defaultTab }) {
                 </div>
             )}
 
-            {['advance', 'purchases', 'returns', 'po', 'performance'].includes(viewMode) && (
+            {viewMode === 'purchases' && (
+                <div className="crm-content">
+                    <table className="crm-table single-line-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>PO Number</th>
+                                <th>Supplier Name</th>
+                                <th>Total Amount</th>
+                                <th>Expected Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {purchaseHistoryLoading ? (
+                                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>Loading purchases...</td></tr>
+                            ) : purchaseHistory.length > 0 ? (
+                                purchaseHistory.map(order => (
+                                    <tr key={order.id}>
+                                        <td>{new Date(order.order_date).toLocaleDateString()}</td>
+                                        <td style={{ fontWeight: 'bold' }}>{order.po_number}</td>
+                                        <td>{order.supplier_name}</td>
+                                        <td style={{ fontWeight: '800' }}>₹{Number(order.total_amount).toLocaleString()}</td>
+                                        <td>{order.expected_date ? new Date(order.expected_date).toLocaleDateString() : '-'}</td>
+                                        <td>
+                                            <span className={`status-pill ${order.status.toLowerCase()}`}>
+                                                {order.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>No purchase history found.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {['advance', 'returns', 'po', 'performance'].includes(viewMode) && (
                 <div className="crm-content">
                     <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
                         <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🚛</div>
