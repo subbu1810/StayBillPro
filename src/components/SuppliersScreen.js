@@ -229,6 +229,16 @@ export default function SuppliersScreen({ defaultTab }) {
     };
 
     const handleDownloadReceipt = (payment) => {
+        // Find supplier details for address and GSTIN
+        const supplierObj = vendors.find(v => v.supplier_name === payment.supplier_name);
+        const supplierAddress = supplierObj ? [
+            supplierObj.address_line1, 
+            supplierObj.address_line2, 
+            supplierObj.city, 
+            supplierObj.state
+        ].filter(Boolean).join(', ') : '-';
+        const supplierGstin = supplierObj?.gstin || 'N/A';
+
         // Create a PDF that is exactly 1/3 of an A4 page (210mm x 99mm)
         const doc = new jsPDF({
             orientation: 'landscape',
@@ -244,14 +254,35 @@ export default function SuppliersScreen({ defaultTab }) {
         doc.setFont("helvetica", "bold");
         doc.text("PAYMENT RECEIPT", 105, 10, null, null, "center");
 
-        // Info
+        // Firm Details Section
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(9);
+        
+        // From (User Firm)
+        doc.setFont("helvetica", "bold");
+        doc.text("Paid By:", 10, 22);
+        doc.setFont("helvetica", "normal");
+        doc.text("StayBillPro", 10, 27);
+        doc.text("GSTIN: N/A", 10, 32); // Placeholder for user's firm GSTIN if needed later
+
+        // To (Supplier Firm)
+        doc.setFont("helvetica", "bold");
+        doc.text("Paid To:", 105, 22);
+        doc.setFont("helvetica", "normal");
+        doc.text(payment.supplier_name, 105, 27);
+        doc.setFontSize(8);
+        const splitAddress = doc.splitTextToSize(supplierAddress !== '-' ? supplierAddress : 'Address: N/A', 90);
+        doc.text(splitAddress, 105, 31);
+        doc.text(`GSTIN: ${supplierGstin}`, 105, 31 + (splitAddress.length * 3.5));
+
+        // Info Table
         doc.setTextColor(15, 23, 42);
         
         autoTable(doc, {
             body: [
                 ['Receipt No:', payment.reference_no || 'N/A', 'Date:', new Date(payment.payment_date).toLocaleDateString()],
-                ['Paid To:', payment.supplier_name, 'Payment Mode:', payment.payment_method],
-                ['Amount:', `Rs. ${Number(payment.amount).toLocaleString()}`, 'Notes:', payment.notes || '-']
+                ['Amount:', `Rs. ${Number(payment.amount).toLocaleString()}`, 'Payment Mode:', payment.payment_method],
+                ['Notes:', payment.notes || '-', '', '']
             ],
             theme: 'grid',
             styles: { fontSize: 9, cellPadding: 4, lineColor: [226, 232, 240] },
@@ -261,7 +292,7 @@ export default function SuppliersScreen({ defaultTab }) {
                 2: { fontStyle: 'bold', fillColor: [248, 250, 252], textColor: [71, 85, 105], cellWidth: 35 },
                 3: { textColor: [15, 23, 42] }
             },
-            startY: 20,
+            startY: 42,
             margin: { left: 10, right: 10 }
         });
 
