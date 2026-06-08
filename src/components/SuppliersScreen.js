@@ -17,6 +17,16 @@ export default function SuppliersScreen({ defaultTab }) {
     const [ledgerSummary, setLedgerSummary] = useState(null);
     const [ledgerLoading, setLedgerLoading] = useState(false);
 
+    // Dues & Payments State
+    const [duesData, setDuesData] = useState({ summary: {}, suppliers: [] });
+    const [duesLoading, setDuesLoading] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState(null);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const [paymentRef, setPaymentRef] = useState('');
+    const [paymentNotes, setPaymentNotes] = useState('');
+
     const API_BASE = process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech/api';
 
     // Fetch suppliers from backend
@@ -63,6 +73,21 @@ export default function SuppliersScreen({ defaultTab }) {
         }
     };
 
+    const fetchDuesData = async () => {
+        setDuesLoading(true);
+        try {
+            const res = await suppliersAPI.getDues();
+            if (res.success) {
+                setDuesData({ summary: res.summary, suppliers: res.suppliers });
+            }
+        } catch (err) {
+            console.error(err);
+            popup.showError("Failed to fetch dues data");
+        } finally {
+            setDuesLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchSupplierLedger(selectedVendorForLedger);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,6 +97,45 @@ export default function SuppliersScreen({ defaultTab }) {
     useEffect(() => {
         if (defaultTab) setViewMode(defaultTab);
     }, [defaultTab]);
+
+    useEffect(() => {
+        if (viewMode === 'payables') {
+            fetchDuesData();
+        }
+    }, [viewMode]);
+
+    const handleRecordPayment = async () => {
+        if (!paymentAmount || isNaN(paymentAmount) || Number(paymentAmount) <= 0) {
+            popup.showError("Please enter a valid amount.");
+            return;
+        }
+
+        try {
+            const payload = {
+                supplier_name: selectedSupplierForPayment.supplier_name,
+                amount: Number(paymentAmount),
+                payment_method: paymentMethod,
+                reference_no: paymentRef,
+                notes: paymentNotes
+            };
+
+            const res = await suppliersAPI.addPayment(payload);
+            if (res.success) {
+                popup.showSuccess("Payment recorded successfully.");
+                setShowPaymentModal(false);
+                setPaymentAmount('');
+                setPaymentRef('');
+                setPaymentNotes('');
+                fetchDuesData(); // refresh dues
+                fetchSuppliers(); // refresh opening balances/etc if needed
+            } else {
+                popup.showError(res.message || "Failed to record payment.");
+            }
+        } catch (error) {
+            console.error(error);
+            popup.showError("Failed to record payment.");
+        }
+    };
 
     const [showModal, setShowModal] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
@@ -397,37 +461,62 @@ export default function SuppliersScreen({ defaultTab }) {
                     <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
                         <div className="summary-card" style={{ background: '#fff1f2', borderLeft: '3px solid #e11d48' }}>
                             <h3 style={{ fontSize: '0.65rem' }}>Total Payables</h3>
-                            <p className="big-number" style={{ fontSize: '1.3rem', color: '#e11d48' }}>₹1,12,400</p>
+                            <p className="big-number" style={{ fontSize: '1.3rem', color: '#e11d48' }}>₹{(duesData.summary.total_outstanding || 0).toLocaleString()}</p>
                         </div>
                         <div className="summary-card">
                             <h3 style={{ fontSize: '0.65rem' }}>Due this week</h3>
-                            <p className="big-number" style={{ fontSize: '1.3rem' }}>₹48,500</p>
+                            <p className="big-number" style={{ fontSize: '1.3rem' }}>₹{(duesData.summary.next_7_days_payable || 0).toLocaleString()}</p>
                         </div>
                         <div className="summary-card">
                             <h3 style={{ fontSize: '0.65rem' }}>Total Creditors</h3>
-                            <p className="big-number" style={{ fontSize: '1.3rem' }}>4 Vendors</p>
+                            <p className="big-number" style={{ fontSize: '1.3rem' }}>{duesData.summary.supplier_count || 0} Vendors</p>
                         </div>
                     </div>
-                    <table className="crm-table">
+                    <table className="crm-table single-line-table">
                         <thead>
                             <tr>
-                                <th>Vendor</th>
-                                <th>Last Purchase</th>
-                                <th>Credit Period</th>
-                                <th>Outstanding</th>
-                                <th>Status</th>
+                                <th>Supplier Name</th>
+                                <th>Total Due (₹)</th>
+                                <th>Overdue Amount</th>
+                                <th>Credit Days</th>
+                                <th>Last Payment</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td style={{ fontWeight: '700' }}>Apex Spare Parts</td>
-                                <td>2025-01-12</td>
-                                <td>15 Days</td>
-                                <td style={{ fontWeight: '800', color: '#ef4444' }}>₹12,400</td>
-                                <td><span style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 'bold' }}>● OVERDUE</span></td>
-                                <td><button className="btn-small-crimson">Pay Now</button></td>
-                            </tr>
+                            {duesLoading ? (
+                                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>Loading dues...</td></tr>
+                            ) : duesData.suppliers.length > 0 ? (
+                                duesData.suppliers.map(supplier => (
+                                    <tr key={supplier.id}>
+                                        <td style={{ fontWeight: 'bold' }}>{supplier.supplier_name}</td>
+                                        <td style={{ color: supplier.total_due > 0 ? '#ef4444' : '#22c55e', fontWeight: '800' }}>
+                                            ₹{Number(supplier.total_due).toLocaleString()}
+                                        </td>
+                                        <td style={{ color: supplier.overdue_amount > 0 ? '#ef4444' : 'inherit' }}>
+                                            ₹{Number(supplier.overdue_amount).toLocaleString()}
+                                        </td>
+                                        <td>{supplier.credit_days} Days</td>
+                                        <td>{supplier.last_payment ? new Date(supplier.last_payment).toLocaleDateString() : '-'}</td>
+                                        <td>
+                                            {supplier.total_due > 0 && (
+                                                <button 
+                                                    className="btn-small-crimson" 
+                                                    onClick={() => {
+                                                        setSelectedSupplierForPayment(supplier);
+                                                        setPaymentAmount(supplier.total_due);
+                                                        setShowPaymentModal(true);
+                                                    }}
+                                                >
+                                                    Pay Now
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>No outstanding dues found.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -575,6 +664,70 @@ export default function SuppliersScreen({ defaultTab }) {
                         <div className="modal-footer" style={{ padding: '12px 16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                             <button className="btn-secondary" onClick={() => setShowModal(false)} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>Discard</button>
                             <button className="btn-primary" onClick={handleSave} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>Save Profile</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showPaymentModal && selectedSupplierForPayment && (
+                <div className="crm-modal-overlay">
+                    <div className="crm-modal" style={{ maxWidth: '500px' }}>
+                        <div className="modal-header">
+                            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Record Payment</h2>
+                            <button className="close-btn" onClick={() => setShowPaymentModal(false)}>×</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '20px' }}>
+                            <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+                                <p style={{ margin: '0 0 5px 0', color: '#64748b' }}>Supplier</p>
+                                <h3 style={{ margin: 0, color: '#0f172a' }}>{selectedSupplierForPayment.supplier_name}</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
+                                    <span style={{ color: '#64748b' }}>Total Due:</span>
+                                    <span style={{ fontWeight: 'bold', color: '#ef4444' }}>₹{Number(selectedSupplierForPayment.total_due).toLocaleString()}</span>
+                                </div>
+                            </div>
+                            
+                            <div className="form-group" style={{ marginBottom: '15px' }}>
+                                <label>Payment Amount (₹)</label>
+                                <input 
+                                    type="number" 
+                                    value={paymentAmount} 
+                                    onChange={(e) => setPaymentAmount(e.target.value)} 
+                                    placeholder="Enter amount"
+                                />
+                            </div>
+                            
+                            <div className="form-group" style={{ marginBottom: '15px' }}>
+                                <label>Payment Method</label>
+                                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                                    <option value="Cash">Cash</option>
+                                    <option value="Bank Transfer">Bank Transfer (NEFT/RTGS/IMPS)</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Cheque">Cheque</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '15px' }}>
+                                <label>Reference No (UTR / Cheque No)</label>
+                                <input 
+                                    type="text" 
+                                    value={paymentRef} 
+                                    onChange={(e) => setPaymentRef(e.target.value)} 
+                                    placeholder="Optional"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Notes</label>
+                                <textarea 
+                                    rows="3" 
+                                    value={paymentNotes} 
+                                    onChange={(e) => setPaymentNotes(e.target.value)} 
+                                    placeholder="Any internal notes..."
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '15px 20px', borderTop: '1px solid #e2e8f0' }}>
+                            <button className="btn-secondary" onClick={() => setShowPaymentModal(false)}>Cancel</button>
+                            <button className="btn-primary" onClick={handleRecordPayment}>Save Payment</button>
                         </div>
                     </div>
                 </div>
