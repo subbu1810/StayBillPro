@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../config/apiConfig';
+import { API_CONFIG } from '../config/apiConfig';
 import { usePopup } from './ui/PopupProvider';
 
 const BackupReminderModal = () => {
@@ -37,7 +37,7 @@ const BackupReminderModal = () => {
         setDownloading(true);
         try {
             const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
-            const response = await fetch(`${API_BASE}/backup/download`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/backup/download`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`
