@@ -53,6 +53,7 @@ const reportsRoutes = require('./routes/reportsRoutes');
 const ocrRoutes = require('./routes/ocrRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const quotationRoutes = require('./routes/quotationRoutes');
+const backupRoutes = require('./routes/backupRoutes');
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/branches', branchRoutes);
@@ -79,6 +80,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

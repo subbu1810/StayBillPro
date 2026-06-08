@@ -10,6 +10,7 @@ import AboutUs from './components/AboutUs';
 import Contact from './components/Contact';
 import TrackTicket from './components/TrackTicket';
 import { PopupProvider } from './components/ui/PopupProvider';
+import BackupReminderModal from './components/BackupReminderModal';
 
 function App() {
   const [currentView, setCurrentView] = useState('landing'); // 'landing', 'auth', 'register', 'dashboard', 'privacy', 'terms', 'about', 'contact', 'track'
@@ -173,6 +174,7 @@ function App() {
           {currentView === 'track' && (
             <TrackTicket onBack={handleBackToHome} />
           )}
+          {isAuthenticated && <BackupReminderModal />}
         </div>
       </ServiceProvider>
     </PopupProvider>
