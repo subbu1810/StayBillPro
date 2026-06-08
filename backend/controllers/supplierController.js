@@ -438,9 +438,9 @@ exports.getSupplierLedger = async (req, res) => {
         let totalPaid = 0;
 
         for (let i = 0; i < ledger.length; i++) {
-            if (i === 0) continue; // Skip opening balance, already accounted for
-
             const entry = ledger[i];
+            if (entry.type === 'Opening Bal') continue; // Skip opening balance, already accounted for
+
             if (entry.type === 'Purchase') {
                 runningBalance += entry.raw_amount;
                 totalPurchase += entry.raw_amount;
