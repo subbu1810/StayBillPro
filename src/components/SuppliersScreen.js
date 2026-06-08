@@ -239,6 +239,13 @@ export default function SuppliersScreen({ defaultTab }) {
         ].filter(Boolean).join(', ') : '-';
         const supplierGstin = supplierObj?.gstin || 'N/A';
 
+        // Find user firm details from local storage
+        const userStr = localStorage.getItem('adminUser');
+        const userObj = userStr ? JSON.parse(userStr) : null;
+        const userFirmName = userObj?.business || 'StayBillPro';
+        const userAddress = userObj?.address || 'N/A';
+        const userGstin = userObj?.gst_number || 'N/A';
+
         // Create a PDF that is exactly 1/3 of an A4 page (210mm x 99mm)
         const doc = new jsPDF({
             orientation: 'landscape',
@@ -262,10 +269,14 @@ export default function SuppliersScreen({ defaultTab }) {
         doc.setFont("helvetica", "bold");
         doc.text("Paid By:", 10, 22);
         doc.setFont("helvetica", "normal");
-        doc.text("StayBillPro", 10, 27);
-        doc.text("GSTIN: N/A", 10, 32); // Placeholder for user's firm GSTIN if needed later
+        doc.text(userFirmName, 10, 27);
+        doc.setFontSize(8);
+        const splitUserAddress = doc.splitTextToSize(userAddress !== 'N/A' ? userAddress : 'Address: N/A', 90);
+        doc.text(splitUserAddress, 10, 31);
+        doc.text(`GSTIN: ${userGstin}`, 10, 31 + (splitUserAddress.length * 3.5));
 
         // To (Supplier Firm)
+        doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
         doc.text("Paid To:", 105, 22);
         doc.setFont("helvetica", "normal");
