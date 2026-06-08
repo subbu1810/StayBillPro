@@ -3,7 +3,7 @@ import '../styles/SuppliersScreen.css';
 import { usePopup } from './ui/PopupProvider';
 import { suppliersAPI, purchaseAPI } from '../services/api';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 export default function SuppliersScreen({ defaultTab }) {
     const popup = usePopup();
@@ -210,7 +210,7 @@ export default function SuppliersScreen({ defaultTab }) {
             tableRows.push(rowData);
         });
 
-        doc.autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 55,
