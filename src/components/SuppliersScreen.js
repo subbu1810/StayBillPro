@@ -692,9 +692,9 @@ export default function SuppliersScreen({ defaultTab }) {
 
             {viewMode === 'payments' && (
                 <div className="crm-content">
-                    <div className="crm-filters" style={{ marginBottom: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div className="crm-filters" style={{ marginBottom: '16px', display: 'flex', gap: '15px', flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto' }}>
                         <select 
-                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', minWidth: '200px' }}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'auto', minWidth: '200px', flex: '0 0 auto' }}
                             value={paymentFilterSupplier}
                             onChange={(e) => setPaymentFilterSupplier(e.target.value)}
                         >
@@ -704,7 +704,7 @@ export default function SuppliersScreen({ defaultTab }) {
                             ))}
                         </select>
                         <select 
-                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', minWidth: '150px' }}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'auto', minWidth: '150px', flex: '0 0 auto' }}
                             value={paymentFilterMethod}
                             onChange={(e) => setPaymentFilterMethod(e.target.value)}
                         >
@@ -713,20 +713,20 @@ export default function SuppliersScreen({ defaultTab }) {
                                 <option key={method} value={method}>{method}</option>
                             ))}
                         </select>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: '0 0 auto' }}>
                             <span style={{ fontSize: '0.85rem', color: '#64748b' }}>From:</span>
                             <input 
                                 type="date"
-                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'auto' }}
                                 value={paymentFilterDateFrom}
                                 onChange={(e) => setPaymentFilterDateFrom(e.target.value)}
                             />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: '0 0 auto' }}>
                             <span style={{ fontSize: '0.85rem', color: '#64748b' }}>To:</span>
                             <input 
                                 type="date"
-                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'auto' }}
                                 value={paymentFilterDateTo}
                                 onChange={(e) => setPaymentFilterDateTo(e.target.value)}
                             />
@@ -740,7 +740,7 @@ export default function SuppliersScreen({ defaultTab }) {
                                     setPaymentFilterDateFrom('');
                                     setPaymentFilterDateTo('');
                                 }}
-                                style={{ padding: '8px 15px' }}
+                                style={{ padding: '8px 15px', flex: '0 0 auto' }}
                             >
                                 Clear Filters
                             </button>
