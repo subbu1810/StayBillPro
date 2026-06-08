@@ -278,8 +278,12 @@ export default function SuppliersScreen({ defaultTab }) {
                 <div className="crm-content">
                     <div className="crm-filters" style={{ marginBottom: '12px' }}>
                         <select style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', width: '280px', fontSize: '0.85rem' }}>
-                            <option>Select Vendor: Samsung India Electronics</option>
-                            <option>Apex Spare Parts</option>
+                            <option value="">Select Vendor...</option>
+                            {vendors.map(vendor => (
+                                <option key={vendor.id} value={vendor.id}>
+                                    {vendor.supplier_name}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
