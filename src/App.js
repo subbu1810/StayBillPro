@@ -136,7 +136,7 @@ function App() {
 
   return (
     <PopupProvider>
-      <ServiceProvider>
+      <ServiceProvider isAuthenticated={isAuthenticated}>
         <div className="App">
           {currentView === 'landing' && (
             <LandingPage

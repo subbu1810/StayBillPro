@@ -9,7 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePopup } from './ui/PopupProvider';
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
 
 const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     const popup = usePopup();
@@ -43,6 +43,14 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     const [filterDamagedSupplier, setFilterDamagedSupplier] = useState('');
     const [filterDamagedItem, setFilterDamagedItem] = useState('');
     
+    // Dues tracking state
+    const [duesData, setDuesData] = useState({ summary: {}, suppliers: [] });
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState(null);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const [paymentNotes, setPaymentNotes] = useState('');
+    
     useEffect(() => {
         fetchDropdownData();
         if (defaultTab === 'po') {
@@ -54,6 +62,8 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
             }
         } else if (defaultTab === 'returns') {
             fetchDamagedItems();
+        } else if (defaultTab === 'due') {
+            fetchDuesData();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultTab, autoOpenModal]);
@@ -118,6 +128,54 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
             }
         } catch (err) {
             console.error("Failed to fetch damaged items:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchDuesData = async () => {
+        try {
+            setLoading(true);
+            const res = await suppliersAPI.getDues();
+            if (res.success) {
+                setDuesData({ summary: res.summary, suppliers: res.suppliers });
+            }
+        } catch (err) {
+            console.error("Failed to fetch dues:", err);
+            popup.showError("Failed to fetch supplier dues.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRecordPayment = async (e) => {
+        e.preventDefault();
+        if (!paymentAmount || paymentAmount <= 0) {
+            popup.showError("Please enter a valid payment amount.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const res = await suppliersAPI.addPayment({
+                supplier_name: selectedSupplierForPayment.supplier_name,
+                amount: paymentAmount,
+                payment_method: paymentMethod,
+                notes: paymentNotes
+            });
+
+            if (res.success) {
+                popup.showSuccess("Payment recorded successfully!");
+                setShowPaymentModal(false);
+                setPaymentAmount('');
+                setPaymentNotes('');
+                fetchDuesData(); // Refresh the data
+            } else {
+                popup.showError(res.message || "Failed to record payment.");
+            }
+        } catch (err) {
+            console.error("Error recording payment:", err);
+            popup.showError("An error occurred while recording the payment.");
         } finally {
             setLoading(false);
         }
@@ -582,12 +640,12 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
             <div className="crm-grid-3" style={{ marginBottom: '12px' }}>
                 <div className="report-card crimson">
                     <span className="card-title">Total Outstanding Dues</span>
-                    <div className="card-value">₹8,45,600</div>
-                    <div className="card-trend crimson">Across 12 Suppliers</div>
+                    <div className="card-value">₹{Number(duesData.summary.total_outstanding || 0).toLocaleString()}</div>
+                    <div className="card-trend crimson">Across {duesData.summary.supplier_count || 0} Suppliers</div>
                 </div>
                 <div className="report-card warning">
                     <span className="card-title">Next 7 Days Payable</span>
-                    <div className="card-value">₹1,20,000</div>
+                    <div className="card-value">₹{Number(duesData.summary.next_7_days_payable || 0).toLocaleString()}</div>
                 </div>
             </div>
             <table className="crm-table single-line-table">
@@ -596,20 +654,45 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                         <th>Supplier Name</th>
                         <th>Total Due (₹)</th>
                         <th>Overdue Amount</th>
-                        <th>Credit Days Left</th>
+                        <th>Credit Days</th>
                         <th>Last Payment</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td style={{ fontWeight: 'bold' }}>Samsung India</td>
-                        <td style={{ color: '#ef4444', fontWeight: '800' }}>₹4,50,000</td>
-                        <td>₹0</td>
-                        <td>12 Days</td>
-                        <td>01-Mar-26</td>
-                        <td><button className="btn-small success">Clear Dual</button></td>
-                    </tr>
+                    {loading ? (
+                        <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>Loading dues...</td></tr>
+                    ) : duesData.suppliers.length > 0 ? (
+                        duesData.suppliers.map(supplier => (
+                            <tr key={supplier.id}>
+                                <td style={{ fontWeight: 'bold' }}>{supplier.supplier_name}</td>
+                                <td style={{ color: supplier.total_due > 0 ? '#ef4444' : '#22c55e', fontWeight: '800' }}>
+                                    ₹{Number(supplier.total_due).toLocaleString()}
+                                </td>
+                                <td style={{ color: supplier.overdue_amount > 0 ? '#ef4444' : 'inherit' }}>
+                                    ₹{Number(supplier.overdue_amount).toLocaleString()}
+                                </td>
+                                <td>{supplier.credit_days} Days</td>
+                                <td>{supplier.last_payment ? new Date(supplier.last_payment).toLocaleDateString() : '-'}</td>
+                                <td>
+                                    {supplier.total_due > 0 && (
+                                        <button 
+                                            className="btn-small success" 
+                                            onClick={() => {
+                                                setSelectedSupplierForPayment(supplier);
+                                                setPaymentAmount(supplier.total_due);
+                                                setShowPaymentModal(true);
+                                            }}
+                                        >
+                                            Record Payment
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>No outstanding dues found.</td></tr>
+                    )}
                 </tbody>
             </table>
         </div>
@@ -776,6 +859,64 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                                 OK
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Record Payment Modal */}
+            {showPaymentModal && selectedSupplierForPayment && (
+                <div className="branch-modal-overlay">
+                    <div className="branch-modal">
+                        <h3>Record Payment to {selectedSupplierForPayment.supplier_name}</h3>
+                        <form onSubmit={handleRecordPayment}>
+                            <div className="form-group">
+                                <label>Outstanding Balance</label>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c' }}>
+                                    ₹{Number(selectedSupplierForPayment.total_due).toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Amount Paying Now (₹)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.01"
+                                    required 
+                                    className="form-control"
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    max={selectedSupplierForPayment.total_due}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Payment Method</label>
+                                <select 
+                                    className="form-control"
+                                    value={paymentMethod}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                >
+                                    <option value="Cash">Cash</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Cheque">Cheque</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Notes / Reference No</label>
+                                <input 
+                                    type="text" 
+                                    className="form-control"
+                                    value={paymentNotes}
+                                    onChange={(e) => setPaymentNotes(e.target.value)}
+                                    placeholder="Optional"
+                                />
+                            </div>
+                            <div className="modal-actions">
+                                <button type="button" className="btn-secondary" onClick={() => setShowPaymentModal(false)}>Cancel</button>
+                                <button type="submit" className="btn-primary" disabled={loading}>
+                                    {loading ? 'Recording...' : 'Record Payment'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

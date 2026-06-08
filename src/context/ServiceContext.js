@@ -3,7 +3,7 @@ import { appliancesAPI, jobsAPI, serviceRequestsAPI, techniciansAPI, customersAP
 
 export const ServiceContext = createContext();
 
-export function ServiceProvider({ children }) {
+export function ServiceProvider({ children, isAuthenticated }) {
 	const [jobs, setJobs] = useState([]);
 	const [jobsLoaded, setJobsLoaded] = useState(false);
 
@@ -53,6 +53,8 @@ export function ServiceProvider({ children }) {
 	}, []);
 
 	useEffect(() => {
+		if (!isAuthenticated) return;
+        
 		let cancelled = false;
 		
 		const fetchData = async () => {
@@ -148,13 +150,13 @@ export function ServiceProvider({ children }) {
 		fetchData();
 
 		// Set up polling for realtime updates
-		const intervalId = setInterval(fetchData, 15000); // Poll every 15 seconds
+		const intervalId = setInterval(fetchData, 300000); // Poll every 5 minutes (300000ms)
 
 		return () => {
 			cancelled = true;
 			clearInterval(intervalId);
 		};
-	}, [mapJobFromApi, selectedBranchId]);
+	}, [mapJobFromApi, selectedBranchId, isAuthenticated]);
 
 	const addJob = useCallback(async (jobData) => {
 		const now = new Date();

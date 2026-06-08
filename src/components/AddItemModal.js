@@ -43,7 +43,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
     const [newUnit, setNewUnit] = useState('');
     const fileInputRef = React.useRef(null);
 
-    // Update form when initialData changes (e.g. when opening for edit)
+        // Update form when initialData changes (e.g. when opening for edit)
     React.useEffect(() => {
         if (initialData) {
             setIsProduct(initialData.type === 'sales');
@@ -59,7 +59,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 discountType: 'Percentage',
                 purchasePrice: initialData.purchase_price || '',
                 purchasePriceTax: 'Without Tax',
-                taxRate: initialData.gst_rate ? `GST @ ${initialData.gst_rate}%` : 'None',
+                taxRate: initialData.gst_rate ? `GST@${parseFloat(initialData.gst_rate)}%` : 'None',
                 openingStock: initialData.quantity ?? '',
                 lowStockWarning: initialData.low_stock_warning || 5,
                 image: initialData.image || null,
@@ -110,7 +110,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
         const fetchUnits = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/api/units', {
+                const response = await fetch('https://staybillproapi.ssquareg.tech/api/units', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -148,7 +148,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             if (!unitsList.includes(upperUnit)) {
                 try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch('http://localhost:5000/api/units', {
+                    const response = await fetch('https://staybillproapi.ssquareg.tech/api/units', {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',
@@ -220,7 +220,8 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             return;
         }
 
-        
+        const parsedGstRate = formData.taxRate === 'None' || formData.taxRate === 'Exempt' ? 0 : parseInt(formData.taxRate.match(/\d+/)?.[0] || 0);
+
         // Map local state to the schema expected by the API
         const payload = {
             name: formData.name,
@@ -232,7 +233,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             purchase_price: parseFloat(formData.purchasePrice) || 0,
             wholesale_price: showWholesale ? (parseFloat(formData.wholesalePrice) || 0) : null,
             min_wholesale_qty: showWholesale ? (parseInt(formData.minWholesaleQty) || 0) : null,
-            gst_rate: formData.taxRate === 'None' ? 0 : parseInt(formData.taxRate.match(/\d+/)[0]),
+            gst_rate: parsedGstRate,
             quantity: parseInt(formData.openingStock) || 0,
             at_price: parseFloat(formData.atPrice) || 0,
             as_of_date: formData.asOfDate,
@@ -477,7 +478,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                     <div className="section sale-price">
                                         <h4>Sale Price</h4>
                                         <div className="row">
-                                            <div className="input-with-select">
+                                            <div className="input-group" style={{ width: '100%' }}>
                                                 <input 
                                                     type="number" 
                                                     name="salePrice"
@@ -485,31 +486,6 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                                     value={formData.salePrice}
                                                     onChange={handleInputChange}
                                                 />
-                                                <select 
-                                                    name="salePriceTax" 
-                                                    value={formData.salePriceTax}
-                                                    onChange={handleInputChange}
-                                                >
-                                                    <option>Without Tax</option>
-                                                    <option>With Tax</option>
-                                                </select>
-                                            </div>
-                                            <div className="input-with-select">
-                                                <input 
-                                                    type="number" 
-                                                    name="discount"
-                                                    placeholder="Disc. On Sale Price" 
-                                                    value={formData.discount}
-                                                    onChange={handleInputChange}
-                                                />
-                                                <select 
-                                                    name="discountType"
-                                                    value={formData.discountType}
-                                                    onChange={handleInputChange}
-                                                >
-                                                    <option>Percentage</option>
-                                                    <option>Amount</option>
-                                                </select>
                                             </div>
                                         </div>
                                         {!showWholesale ? (
@@ -521,7 +497,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                                     <button type="button" className="wholesale-remove-btn" onClick={() => setShowWholesale(false)}>⊖ Remove</button>
                                                 </div>
                                                 <div className="row">
-                                                    <div className="input-with-select">
+                                                    <div className="input-group" style={{ width: '100%' }}>
                                                         <input 
                                                             type="number" 
                                                             name="wholesalePrice"
@@ -529,14 +505,6 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                                             value={formData.wholesalePrice}
                                                             onChange={handleInputChange}
                                                         />
-                                                        <select 
-                                                            name="wholesaleTax" 
-                                                            value={formData.wholesaleTax}
-                                                            onChange={handleInputChange}
-                                                        >
-                                                            <option>Without Tax</option>
-                                                            <option>With Tax</option>
-                                                        </select>
                                                     </div>
                                                     <div className="input-group">
                                                         <input 
@@ -556,7 +524,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                     <div className="pricing-row">
                                         <div className="section purchase-price">
                                             <h4>Purchase Price</h4>
-                                            <div className="input-with-select">
+                                            <div className="input-group" style={{ width: '100%' }}>
                                                 <input 
                                                     type="number" 
                                                     name="purchasePrice"
@@ -564,14 +532,6 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                                                     value={formData.purchasePrice}
                                                     onChange={handleInputChange}
                                                 />
-                                                <select 
-                                                    name="purchasePriceTax"
-                                                    value={formData.purchasePriceTax}
-                                                    onChange={handleInputChange}
-                                                >
-                                                    <option>Without Tax</option>
-                                                    <option>With Tax</option>
-                                                </select>
                                             </div>
                                         </div>
                                         <div className="section taxes">

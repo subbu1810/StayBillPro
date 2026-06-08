@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS admins (
     business_type VARCHAR(100),
     gst_number VARCHAR(20),
     logo_url LONGTEXT,
+    bank_name VARCHAR(255),
+    bank_account VARCHAR(100),
+    ifsc_code VARCHAR(20),
+    upi_id VARCHAR(100),
     current_plan ENUM('Starter', 'Professional', 'Enterprise') DEFAULT 'Starter',
     features VARCHAR(50) DEFAULT 'Both Features',
     eula_accepted BOOLEAN DEFAULT FALSE,
@@ -216,6 +220,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     discount_amount DECIMAL(15, 2) DEFAULT 0.00,
     payment_method ENUM('cash', 'card', 'upi', 'credit') DEFAULT 'cash',
     status ENUM('paid', 'pending', 'cancelled') DEFAULT 'paid',
+    invoice_type VARCHAR(50) DEFAULT 'pos',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
     FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
@@ -230,6 +235,7 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     quantity INT DEFAULT 1,
     unit_price DECIMAL(15, 2) DEFAULT 0.00,
     total_price DECIMAL(15, 2) DEFAULT 0.00,
+    gst_rate DECIMAL(5, 2) DEFAULT 0.00,
     FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
 );
 
@@ -246,6 +252,20 @@ CREATE TABLE IF NOT EXISTS expenses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
     FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
+);
+
+-- Supplier Payments Table
+CREATE TABLE IF NOT EXISTS supplier_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    supplier_name VARCHAR(255) NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment_method VARCHAR(50) DEFAULT 'Cash',
+    reference_no VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
 );
 
 -- Ledger Table (General Ledger & Cash/Bank Registers)
@@ -269,10 +289,21 @@ CREATE TABLE IF NOT EXISTS ledger (
 CREATE TABLE IF NOT EXISTS customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
     last_name VARCHAR(100),
     email VARCHAR(150),
     mobile VARCHAR(20) NOT NULL,
+    category VARCHAR(100) DEFAULT 'Retail',
+    customerType VARCHAR(100) DEFAULT 'Consumer',
+    gstin VARCHAR(50),
+    billingAddress TEXT,
+    shippingAddress TEXT,
+    sameAsBilling BOOLEAN DEFAULT TRUE,
+    openingBalance DECIMAL(15, 2) DEFAULT 0.00,
+    balanceType VARCHAR(50) DEFAULT 'receivable',
+    asOfDate DATE,
+    creditLimit DECIMAL(15, 2) DEFAULT 0.00,
     address TEXT,
     city VARCHAR(100),
     state VARCHAR(100),

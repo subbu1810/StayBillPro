@@ -95,7 +95,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
 
     const fetchTransfers = async () => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/stock-transfers`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/stock-transfers`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -108,7 +108,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     const fetchProducts = async () => {
         try {
             // Fetch all products (across all branches) for transfer selection
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/products`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/products`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -120,7 +120,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
 
     const fetchConsolidatedReports = async () => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/branches/reports/consolidated`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/branches/reports/consolidated`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -135,7 +135,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         setLoadingSubData(true);
         setShowInvoicesModal(true);
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/billing?branchId=${branch.id}`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/billing?branchId=${branch.id}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -154,7 +154,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         setLoadingSubData(true);
         setShowExpensesModal(true);
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/expenses?branch_id=${branch.id}`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/expenses?branch_id=${branch.id}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -396,7 +396,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         try {
             // Loop and sequentially send POST requests for each item
             for (const item of transferItems) {
-                const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/stock-transfers`, {
+                const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/stock-transfers`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -478,7 +478,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     );
     const handleUpdateTransferStatus = async (id, status, reason) => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/stock-transfers/${id}/status`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/stock-transfers/${id}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

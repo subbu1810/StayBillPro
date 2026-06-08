@@ -57,7 +57,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const [scanResults, setScanResults] = useState([]);
 	const [advancedEditIndex, setAdvancedEditIndex] = useState(null);
 	const fileInputRef = React.useRef(null);
-	const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+	const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
 
 	const funnyMessages = [
 		"Waking up the AI...",

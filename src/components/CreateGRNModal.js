@@ -263,7 +263,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
             formDataData.append('document', file);
 
             // Using the same endpoint as InventoryScreen
-            const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+            const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
             const response = await fetch(`${API_BASE}/ocr/scan-bill`, {
                 method: 'POST',
                 headers: {
