@@ -163,9 +163,9 @@ exports.getSupplierDues = async (req, res) => {
             [adminId]
         );
 
-        // Fetch purchases to calculate total billed amounts
+        // Fetch received purchase orders to calculate total billed amounts
         const [purchases] = await db.query(
-            'SELECT supplier_name, total_amount, purchase_date FROM purchases WHERE admin_id = ?',
+            'SELECT supplier_name, total_amount, order_date as purchase_date FROM purchase_orders WHERE admin_id = ? AND status IN ("Received", "Completed", "Stocked")',
             [adminId]
         );
 
