@@ -11,14 +11,14 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const { selectedBranchId } = useService();
 	const [items, setItems] = useState([]);
 	const [allCategories, setAllCategories] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
-	const [showForm, setShowForm] = useState(false);
+	const [, setLoading] = useState(true);
+	const [, setError] = useState(null);
+	const [showForm] = useState(false);
 	const [isEdit, setIsEdit] = useState(false);
 	const [currentId, setCurrentId] = useState(null);
 	const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 	
-	const [formData, setFormData] = useState({
+	const [, setFormData] = useState({
 		name: '',
 		company: '',
 		category: '',
@@ -50,22 +50,6 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const [editOriginalName, setEditOriginalName] = useState('');
 	const [newCategoryName, setNewCategoryName] = useState('');
 	const [showAddItemModal, setShowAddItemModal] = useState(false);
-	const [bulkItems, setBulkItems] = useState([
-		{ 
-			name: '', 
-			part_number: '', 
-			company: '', 
-			price: 0, 
-			quantity: 0,
-			hsn_code: '',
-			gst_rate: 18,
-			serial_number: '',
-			dimensions: '',
-			purchase_price: 0,
-			isExpanded: false 
-		}
-	]);
-	const [managedCategories, setManagedCategories] = useState([]);
 
 	const [isScanning, setIsScanning] = useState(false);
 	const [scanMessageIndex, setScanMessageIndex] = useState(0);
@@ -93,10 +77,12 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 			}, 3000);
 		}
 		return () => clearInterval(interval);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isScanning]);
 
 	useEffect(() => {
 		fetchCategories();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [activeSection]);
 
 	const showMessage = (message, type = 'success') => {
@@ -183,6 +169,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	useEffect(() => {
 		fetchItems();
 		fetchLogs();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [activeSection]);
 
 	const fetchLogs = async () => {
@@ -218,31 +205,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 		}
 	};
 
-	const handleInputChange = (e) => {
-		const { name, value, type, checked } = e.target;
-		setFormData(prev => ({
-			...prev,
-			[name]: type === 'checkbox' ? (checked ? 'available' : 'unavailable') : 
-			        name === 'quantity' || name === 'price' ? Number(value) : value
-		}));
-	};
 
-	const resetForm = () => {
-		setFormData({
-			name: '',
-			company: '',
-			category: '',
-			price: 0,
-			quantity: 0,
-			part_number: '',
-			status: 'available',
-			section: activeSection
-		});
-		setBulkItems([{ name: '', part_number: '', company: '', price: 0, quantity: 0 }]);
-		setIsEdit(false);
-		setCurrentId(null);
-		setShowForm(false);
-	};
 
 	const handleEdit = (item) => {
 		setCurrentId(item.id);
@@ -408,7 +371,6 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 				type: payload.type || (activeSection === 'sales' ? 'sales' : 'service')
 			};
 
-			let createdItem;
 			if (payload.image && payload.image instanceof File) {
 				const formData = new FormData();
 				Object.keys(mappedPayload).forEach(key => {
@@ -418,9 +380,9 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 				});
 				formData.append('branch_id', selectedBranchId);
 				formData.append('image', payload.image);
-				createdItem = await api.createWithImage(formData);
+				await api.createWithImage(formData);
 			} else {
-				createdItem = await api.create({ ...mappedPayload, branch_id: selectedBranchId });
+				await api.create({ ...mappedPayload, branch_id: selectedBranchId });
 			}
 			
 			// Remove from scan results since it's saved
@@ -494,33 +456,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 		setShowAddItemModal(true);
 	};
 
-	const handleBulkInputChange = (index, field, value) => {
-		const updated = [...bulkItems];
-		updated[index][field] = value;
-		setBulkItems(updated);
-	};
 
-	const addBulkRow = () => {
-		setBulkItems([...bulkItems, { 
-			name: '', 
-			part_number: '', 
-			company: '', 
-			price: 0, 
-			quantity: 0, 
-			hsn_code: '',
-			gst_rate: 18,
-			serial_number: '',
-			dimensions: '',
-			purchase_price: 0,
-			isExpanded: false
-		}]);
-	};
-
-	const removeBulkRow = (index) => {
-		if (bulkItems.length > 1) {
-			setBulkItems(bulkItems.filter((_, i) => i !== index));
-		}
-	};
 
 	const handleModalSave = async (payload) => {
 		try {

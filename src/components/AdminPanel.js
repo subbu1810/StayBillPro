@@ -30,7 +30,7 @@ import '../styles/AccountingScreen.css';
 import '../styles/PurchaseScreen.css';
 import '../styles/GSTScreen.css';
 import '../styles/InvoiceHistory.css';
-import { X, Menu } from 'lucide-react';
+// Removed unused icons from lucide-react
 import RechargeModal from './RechargeModal';
 import WalletHistoryModal from './WalletHistoryModal';
 
@@ -74,13 +74,13 @@ export default function AdminPanel({ onLogout }) {
 		return () => window.removeEventListener('walletUpdated', handleWalletUpdate);
 	}, []);
 
-	const { jobs, setSelectedBranchId } = useService();
+	const { setSelectedBranchId } = useService();
 	const [screenHistory, setScreenHistory] = useState(['dashboard']);
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const [confirmAction, setConfirmAction] = useState(null);
 	const [tabToClose, setTabToClose] = useState(null);
 	const [historyInitialized, setHistoryInitialized] = useState(false);
-	const [posSubScreen, setPosSubScreen] = useState('billing');
+	const [, setPosSubScreen] = useState('billing');
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 	const [expandedGroups, setExpandedGroups] = useState({
@@ -100,7 +100,7 @@ export default function AdminPanel({ onLogout }) {
 
 	// Role & Branch State
 	const [userRole, setUserRole] = useState('USER');
-	const [userBranchId, setUserBranchId] = useState(null);
+	const [, setUserBranchId] = useState(null);
 	const [branches, setBranches] = useState([]);
 	const [activeBranch, setActiveBranch] = useState('Loading...');
 	const [activeBranchId, setActiveBranchId] = useState(null);
@@ -175,6 +175,7 @@ export default function AdminPanel({ onLogout }) {
 		return () => {
 			window.removeEventListener('user-profile-updated', handleProfileUpdate);
 		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [historyInitialized]);
 
 	const fetchBranches = async (currentBranchId) => {
@@ -185,7 +186,7 @@ export default function AdminPanel({ onLogout }) {
 
 			if (data.length > 0) {
 				const branchToSet = currentBranchId
-					? data.find(b => b.id == currentBranchId) || data[0]
+					? data.find(b => String(b.id) === String(currentBranchId)) || data[0]
 					: data.find(b => b.is_main) || data[0];
 
 				console.log('Setting Active Branch:', branchToSet);
@@ -1011,21 +1012,21 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 						<div className="notification-bell">🔔<span className="badge">3</span></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px' }}>
-                            <div style={{ background: '#f8fafc', padding: '4px 12px', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }} title="AI Scan Wallet Balance">
+                            <div style={{ background: '#f8fafc', padding: '4px 12px', borderRadius: '4px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }} title="AI Scan Wallet Balance">
                                 <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Wallet:</span>
                                 <span style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '0.9rem' }}>₹{userProfile.scan_wallet_balance}</span>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button 
                                     onClick={() => setShowWalletHistoryModal(true)}
-                                    style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '20px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                    style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
                                     title="View Wallet Ledger"
                                 >
                                     History
                                 </button>
                                 <button 
                                     onClick={() => setShowRechargeModal(true)}
-                                    style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '20px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                    style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
                                 >
                                     + Recharge
                                 </button>

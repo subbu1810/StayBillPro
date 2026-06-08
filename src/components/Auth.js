@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/Auth.css';
 import { adminAuthAPI, subscriptionAPI, paymentAPI } from '../services/api';
 
-const CARD_DETAILS_INITIAL = {
-    nameOnCard: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: ''
-};
+
 
 const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -208,13 +203,8 @@ function Auth({ onLogin, onBackToHome, mode = 'login', selectedPlan = null, sele
             return;
         }
 
-        const formattedAddress = [registerData.address, registerData.city, registerData.state, registerData.pincode, registerData.country]
-            .filter(Boolean)
-            .join(', ');
-        const noteParts = [];
-        if (registerData.businessType) noteParts.push(`Business Type: ${registerData.businessType}`);
-        if (registerData.gstn) noteParts.push(`GST: ${registerData.gstn}`);
-        const notes = noteParts.length ? noteParts.join(' | ') : null;
+        // Removed unused note variables
+        // Removed unused note variables
 
         try {
             setIsSubmitting(true);

@@ -6,12 +6,10 @@ import {
   Download,
   Eye,
   Trash2,
-  Filter,
-  Calendar,
-  CreditCard,
   AlertCircle,
   RefreshCw,
-  FileText
+  FileText,
+  CreditCard
 } from 'lucide-react';
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
@@ -31,7 +29,7 @@ export default function InvoiceHistory({ invoiceType }) {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [, setTotalPages] = useState(1);
   const [limit] = useState(20);
   const [printSize, setPrintSize] = useState('80mm');
 
@@ -122,6 +120,7 @@ export default function InvoiceHistory({ invoiceType }) {
       }
     };
     fetchSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Search and filter
@@ -131,6 +130,7 @@ export default function InvoiceHistory({ invoiceType }) {
     }, 300);
 
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, filterStatus, filterPayment, dateFrom, dateTo]);
 
   const handleRefresh = () => {

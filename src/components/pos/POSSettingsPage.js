@@ -101,7 +101,6 @@ export default function POSSettingsPage() {
         </html>
       `;
     } else {
-      const width = printSize === '50mm' ? '50mm' : '80mm';
       htmlContent = `
         <html>
           <head>

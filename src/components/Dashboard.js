@@ -7,7 +7,7 @@ import { usePopup } from './ui/PopupProvider';
 
 function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians, onViewJob, onOpenInventory, onOpenPOS, onOpenGRN, onLogout }) {
   const popup = usePopup();
-  const { jobs = [], jobsLoaded, technicians = [], customers = [], lowStockSpares = [], todaySummary = {}, invoiceSalesReport = [] } = useService();
+  const { jobs = [], technicians = [], customers = [], lowStockSpares = [], todaySummary = {}, invoiceSalesReport = [] } = useService();
   const [showEula, setShowEula] = useState(false);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ function Dashboard({ onCreateJob, onOpenJobs, onOpenCustomers, onOpenTechnicians
       salesStockAlerts: (lowStockSpares || []).filter(s => (s.section || 'sales') === 'sales'),
       serviceStockAlerts: (lowStockSpares || []).filter(s => (s.section || 'sales') === 'service')
     };
-  }, [jobs, technicians, todayISO, todaySummary, invoiceSalesReport]);
+  }, [jobs, technicians, todayISO, todaySummary, invoiceSalesReport, lowStockSpares]);
 
   return (
     <div className="os-dashboard">

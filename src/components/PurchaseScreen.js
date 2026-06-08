@@ -29,8 +29,6 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     const [filterSupplier, setFilterSupplier] = useState('');
     const [filterFromDate, setFilterFromDate] = useState('');
     const [filterToDate, setFilterToDate] = useState('');
-    const [filterItemCode, setFilterItemCode] = useState('');
-    const [filterItemName, setFilterItemName] = useState('');
 
     // Barcode Printing State
     const [selectedGRNItems, setSelectedGRNItems] = useState([]);
@@ -57,6 +55,7 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
         } else if (defaultTab === 'returns') {
             fetchDamagedItems();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultTab, autoOpenModal]);
 
     const fetchDropdownData = async () => {
@@ -97,7 +96,7 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
             if (filterSupplier) params.supplier = filterSupplier;
             if (filterFromDate) params.fromDate = filterFromDate;
             if (filterToDate) params.toDate = filterToDate;
-            if (filterItemName) params.itemName = filterItemName;
+
             
             const res = await purchaseAPI.getGRNs(params);
             if (res.success) {
@@ -342,8 +341,6 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
         window.open(url, '_blank');
     };
 
-    const generatePDF = () => {
-    };
 
     const handleExportPDF = () => {
         if (grns.length === 0) {

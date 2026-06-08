@@ -243,7 +243,7 @@ export const ENVIRONMENT = {
 export const CURRENT_ENV = process.env.NODE_ENV || ENVIRONMENT.DEVELOPMENT;
 
 // ========== EXPORT CONFIGURATION ==========
-export default {
+const apiConfig = {
   API_ENDPOINTS,
   HTTP_METHODS,
   HTTP_HEADERS,
@@ -251,3 +251,5 @@ export default {
   ENVIRONMENT,
   CURRENT_ENV,
 };
+
+export default apiConfig;

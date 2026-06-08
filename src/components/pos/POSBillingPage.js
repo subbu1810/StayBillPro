@@ -513,7 +513,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
               </td>
             </tr>
           `;
-          group.items.forEach(item => {
+          for (const item of group.items) {
             itemsHtml += `
               <tr>
                 <td style="padding-right: 2px;">${item.name.substring(0, 16)}</td>
@@ -522,7 +522,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
                 <td style="text-align: right; white-space: nowrap;">${(item.price * item.qty).toFixed(2)}</td>
               </tr>
             `;
-          });
+          }
           groupIndex++;
         }
 
@@ -533,7 +533,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
         let grandSgst = 0;
         let grandTotalWithTax = 0;
 
-        for (const [rate, group] of Object.entries(taxGroups)) {
+        for (const group of Object.values(taxGroups)) {
           taxBreakdownHtml += `
             <tr>
               <td>${taxIdx}</td>

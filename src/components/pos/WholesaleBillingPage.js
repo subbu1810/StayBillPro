@@ -121,7 +121,7 @@ export default function WholesaleBillingPage() {
         try {
           const branches = await branchesAPI.getAll();
           if (branches && branches.length > 0) {
-            const branch = branches.find(b => b.id == branchId) || branches[0];
+            const branch = branches.find(b => String(b.id) === String(branchId)) || branches[0];
             if (branch.address || branch.city) {
               setBranchAddress(`${branch.address || ''}${branch.address && branch.city ? ', ' : ''}${branch.city || ''}`);
             }
@@ -698,7 +698,6 @@ export default function WholesaleBillingPage() {
           </html>
         `;
       } else {
-        const width = printSize === '50mm' ? '50mm' : '80mm';
         const itemsHtml = cart.map(item => `
           <tr>
             <td>${item.name.substring(0, 15)}</td>

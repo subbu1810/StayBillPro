@@ -175,10 +175,12 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
 
     useEffect(() => {
         if (defaultTab === 'attendance') fetchAttendance();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultTab, attendanceDate]);
 
     useEffect(() => {
         if (defaultTab === 'salary') fetchPayroll();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultTab, payrollMonth]);
 
     const fetchPayrollHistory = async (params = {}) => {

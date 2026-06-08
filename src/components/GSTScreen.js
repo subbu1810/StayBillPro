@@ -27,6 +27,7 @@ const GSTScreen = ({ defaultTab = 'summary', branchId }) => {
         } else if (activeTab === 'gstr1') {
             fetchGSTR1();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, branchId]);
 
     const fetchSummary = async () => {

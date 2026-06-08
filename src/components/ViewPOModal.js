@@ -10,6 +10,7 @@ const ViewPOModal = ({ isOpen, onClose, poId }) => {
         if (isOpen && poId) {
             fetchPODetails();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, poId]);
 
     const fetchPODetails = async () => {

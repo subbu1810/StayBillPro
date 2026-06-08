@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import '../styles/ReportsScreen.css';
 import { reportsAPI } from '../services/api';
-import { usePopup } from './ui/PopupProvider';
+
 
 export default function ReportsScreen({ defaultTab }) {
-    const popup = usePopup();
+
     const [activeReport, setActiveReport] = useState(defaultTab || 'sales');
 
     // Sync state with sidebar prop
@@ -68,6 +68,7 @@ export default function ReportsScreen({ defaultTab }) {
 
     useEffect(() => {
         fetchReportData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeReport]);
 
     // Build the firm header HTML block for PDF/print

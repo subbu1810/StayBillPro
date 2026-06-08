@@ -50,6 +50,7 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
         } else if (defaultTab === 'pl') {
             fetchPnLData();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [defaultTab, branchId, activeSubTab]);
 
     const fetchLedgerData = async () => {

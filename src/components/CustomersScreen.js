@@ -544,28 +544,7 @@ export default function CustomersScreen({ defaultTab }) {
   const [deletingId, setDeletingId] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Ledger state
-  const [selectedLedgerCustomerId, setSelectedLedgerCustomerId] = useState('');
-  const [ledgerData, setLedgerData] = useState(null);
-  const [ledgerLoading, setLedgerLoading] = useState(false);
 
-  const fetchLedgerData = useCallback(async (customerId) => {
-    if (!customerId) { setLedgerData(null); return; }
-    setLedgerLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE}/customers/${customerId}/ledger`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch ledger');
-      setLedgerData(await res.json());
-    } catch (err) {
-      console.error(err);
-      popup.showError('Could not load ledger. Please try again.');
-    } finally {
-      setLedgerLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (defaultTab) setViewMode(defaultTab);

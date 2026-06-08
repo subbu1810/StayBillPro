@@ -145,6 +145,7 @@ export default function TechniciansScreen() {
 
 	useEffect(() => {
 		fetchTechnicians();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const handleInputChange = (e) => {

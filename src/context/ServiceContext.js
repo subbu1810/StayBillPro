@@ -243,7 +243,7 @@ export function ServiceProvider({ children }) {
 		}
 		setJobs((prev) => [mapped, ...prev]);
 		return createdJob;
-	}, [mapJobFromApi]);
+	}, [mapJobFromApi, selectedBranchId]);
 
 	const updateJob = useCallback(async (jobId, updates) => {
 		// First get the current job to find related IDs

@@ -87,7 +87,8 @@ export default function NewJob({ onBack, onSuccess }) {
 		return () => {
 			cancelled = true;
 		};
-	}, [fallbackProducts, fallbackTechnicians]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [fallbackProducts, fallbackTechnicians, selectedBranchId]);
 
 	const handleInputChange = (e) => {
 		const { name, value, type, checked } = e.target;
@@ -108,10 +109,7 @@ export default function NewJob({ onBack, onSuccess }) {
 		return cats;
 	}, [availableProducts]);
 
-	const availableProblems = useMemo(() => {
-		if (!selectedProduct) return [];
-		return [];
-	}, [selectedProduct]);
+
 
 	const technicianOptions = useMemo(() => {
 		return [...new Set((availableTechnicians || []).filter(Boolean))].sort((a, b) =>
