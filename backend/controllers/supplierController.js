@@ -334,6 +334,27 @@ exports.addSupplierPayment = async (req, res) => {
     }
 };
 
+// GET all supplier payments
+exports.getAllSupplierPayments = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+
+        const [payments] = await db.query(
+            `SELECT p.id, p.supplier_name, p.amount, p.payment_date, p.payment_method, p.reference_no, p.notes 
+             FROM supplier_payments p
+             WHERE p.admin_id = ?
+             ORDER BY p.payment_date DESC`,
+            [adminId]
+        );
+
+        res.json({ success: true, payments });
+
+    } catch (error) {
+        console.error('Error fetching supplier payments:', error);
+        res.status(500).json({ success: false, message: 'Error fetching supplier payments' });
+    }
+};
+
 // GET Ledger for a single supplier
 exports.getSupplierLedger = async (req, res) => {
     try {

@@ -8,11 +8,13 @@ const {
     deleteSupplier,
     getSupplierDues,
     addSupplierPayment,
+    getAllSupplierPayments,
     getSupplierLedger
 } = require('../controllers/supplierController');
 
 router.get('/dues', auth, getSupplierDues);
 router.post('/payments', auth, addSupplierPayment);
+router.get('/payments', auth, getAllSupplierPayments);
 router.get('/:id/ledger', auth, getSupplierLedger);
 router.get('/', auth, getAllSuppliers);
 router.post('/', auth, createSupplier);

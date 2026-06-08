@@ -27,6 +27,9 @@ export default function SuppliersScreen({ defaultTab }) {
     const [paymentRef, setPaymentRef] = useState('');
     const [paymentNotes, setPaymentNotes] = useState('');
 
+    const [paymentHistory, setPaymentHistory] = useState([]);
+    const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+
     const API_BASE = process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech/api';
 
     // Fetch suppliers from backend
@@ -88,6 +91,20 @@ export default function SuppliersScreen({ defaultTab }) {
         }
     };
 
+    const fetchPaymentHistory = async () => {
+        setPaymentHistoryLoading(true);
+        try {
+            const res = await suppliersAPI.getPayments();
+            if (res.success) {
+                setPaymentHistory(res.payments);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setPaymentHistoryLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchSupplierLedger(selectedVendorForLedger);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,6 +118,8 @@ export default function SuppliersScreen({ defaultTab }) {
     useEffect(() => {
         if (viewMode === 'payables') {
             fetchDuesData();
+        } else if (viewMode === 'payments') {
+            fetchPaymentHistory();
         }
     }, [viewMode]);
 
@@ -522,7 +541,42 @@ export default function SuppliersScreen({ defaultTab }) {
                 </div>
             )}
 
-            {['payments', 'advance', 'purchases', 'returns', 'po', 'performance'].includes(viewMode) && (
+            {viewMode === 'payments' && (
+                <div className="crm-content">
+                    <table className="crm-table single-line-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Supplier Name</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                                <th>Reference No</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paymentHistoryLoading ? (
+                                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>Loading payments...</td></tr>
+                            ) : paymentHistory.length > 0 ? (
+                                paymentHistory.map(payment => (
+                                    <tr key={payment.id}>
+                                        <td>{new Date(payment.payment_date).toLocaleDateString()}</td>
+                                        <td style={{ fontWeight: 'bold' }}>{payment.supplier_name}</td>
+                                        <td style={{ color: '#22c55e', fontWeight: '800' }}>₹{Number(payment.amount).toLocaleString()}</td>
+                                        <td><span className="method-pill">{payment.payment_method}</span></td>
+                                        <td>{payment.reference_no || '-'}</td>
+                                        <td>{payment.notes || '-'}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px'}}>No payments found.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {['advance', 'purchases', 'returns', 'po', 'performance'].includes(viewMode) && (
                 <div className="crm-content">
                     <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
                         <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🚛</div>
