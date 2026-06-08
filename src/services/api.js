@@ -175,6 +175,7 @@ export const suppliersAPI = {
   delete: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers/${id}`, HTTP_METHODS.DELETE),
   getDues: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers/dues`, HTTP_METHODS.GET),
   addPayment: (paymentData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers/payments`, HTTP_METHODS.POST, paymentData),
+  getLedger: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/suppliers/${id}/ledger`, HTTP_METHODS.GET),
 };
 
 // ========== SETTINGS API ==========

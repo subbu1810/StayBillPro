@@ -333,3 +333,119 @@ exports.addSupplierPayment = async (req, res) => {
         res.status(500).json({ success: false, message: 'Error recording supplier payment' });
     }
 };
+
+// GET Ledger for a single supplier
+exports.getSupplierLedger = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const supplierId = req.params.id;
+
+        // Fetch supplier details
+        const [supplierRows] = await db.query(
+            'SELECT * FROM suppliers WHERE id = ? AND admin_id = ?',
+            [supplierId, adminId]
+        );
+
+        if (supplierRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Supplier not found' });
+        }
+
+        const supplier = supplierRows[0];
+        const supplierName = supplier.supplier_name;
+
+        // Fetch purchases (from received purchase orders)
+        const [purchases] = await db.query(
+            'SELECT id, po_number as ref_no, total_amount as amount, order_date as date FROM purchase_orders WHERE admin_id = ? AND supplier_name = ? AND status IN ("Received", "Completed", "Stocked")',
+            [adminId, supplierName]
+        );
+
+        // Fetch payments
+        const [payments] = await db.query(
+            'SELECT id, reference_no as ref_no, amount, payment_date as date FROM supplier_payments WHERE admin_id = ? AND supplier_name = ?',
+            [adminId, supplierName]
+        );
+
+        let ledger = [];
+
+        // 1. Add Opening Balance
+        let openingBalance = parseFloat(supplier.opening_balance) || 0;
+        let isReceivable = supplier.balance_type === 'Receivable';
+        let currentBalance = isReceivable ? -openingBalance : openingBalance;
+
+        ledger.push({
+            date: supplier.created_at,
+            type: 'Opening Bal',
+            ref_no: '-',
+            purchases_dr: isReceivable ? openingBalance : '-',
+            payments_cr: isReceivable ? '-' : openingBalance,
+            balance: Math.abs(currentBalance),
+            balance_type: currentBalance > 0 ? 'Cr (Payable)' : (currentBalance < 0 ? 'Dr (Advance)' : '')
+        });
+
+        // Add Purchases and Payments to ledger
+        purchases.forEach(p => {
+            ledger.push({
+                date: p.date,
+                type: 'Purchase',
+                ref_no: p.ref_no,
+                purchases_dr: '-',
+                payments_cr: parseFloat(p.amount), // A purchase increases what we owe the supplier (Credit their account)
+                raw_amount: parseFloat(p.amount)
+            });
+        });
+
+        payments.forEach(p => {
+            ledger.push({
+                date: p.date,
+                type: 'Payment',
+                ref_no: p.ref_no || '-',
+                purchases_dr: parseFloat(p.amount), // A payment decreases what we owe (Debit their account)
+                payments_cr: '-',
+                raw_amount: parseFloat(p.amount)
+            });
+        });
+
+        // Sort by date ascending
+        ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Recalculate running balance
+        // We owe the supplier (Credit balance is positive in our internal tracking here)
+        // Purchase adds to what we owe (Cr), Payment subtracts from what we owe (Dr)
+        let runningBalance = currentBalance;
+        
+        let totalPurchase = 0;
+        let totalPaid = 0;
+
+        for (let i = 0; i < ledger.length; i++) {
+            if (i === 0) continue; // Skip opening balance, already accounted for
+
+            const entry = ledger[i];
+            if (entry.type === 'Purchase') {
+                runningBalance += entry.raw_amount;
+                totalPurchase += entry.raw_amount;
+            } else if (entry.type === 'Payment') {
+                runningBalance -= entry.raw_amount;
+                totalPaid += entry.raw_amount;
+            }
+
+            entry.balance = Math.abs(runningBalance);
+            entry.balance_type = runningBalance > 0 ? 'Cr (Payable)' : (runningBalance < 0 ? 'Dr (Advance)' : '');
+        }
+
+        res.json({
+            success: true,
+            ledger: ledger,
+            summary: {
+                total_purchase: totalPurchase,
+                total_paid: totalPaid,
+                net_balance: Math.abs(runningBalance),
+                balance_type: runningBalance > 0 ? 'Payable' : (runningBalance < 0 ? 'Advance' : 'Settled')
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching supplier ledger:', error);
+        res.status(500).json({ success: false, message: 'Error fetching supplier ledger' });
+    }
+};
+

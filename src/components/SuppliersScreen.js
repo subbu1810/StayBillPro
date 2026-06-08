@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/SuppliersScreen.css';
 import { usePopup } from './ui/PopupProvider';
+import { suppliersAPI } from '../services/api';
 
 export default function SuppliersScreen({ defaultTab }) {
     const popup = usePopup();
@@ -9,6 +10,12 @@ export default function SuppliersScreen({ defaultTab }) {
     const [vendors, setVendors] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Ledger State
+    const [selectedVendorForLedger, setSelectedVendorForLedger] = useState('');
+    const [ledgerData, setLedgerData] = useState([]);
+    const [ledgerSummary, setLedgerSummary] = useState(null);
+    const [ledgerLoading, setLedgerLoading] = useState(false);
 
     const API_BASE = process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech/api';
 
@@ -35,6 +42,31 @@ export default function SuppliersScreen({ defaultTab }) {
         fetchSuppliers();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const fetchSupplierLedger = async (supplierId) => {
+        if (!supplierId) {
+            setLedgerData([]);
+            setLedgerSummary(null);
+            return;
+        }
+        setLedgerLoading(true);
+        try {
+            const res = await suppliersAPI.getLedger(supplierId);
+            if (res.success) {
+                setLedgerData(res.ledger);
+                setLedgerSummary(res.summary);
+            }
+        } catch (err) {
+            popup.showError('Could not load ledger.');
+        } finally {
+            setLedgerLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSupplierLedger(selectedVendorForLedger);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedVendorForLedger]);
 
     // Sync with Sidebar
     useEffect(() => {
@@ -277,7 +309,11 @@ export default function SuppliersScreen({ defaultTab }) {
             {viewMode === 'ledger' && (
                 <div className="crm-content">
                     <div className="crm-filters" style={{ marginBottom: '12px' }}>
-                        <select style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', width: '280px', fontSize: '0.85rem' }}>
+                        <select 
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', width: '280px', fontSize: '0.85rem' }}
+                            value={selectedVendorForLedger}
+                            onChange={(e) => setSelectedVendorForLedger(e.target.value)}
+                        >
                             <option value="">Select Vendor...</option>
                             {vendors.map(vendor => (
                                 <option key={vendor.id} value={vendor.id}>
@@ -286,62 +322,73 @@ export default function SuppliersScreen({ defaultTab }) {
                             ))}
                         </select>
                     </div>
-                    <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                        <div className="summary-card" style={{ borderLeft: '3px solid #14b8a6' }}>
-                            <h3>Total Purchase</h3>
-                            <p className="big-number" style={{ fontSize: '1.1rem' }}>₹4,85,000</p>
+
+                    {ledgerLoading && <p style={{ color: '#64748b' }}>Loading ledger...</p>}
+
+                    {!ledgerLoading && selectedVendorForLedger && ledgerSummary && (
+                        <>
+                            <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                                <div className="summary-card" style={{ borderLeft: '3px solid #14b8a6' }}>
+                                    <h3>Total Purchase</h3>
+                                    <p className="big-number" style={{ fontSize: '1.1rem' }}>₹{ledgerSummary.total_purchase?.toLocaleString()}</p>
+                                </div>
+                                <div className="summary-card" style={{ borderLeft: '3px solid #10b981' }}>
+                                    <h3>Total Paid</h3>
+                                    <p className="big-number" style={{ fontSize: '1.1rem' }}>₹{ledgerSummary.total_paid?.toLocaleString()}</p>
+                                </div>
+                                <div className="summary-card" style={{ borderLeft: '3px solid #f59e0b' }}>
+                                    <h3>Total Returns</h3>
+                                    <p className="big-number" style={{ fontSize: '1.1rem' }}>₹0.00</p>
+                                </div>
+                                <div className="summary-card" style={{ borderLeft: ledgerSummary.balance_type === 'Advance' ? '3px solid #10b981' : '3px solid #ef4444' }}>
+                                    <h3>Net {ledgerSummary.balance_type}</h3>
+                                    <p className="big-number" style={{ fontSize: '1.1rem', color: ledgerSummary.balance_type === 'Advance' ? '#10b981' : '#ef4444' }}>
+                                        ₹{ledgerSummary.net_balance?.toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                            <table className="crm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Ref No</th>
+                                        <th>Purchases (Cr)</th>
+                                        <th>Payments (Dr)</th>
+                                        <th>Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ledgerData.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                                                No ledger entries found.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        ledgerData.map((entry, idx) => (
+                                            <tr key={idx}>
+                                                <td>{new Date(entry.date).toLocaleDateString()}</td>
+                                                <td>{entry.type}</td>
+                                                <td>{entry.ref_no}</td>
+                                                <td>{entry.payments_cr !== '-' ? `₹${entry.payments_cr.toLocaleString()}` : '-'}</td>
+                                                <td>{entry.purchases_dr !== '-' ? `₹${entry.purchases_dr.toLocaleString()}` : '-'}</td>
+                                                <td style={{ fontWeight: '600' }}>
+                                                    ₹{entry.balance.toLocaleString()} {entry.balance_type}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </>
+                    )}
+                    
+                    {!selectedVendorForLedger && (
+                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                            <p>Please select a vendor to view their ledger.</p>
                         </div>
-                        <div className="summary-card" style={{ borderLeft: '3px solid #10b981' }}>
-                            <h3>Total Paid</h3>
-                            <p className="big-number" style={{ fontSize: '1.1rem' }}>₹5,30,000</p>
-                        </div>
-                        <div className="summary-card" style={{ borderLeft: '3px solid #f59e0b' }}>
-                            <h3>Total Returns</h3>
-                            <p className="big-number" style={{ fontSize: '1.1rem' }}>₹0.00</p>
-                        </div>
-                        <div className="summary-card" style={{ borderLeft: '3px solid #10b981' }}>
-                            <h3>Net Advance</h3>
-                            <p className="big-number" style={{ fontSize: '1.1rem', color: '#10b981' }}>₹45,000</p>
-                        </div>
-                    </div>
-                    <table className="crm-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Ref No</th>
-                                <th>Purchases (Dr)</th>
-                                <th>Payments (Cr)</th>
-                                <th>Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>2025-01-05</td>
-                                <td>Opening Bal</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>₹0</td>
-                            </tr>
-                            <tr>
-                                <td>2025-01-10</td>
-                                <td>Purchase</td>
-                                <td>PUR-8812</td>
-                                <td>₹4,85,000</td>
-                                <td>-</td>
-                                <td>₹4,85,000 Dr</td>
-                            </tr>
-                            <tr>
-                                <td>2025-01-10</td>
-                                <td>Payment</td>
-                                <td>BANK-991</td>
-                                <td>-</td>
-                                <td>₹5,30,000</td>
-                                <td>₹45,000 Cr (Adv)</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    )}
                 </div>
             )}
 
