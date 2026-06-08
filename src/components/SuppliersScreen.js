@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import '../styles/SuppliersScreen.css';
 import { usePopup } from './ui/PopupProvider';
 import { suppliersAPI, purchaseAPI } from '../services/api';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function SuppliersScreen({ defaultTab }) {
     const popup = usePopup();
@@ -142,6 +144,83 @@ export default function SuppliersScreen({ defaultTab }) {
             fetchPurchaseHistory();
         }
     }, [viewMode]);
+
+    const handleExportCSV = () => {
+        if (!ledgerData || ledgerData.length === 0) {
+            popup.showError("No ledger data to export.");
+            return;
+        }
+        
+        let csvContent = "Date,Type,Ref No,Purchases (Cr),Payments (Dr),Balance\n";
+        ledgerData.forEach(entry => {
+            const date = new Date(entry.date).toLocaleDateString();
+            const type = entry.type;
+            const ref = entry.ref_no || '-';
+            const pur = entry.purchases_dr !== '-' ? entry.purchases_dr : '-';
+            const pay = entry.payments_cr !== '-' ? entry.payments_cr : '-';
+            const bal = `${entry.balance} ${entry.balance_type}`;
+            csvContent += `"${date}","${type}","${ref}","${pur}","${pay}","${bal}"\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `supplier_ledger_${selectedVendorForLedger}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleExportPDF = () => {
+        if (!ledgerData || ledgerData.length === 0) {
+            popup.showError("No ledger data to export.");
+            return;
+        }
+
+        const doc = new jsPDF();
+        const selectedVendorObj = vendors.find(v => v.id.toString() === selectedVendorForLedger.toString());
+        const vendorName = selectedVendorObj ? selectedVendorObj.supplier_name : 'Vendor';
+
+        doc.setFontSize(16);
+        doc.text("Supplier Ledger Statement", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.text(`Supplier: ${vendorName}`, 14, 28);
+        doc.text(`Generated On: ${new Date().toLocaleDateString()}`, 14, 34);
+        
+        if (ledgerSummary) {
+            doc.text(`Total Purchase: Rs. ${ledgerSummary.total_purchase}`, 14, 42);
+            doc.text(`Total Paid: Rs. ${ledgerSummary.total_paid}`, 14, 48);
+            doc.text(`Net Balance: Rs. ${ledgerSummary.net_balance} (${ledgerSummary.balance_type})`, 100, 42);
+        }
+
+        const tableColumn = ["Date", "Type", "Ref No", "Purchases (Cr)", "Payments (Dr)", "Balance"];
+        const tableRows = [];
+
+        ledgerData.forEach(entry => {
+            const rowData = [
+                new Date(entry.date).toLocaleDateString(),
+                entry.type,
+                entry.ref_no || '-',
+                entry.purchases_dr !== '-' ? `Rs. ${entry.purchases_dr}` : '-',
+                entry.payments_cr !== '-' ? `Rs. ${entry.payments_cr}` : '-',
+                `Rs. ${entry.balance} ${entry.balance_type}`
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 55,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185] },
+            styles: { fontSize: 8 }
+        });
+
+        doc.save(`supplier_ledger_${vendorName}.pdf`);
+    };
 
     const handleRecordPayment = async () => {
         if (!paymentAmount || isNaN(paymentAmount) || Number(paymentAmount) <= 0) {
@@ -411,7 +490,7 @@ export default function SuppliersScreen({ defaultTab }) {
 
             {viewMode === 'ledger' && (
                 <div className="crm-content">
-                    <div className="crm-filters" style={{ marginBottom: '12px' }}>
+                    <div className="crm-filters" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <select 
                             style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', width: '280px', fontSize: '0.85rem' }}
                             value={selectedVendorForLedger}
@@ -424,6 +503,12 @@ export default function SuppliersScreen({ defaultTab }) {
                                 </option>
                             ))}
                         </select>
+                        {selectedVendorForLedger && ledgerData.length > 0 && (
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="btn-primary" onClick={handleExportCSV} style={{ background: '#16a085', padding: '6px 15px', fontSize: '12px' }}>Export CSV</button>
+                                <button className="btn-primary" onClick={handleExportPDF} style={{ background: '#c0392b', padding: '6px 15px', fontSize: '12px' }}>Export PDF</button>
+                            </div>
+                        )}
                     </div>
 
                     {ledgerLoading && <p style={{ color: '#64748b' }}>Loading ledger...</p>}
