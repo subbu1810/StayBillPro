@@ -57,7 +57,8 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const [scanResults, setScanResults] = useState([]);
 	const [advancedEditIndex, setAdvancedEditIndex] = useState(null);
 	const fileInputRef = React.useRef(null);
-	const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
+	const { API_CONFIG } = require('../config/apiConfig');
+	const API_BASE = API_CONFIG.BASE_URL;
 
 	const funnyMessages = [
 		"Waking up the AI...",
@@ -996,7 +997,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 						<label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}>Quantity to {adjustType === 'in' ? 'Add' : 'Deduct'}</label>
 						<input 
 							autoFocus
-							type="number" 
+							type="number" step="any" 
 							value={adjustQty}
 							onChange={(e) => setAdjustQty(e.target.value)}
 							style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px', fontSize: '1.2rem', fontWeight: 'bold', textAlign: 'center' }}
@@ -1007,7 +1008,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								<div style={{ flex: 1 }}>
 									<label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}>Retail Price</label>
 									<input 
-										type="number" 
+										type="number" step="any" 
 										value={adjustRetailPrice}
 										onChange={(e) => setAdjustRetailPrice(e.target.value)}
 										style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '1rem', fontWeight: 'bold' }}
@@ -1016,7 +1017,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								<div style={{ flex: 1 }}>
 									<label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}>Wholesale Price</label>
 									<input 
-										type="number" 
+										type="number" step="any" 
 										value={adjustWholesalePrice}
 										onChange={(e) => setAdjustWholesalePrice(e.target.value)}
 										style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '1rem', fontWeight: 'bold' }}
@@ -1121,7 +1122,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												</td>
 												<td style={{ padding: '4px' }}>
 													<input 
-														type="number" 
+														type="number" step="any" 
 														value={item.gst || 0} 
 														onChange={e => {
 															const newRes = [...scanResults];
@@ -1133,7 +1134,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												</td>
 												<td style={{ padding: '4px' }}>
 													<input 
-														type="number" 
+														type="number" step="any" 
 														value={item.quantity || 0} 
 														onChange={e => {
 															const newRes = [...scanResults];
@@ -1145,7 +1146,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												</td>
 												<td style={{ padding: '4px' }}>
 													<input 
-														type="number" 
+														type="number" step="any" 
 														value={item.netRate || 0} 
 														onChange={e => {
 															const newRes = [...scanResults];
@@ -1157,7 +1158,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												</td>
 												<td style={{ padding: '4px' }}>
 													<input 
-														type="number" 
+														type="number" step="any" 
 														value={item.rate || 0} 
 														onChange={e => {
 															const newRes = [...scanResults];
@@ -1169,7 +1170,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												</td>
 												<td style={{ padding: '4px' }}>
 													<input 
-														type="number" 
+														type="number" step="any" 
 														value={item.discount || 0} 
 														onChange={e => {
 															const newRes = [...scanResults];
@@ -1181,7 +1182,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 												</td>
 												<td style={{ padding: '4px' }}>
 													<input 
-														type="number" 
+														type="number" step="any" 
 														value={item.amount || 0} 
 														onChange={e => {
 															const newRes = [...scanResults];

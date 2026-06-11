@@ -44,6 +44,14 @@ const BackupReminderModal = () => {
                 }
             });
 
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                window.location.href = '/';
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error("Failed to download backup");
             }

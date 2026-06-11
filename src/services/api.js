@@ -29,6 +29,14 @@ const apiRequest = async (url, method = HTTP_METHODS.GET, data = null, params = 
   const response = await fetch(finalUrl, options);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
+      window.location.href = '/';
+      throw new Error('Session expired. Please log in again.');
+    }
+
     let errorMessage = `API Error: ${response.status} ${response.statusText}`;
     try {
       const errorData = await response.json();

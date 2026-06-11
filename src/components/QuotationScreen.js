@@ -574,7 +574,7 @@ export default function QuotationScreen() {
                     <input type="text" placeholder="Optional Description" value={item.description} onChange={(e) => handleItemChange(item.id, 'description', e.target.value)} />
                   </div>
                   <div>
-                    <input type="number" min="1" value={item.qty} onChange={(e) => handleItemChange(item.id, 'qty', e.target.value)} />
+                    <input type="number" step="any" min="1" value={item.qty} onChange={(e) => handleItemChange(item.id, 'qty', e.target.value)} />
                   </div>
                   <div>
                     <input type="number" step="0.01" min="0" value={item.price} onChange={(e) => handleItemChange(item.id, 'price', e.target.value)} />
@@ -623,7 +623,7 @@ export default function QuotationScreen() {
             <div className="form-group">
               <label>Validity Period (Days)</label>
               <input 
-                type="number" 
+                type="number" step="any" 
                 min="1" 
                 value={validDays} 
                 onChange={(e) => setValidDays(e.target.value)}

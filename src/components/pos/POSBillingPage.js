@@ -1122,7 +1122,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
               <div>
                 <span>Discount (%)</span>
                 <input
-                  type="number"
+                  type="number" step="any"
                   placeholder=""
                   value={discount}
                   onChange={e => setDiscount(e.target.value)}

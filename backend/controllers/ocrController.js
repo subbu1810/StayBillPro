@@ -39,51 +39,84 @@ exports.scanBill = async (req, res) => {
         const base64Data = req.file.buffer.toString('base64');
         const mimeType = req.file.mimetype || 'image/jpeg';
 
-        const prompt = `Extract the following details from this invoice document and return the data STRICTLY as a JSON object with this exact structure:
+        const prompt = `You are an invoice data extraction engine.
+
+Extract the invoice details from the provided document.
+
+Rules:
+1. Return ONLY a valid JSON object.
+2. Do NOT include markdown, code blocks, explanations, notes, or additional text.
+3. If a value is missing or cannot be determined, use null.
+4. Do NOT guess or infer values.
+5. Convert numeric values to numbers (not strings).
+6. Extract all line items found in the invoice.
+7. Preserve item names exactly as they appear in the document.
+8. For GST percentage, return only the numeric value (e.g., 18, 12, 5).
+9. If HSN code is not available, return null.
+10. Ensure the response is valid JSON that can be parsed directly using JSON.parse().
+
+Expected JSON structure:
+
 {
-  "supplierName": "Name of the supplier",
-  "invoiceNumber": "Invoice number",
+  "supplierName": null,
+  "invoiceNumber": null,
   "items": [
     {
-      "name": "Name of the item or product",
-      "hsn": "HSN Code",
-      "gst": 0.0,
-      "quantity": 0,
-      "netRate": 0.0,
-      "rate": 0.0,
-      "discount": 0.0,
-      "amount": 0.0
+      "name": null,
+      "hsn": null,
+      "gst": null,
+      "quantity": null,
+      "netRate": null,
+      "rate": null,
+      "discount": null,
+      "amount": null
     }
   ]
-}
-Return ONLY valid JSON. Do not include markdown formatting or backticks.`;
+}`;
 
         let response;
-        try {
-            console.log("Attempting OCR with gemini-flash-latest...");
-            response = await ai.models.generateContent({
-                model: 'gemini-flash-latest',
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [
-                            { text: prompt },
-                            {
-                                inlineData: {
-                                    data: base64Data,
-                                    mimeType: mimeType
+        let retries = 3;
+        let delayMs = 2000;
+        
+        while (retries > 0) {
+            try {
+                console.log(`Attempting OCR with gemini-2.5-flash... (Retries left: ${retries - 1})`);
+                response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: [
+                        {
+                            role: 'user',
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inlineData: {
+                                        data: base64Data,
+                                        mimeType: mimeType
+                                    }
                                 }
-                            }
-                        ]
+                            ]
+                        }
+                    ],
+                    config: {
+                        responseMimeType: "application/json",
                     }
-                ],
-                config: {
-                    responseMimeType: "application/json",
+                });
+                break; // success
+            } catch (err) {
+                const errString = err.message ? err.message.toLowerCase() : '';
+                const isRateLimit = err.status === 429 || errString.includes('429') || errString.includes('quota') || errString.includes('exhausted');
+                const isUnavailable = err.status === 503 || errString.includes('503') || errString.includes('unavailable') || errString.includes('high demand');
+                
+                if ((isRateLimit || isUnavailable) && retries > 1) {
+                    console.log(`Rate limit or traffic issue hit. Retrying in ${delayMs}ms...`);
+                    await new Promise(res => setTimeout(res, delayMs));
+                    delayMs *= 2; // exponential backoff
+                    retries--;
+                } else {
+                    console.error("OCR failed with gemini-2.5-flash:", err.message);
+                    throw err;
                 }
-            });
-        } catch (err) {
-            console.error("OCR failed with gemini-flash-latest:", err.message);
-            throw err;
+            }
         }
 
         const rawText = response.text;
@@ -145,6 +178,11 @@ Return ONLY valid JSON. Do not include markdown formatting or backticks.`;
             }
         } catch (refundError) {
             console.error('CRITICAL: Failed to refund wallet after OCR error:', refundError);
+        }
+
+        const errStr = error.message ? error.message.toLowerCase() : '';
+        if (error.status === 503 || errStr.includes('503') || errStr.includes('unavailable') || errStr.includes('high demand') || errStr.includes('429') || errStr.includes('exhausted')) {
+            return res.status(503).json({ success: false, message: 'The AI service is currently busy.\nPlease try again in a few moments.' });
         }
 
         res.status(500).json({ success: false, message: 'AI Error: ' + error.message, error: error.stack });

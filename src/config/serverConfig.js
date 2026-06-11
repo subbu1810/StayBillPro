@@ -5,10 +5,10 @@
  * Local (localhost) and Hostinger (Production) servers.
  */
 
-const IS_PRODUCTION = true; // Set to true for Hostinger, false for Local
+const IS_PRODUCTION = false; // Set to true for Hostinger, false for Local
 
 export const API_BASE_URL = IS_PRODUCTION 
     ? 'https://staybillproapi.ssquareg.tech/api'  // Replace with your Hostinger URL
-    : 'http://localhost:5000/api';
+    : 'http://localhost:5002/api';
 
 export default API_BASE_URL;

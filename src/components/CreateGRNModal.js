@@ -263,7 +263,8 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
             formDataData.append('document', file);
 
             // Using the same endpoint as InventoryScreen
-            const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
+            const { API_CONFIG } = require('../config/apiConfig');
+            const API_BASE = API_CONFIG.BASE_URL;
             const response = await fetch(`${API_BASE}/ocr/scan-bill`, {
                 method: 'POST',
                 headers: {
@@ -525,7 +526,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 value={item.gst || 0}
                                                 onChange={e => handleItemChange(index, 'gst', Number(e.target.value))}
                                                 style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'center', border: '1px solid #e2e8f0', borderRadius: '4px' }}
@@ -533,7 +534,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 required
                                                 min="1"
                                                 value={item.quantity_received}
@@ -543,7 +544,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 min="0"
                                                 max={item.quantity_received}
                                                 value={item.damaged_quantity || 0}
@@ -554,7 +555,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 value={item.netRate || 0}
                                                 onChange={e => handleItemChange(index, 'netRate', Number(e.target.value))}
                                                 style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
@@ -562,7 +563,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 value={item.rate || 0}
                                                 onChange={e => handleItemChange(index, 'rate', Number(e.target.value))}
                                                 style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
@@ -570,7 +571,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 value={item.discount || 0}
                                                 onChange={e => handleItemChange(index, 'discount', Number(e.target.value))}
                                                 style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}
@@ -578,7 +579,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 value={item.amount || 0}
                                                 onChange={e => handleItemChange(index, 'amount', Number(e.target.value))}
                                                 style={{ width: '100%', fontSize: '0.95rem', padding: '8px', textAlign: 'right', border: '1px solid #e2e8f0', borderRadius: '4px' }}

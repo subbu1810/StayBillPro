@@ -250,7 +250,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td>
                                             <input 
-                                                type="number" 
+                                                type="number" step="any" 
                                                 required
                                                 min="1"
                                                 className="search-input"
