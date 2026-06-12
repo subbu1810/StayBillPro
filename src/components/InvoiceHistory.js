@@ -12,7 +12,7 @@ import {
   CreditCard
 } from 'lucide-react';
 
-const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
+import API_BASE from '../config/serverConfig';
 
 export default function InvoiceHistory({ invoiceType }) {
   const [invoices, setInvoices] = useState([]);

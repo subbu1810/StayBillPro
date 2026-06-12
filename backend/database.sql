@@ -509,3 +509,14 @@ CREATE TABLE IF NOT EXISTS grn_items (
     pushed_to_stock BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (grn_id) REFERENCES grns(id) ON DELETE CASCADE
 );
+
+-- Backup Logs Table
+CREATE TABLE IF NOT EXISTS backup_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    download_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    system_info VARCHAR(255),
+    ip_address VARCHAR(45),
+    file_name VARCHAR(255),
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+);

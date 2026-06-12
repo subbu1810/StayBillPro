@@ -74,50 +74,52 @@ Expected JSON structure:
   ]
 }`;
 
-        let response;
-        let retries = 3;
-        let delayMs = 2000;
-        
-        while (retries > 0) {
-            try {
-                console.log(`Attempting OCR with gemini-2.5-flash... (Retries left: ${retries - 1})`);
-                response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: [
-                        {
-                            role: 'user',
-                            parts: [
-                                { text: prompt },
-                                {
-                                    inlineData: {
-                                        data: base64Data,
-                                        mimeType: mimeType
-                                    }
-                                }
-                            ]
+        async function callGeminiWithRetry(promptText, inlineData, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    console.log(`Attempting OCR with gemini-2.5-flash... (Attempt: ${i + 1})`);
+                    const result = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: [
+                            {
+                                role: 'user',
+                                parts: [
+                                    { text: promptText },
+                                    inlineData
+                                ]
+                            }
+                        ],
+                        config: {
+                            responseMimeType: "application/json",
                         }
-                    ],
-                    config: {
-                        responseMimeType: "application/json",
+                    });
+                    return result;
+                } catch (error) {
+                    const errString = error.message ? error.message.toLowerCase() : '';
+                    if (
+                        (errString.includes("503") || errString.includes("429") || errString.includes("exhausted") || errString.includes("unavailable") || error.status === 503 || error.status === 429) &&
+                        i < retries - 1
+                    ) {
+                        console.log(`Rate limit or 503 hit. Retrying in ${(i + 1) * 3000}ms...`);
+                        await new Promise(resolve =>
+                            setTimeout(resolve, (i + 1) * 3000)
+                        );
+                        continue;
                     }
-                });
-                break; // success
-            } catch (err) {
-                const errString = err.message ? err.message.toLowerCase() : '';
-                const isRateLimit = err.status === 429 || errString.includes('429') || errString.includes('quota') || errString.includes('exhausted');
-                const isUnavailable = err.status === 503 || errString.includes('503') || errString.includes('unavailable') || errString.includes('high demand');
-                
-                if ((isRateLimit || isUnavailable) && retries > 1) {
-                    console.log(`Rate limit or traffic issue hit. Retrying in ${delayMs}ms...`);
-                    await new Promise(res => setTimeout(res, delayMs));
-                    delayMs *= 2; // exponential backoff
-                    retries--;
-                } else {
-                    console.error("OCR failed with gemini-2.5-flash:", err.message);
-                    throw err;
+                    console.error("OCR failed with gemini-2.5-flash:", error.message);
+                    throw error;
                 }
             }
         }
+
+        const inlineData = {
+            inlineData: {
+                data: base64Data,
+                mimeType: mimeType
+            }
+        };
+
+        const response = await callGeminiWithRetry(prompt, inlineData, 3);
 
         const rawText = response.text;
         console.log('--- GEMINI RAW JSON ---');

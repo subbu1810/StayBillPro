@@ -252,6 +252,12 @@ export const stockLogAPI = {
   create: (logData) => apiRequest(API_ENDPOINTS.STOCK_LOGS.CREATE, HTTP_METHODS.POST, logData),
 };
 
+// ========== BACKUP API ==========
+export const backupAPI = {
+  getStatus: () => apiRequest(API_ENDPOINTS.BACKUP.STATUS, HTTP_METHODS.GET),
+  getLogs: () => apiRequest(API_ENDPOINTS.BACKUP.LOGS, HTTP_METHODS.GET),
+};
+
 // ========== ACCOUNTING API ==========
 export const accountingAPI = {
   getLedger: (params) => apiRequest(API_ENDPOINTS.ACCOUNTING.LEDGER, HTTP_METHODS.GET, null, params),

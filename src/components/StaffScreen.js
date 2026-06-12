@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/StaffScreen.css';
 import '../styles/SettingsScreen.css';
-import { staffAPI, branchesAPI, staffManagementAPI } from '../services/api';
+import { staffAPI, branchesAPI, staffManagementAPI, usersAPI } from '../services/api';
 import UsersRolesScreen from './UsersRolesScreen';
 import { usePopup } from './ui/PopupProvider';
 
@@ -11,6 +11,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
     const [branches, setBranches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [editStaffId, setEditStaffId] = useState(null);
     const [newStaff, setNewStaff] = useState({
         admin_name: '',
         email: '',
@@ -221,14 +222,22 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         }
         setIsSubmitting(true);
         try {
-            await staffAPI.create(newStaff);
+            if (editStaffId) {
+                const payload = { ...newStaff };
+                if (!payload.password) delete payload.password;
+                await usersAPI.update(editStaffId, payload);
+                setSuccess('Staff member updated successfully!');
+            } else {
+                await staffAPI.create(newStaff);
+                setSuccess('Staff login account created successfully!');
+            }
             setShowModal(false);
+            setEditStaffId(null);
             setNewStaff({ admin_name: '', email: '', phone: '', password: '', branch_id: '', base_salary: '', permissions: ['dashboard'] });
-            setSuccess('Staff login account created successfully!');
             setTimeout(() => setSuccess(null), 4000);
             fetchData();
         } catch (err) {
-            setError("Error creating staff: " + err.message);
+            setError(`Error ${editStaffId ? 'updating' : 'creating'} staff: ` + err.message);
             setTimeout(() => setError(null), 4000);
         } finally {
             setIsSubmitting(false);
@@ -239,7 +248,11 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         <div className="crm-content">
             <div className="crm-filters">
                 <input type="text" placeholder="Search Staff Member..." className="search-input" />
-                <button className="btn-primary" onClick={() => setShowModal(true)}>+ Add Employee</button>
+                <button className="btn-primary" onClick={() => {
+                    setEditStaffId(null);
+                    setNewStaff({ admin_name: '', email: '', phone: '', password: '', branch_id: '', base_salary: '', permissions: ['dashboard'] });
+                    setShowModal(true);
+                }}>+ Add Employee</button>
             </div>
             <table className="crm-table single-line-table" style={{ minWidth: '1000px' }}>
                 <thead>
@@ -266,7 +279,19 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                 <td>{s.email} <br/> <small>{s.phone}</small></td>
                                 <td>₹0</td>
                                 <td>
-                                    <button className="btn-icon">✏️</button>
+                                    <button className="btn-icon" onClick={() => {
+                                        setEditStaffId(s.id);
+                                        setNewStaff({
+                                            admin_name: s.admin_name || '',
+                                            email: s.email || '',
+                                            phone: s.phone || '',
+                                            password: '',
+                                            branch_id: s.branch_id || '',
+                                            base_salary: s.base_salary || '',
+                                            permissions: typeof s.permissions === 'string' ? JSON.parse(s.permissions) : (s.permissions || ['dashboard'])
+                                        });
+                                        setShowModal(true);
+                                    }}>✏️</button>
                                     <button className="btn-icon" onClick={async () => {
                                         const ok = await popup.confirm('Remove this staff member?');
                                         if(ok) {
@@ -760,7 +785,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
             {showModal && (
                 <div className="premium-modal-overlay">
                     <div className="premium-full-modal">
-                        <h3>Add New Staff Member</h3>
+                        <h3>{editStaffId ? 'Edit Staff Member' : 'Add New Staff Member'}</h3>
                         <form onSubmit={handleCreateStaff}>
                             <div className="premium-form-grid">
                                 <div className="premium-input-wrapper">
@@ -798,14 +823,14 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                     />
                                 </div>
                                 <div className="premium-input-wrapper">
-                                    <label className="premium-input-label">Login Password *</label>
+                                    <label className="premium-input-label">Login Password {editStaffId ? '' : '*'}</label>
                                     <input 
                                         type="password" 
                                         className="premium-input"
-                                        required 
+                                        required={!editStaffId} 
                                         value={newStaff.password} 
                                         onChange={e => setNewStaff({...newStaff, password: e.target.value})}
-                                        placeholder="Create temporary password"
+                                        placeholder={editStaffId ? "Leave blank to keep current" : "Create temporary password"}
                                     />
                                 </div>
                                 <div className="premium-input-wrapper">

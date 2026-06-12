@@ -29,12 +29,26 @@ exports.getAllSpares = async (req, res) => {
 exports.createSpare = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const { branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
+        let { branch_id, category_id, category, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
+        // Handle string category name (lookup or create)
+        if (!category_id && category) {
+            const [existing] = await db.query('SELECT id FROM categories WHERE admin_id = ? AND name = ?', [adminId, category]);
+            if (existing.length > 0) {
+                category_id = existing[0].id;
+            } else {
+                const [newCat] = await db.query(
+                    'INSERT INTO categories (admin_id, branch_id, name, type) VALUES (?, ?, ?, ?)',
+                    [adminId, branch_id, category, 'service']
+                );
+                category_id = newCat.insertId;
+            }
+        }
+
         const [result] = await db.query(
             `INSERT INTO service_inventory (admin_id, branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [adminId, branch_id, category_id, name, brand, part_number, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null, expiry_date || null]
+            [adminId, branch_id, category_id || null, name, brand, part_number, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null, expiry_date || null]
         );
         
         res.status(201).json({ message: "Spare part created successfully", id: result.insertId });
@@ -49,13 +63,33 @@ exports.updateSpare = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { id } = req.params;
-        const { branch_id, category_id, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
+        let { branch_id, category_id, category, name, brand, part_number, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
+        // Handle string category name (lookup or create)
+        if (!category_id && category) {
+            const [existing] = await db.query('SELECT id FROM categories WHERE admin_id = ? AND name = ?', [adminId, category]);
+            if (existing.length > 0) {
+                category_id = existing[0].id;
+            } else {
+                // Get branch_id from spare
+                const [spare] = await db.query('SELECT branch_id FROM service_inventory WHERE id = ?', [id]);
+                const bId = spare.length > 0 ? spare[0].branch_id : null;
+                
+                if (bId) {
+                    const [newCat] = await db.query(
+                        'INSERT INTO categories (admin_id, branch_id, name, type) VALUES (?, ?, ?, ?)',
+                        [adminId, bId, category, 'service']
+                    );
+                    category_id = newCat.insertId;
+                }
+            }
+        }
+
         await db.query(
             `UPDATE service_inventory 
              SET category_id = ?, name = ?, brand = ?, part_number = ?, price = ?, quantity = ?, status = ?, hsn_code = ?, unit = ?, gst_rate = ?, serial_number = ?, dimensions = ?, size = ?, purchase_price = ?, wholesale_price = ?, min_wholesale_qty = ?, expiry_date = ? 
              WHERE id = ? AND admin_id = ?`,
-            [category_id, name, brand, part_number, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, expiry_date || null, id, adminId]
+            [category_id || null, name, brand, part_number, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, expiry_date || null, id, adminId]
         );
         
         res.json({ message: "Spare part updated successfully" });

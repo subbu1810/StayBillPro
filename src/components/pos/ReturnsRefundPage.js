@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePopup } from '../ui/PopupProvider';
+import API_BASE from '../../config/serverConfig';
 
 /**
  * ReturnsRefundPage Component
@@ -13,8 +14,6 @@ export default function ReturnsRefundPage() {
   const [loading, setLoading] = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [refundMode, setRefundMode] = useState('');
-
-  const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
 
   const searchInvoice = async (e) => {
     e.preventDefault();

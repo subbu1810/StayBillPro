@@ -31,16 +31,30 @@ exports.getAllProducts = async (req, res) => {
 exports.createProduct = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const { branch_id, category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
+        let { branch_id, category_id, category, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
         if (!branch_id) {
             return res.status(400).json({ message: "branch_id is required" });
         }
 
+        // Handle string category name (lookup or create)
+        if (!category_id && category) {
+            const [existing] = await db.query('SELECT id FROM categories WHERE admin_id = ? AND name = ?', [adminId, category]);
+            if (existing.length > 0) {
+                category_id = existing[0].id;
+            } else {
+                const [newCat] = await db.query(
+                    'INSERT INTO categories (admin_id, branch_id, name, type) VALUES (?, ?, ?, ?)',
+                    [adminId, branch_id, category, 'sales']
+                );
+                category_id = newCat.insertId;
+            }
+        }
+
         const [result] = await db.query(
             `INSERT INTO sales_inventory (admin_id, branch_id, category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [adminId, branch_id, category_id, name, brand, sku, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null, expiry_date || null]
+            [adminId, branch_id, category_id || null, name, brand, sku, price || 0, quantity || 0, status || 'available', hsn_code, unit || null, gst_rate || 18, serial_number, dimensions, size, purchase_price || 0, wholesale_price || null, min_wholesale_qty || null, expiry_date || null]
         );
         
         res.status(201).json({ message: "Product created successfully", id: result.insertId });
@@ -55,13 +69,33 @@ exports.updateProduct = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { id } = req.params;
-        const { category_id, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
+        let { category_id, category, name, brand, sku, price, quantity, status, hsn_code, unit, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price, min_wholesale_qty, expiry_date } = req.body;
         
+        // Handle string category name (lookup or create)
+        if (!category_id && category) {
+            const [existing] = await db.query('SELECT id FROM categories WHERE admin_id = ? AND name = ?', [adminId, category]);
+            if (existing.length > 0) {
+                category_id = existing[0].id;
+            } else {
+                // Get branch_id from product
+                const [prod] = await db.query('SELECT branch_id FROM sales_inventory WHERE id = ?', [id]);
+                const branch_id = prod.length > 0 ? prod[0].branch_id : null;
+                
+                if (branch_id) {
+                    const [newCat] = await db.query(
+                        'INSERT INTO categories (admin_id, branch_id, name, type) VALUES (?, ?, ?, ?)',
+                        [adminId, branch_id, category, 'sales']
+                    );
+                    category_id = newCat.insertId;
+                }
+            }
+        }
+
         await db.query(
             `UPDATE sales_inventory 
              SET category_id = ?, name = ?, brand = ?, sku = ?, price = ?, quantity = ?, status = ?, hsn_code = ?, unit = ?, gst_rate = ?, serial_number = ?, dimensions = ?, size = ?, purchase_price = ?, wholesale_price = ?, min_wholesale_qty = ?, expiry_date = ? 
              WHERE id = ? AND admin_id = ?`,
-            [category_id, name, brand, sku, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, expiry_date || null, id, adminId]
+            [category_id || null, name, brand, sku, price, quantity, status, hsn_code, unit || null, gst_rate, serial_number, dimensions, size, purchase_price, wholesale_price || null, min_wholesale_qty || null, expiry_date || null, id, adminId]
         );
         
         res.json({ message: "Product updated successfully" });

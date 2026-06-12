@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_CONFIG } from '../config/apiConfig';
 import { usePopup } from './ui/PopupProvider';
+import { backupAPI } from '../services/api';
 
 const BackupReminderModal = () => {
     const [showModal, setShowModal] = useState(false);
@@ -8,21 +9,29 @@ const BackupReminderModal = () => {
     const popup = usePopup();
 
     useEffect(() => {
-        const checkBackupStatus = () => {
-            const lastBackupDateStr = localStorage.getItem('last_backup_date');
-            if (!lastBackupDateStr) {
-                // If never backed up, trigger modal immediately
-                setShowModal(true);
-                return;
-            }
+        const checkBackupStatus = async () => {
+            try {
+                const response = await backupAPI.getStatus();
+                const lastBackupDateStr = response.last_backup_date;
+                
+                if (!lastBackupDateStr) {
+                    // If never backed up, trigger modal immediately
+                    setShowModal(true);
+                    return;
+                }
 
-            const lastBackupDate = new Date(lastBackupDateStr);
-            const now = new Date();
-            const diffTime = Math.abs(now - lastBackupDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const lastBackupDate = new Date(lastBackupDateStr);
+                const now = new Date();
+                const diffTime = Math.abs(now - lastBackupDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            if (diffDays > 7) {
-                setShowModal(true);
+                if (diffDays > 7) {
+                    setShowModal(true);
+                } else {
+                    setShowModal(false);
+                }
+            } catch (error) {
+                console.error("Failed to check backup status from server", error);
             }
         };
 
@@ -67,8 +76,8 @@ const BackupReminderModal = () => {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            // Update backup date
-            localStorage.setItem('last_backup_date', new Date().toISOString());
+            // Removing local storage fallback since server tracks it
+            localStorage.removeItem('last_backup_date');
             setShowModal(false);
             if(popup) popup.showSuccess("Database backup successful!");
         } catch (error) {

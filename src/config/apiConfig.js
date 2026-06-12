@@ -208,6 +208,13 @@ export const API_ENDPOINTS = {
     GST_SUMMARY: `${API_BASE_URL}/accounting/gst-summary`,
     GSTR1: `${API_BASE_URL}/accounting/gstr1`,
   },
+
+  // Backup
+  BACKUP: {
+    STATUS: `${API_BASE_URL}/backup/status`,
+    LOGS: `${API_BASE_URL}/backup/logs`,
+    DOWNLOAD: `${API_BASE_URL}/backup/download`,
+  },
 };
 
 // ========== HTTP METHODS ==========

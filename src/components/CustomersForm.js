@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "../styles/CustomersForm.css";
 
-const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
+import API_BASE from '../config/serverConfig';
 
 const emptyForm = {
   firstName: "",

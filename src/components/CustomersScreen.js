@@ -3,7 +3,7 @@ import '../styles/CustomersScreen.css';
 import CustomerFormModal from './CustomersForm';
 import { usePopup } from './ui/PopupProvider';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech/api';
+import API_BASE from '../config/serverConfig';
 
 /* ─────────────────────────────────────────────────────────────
    LedgerTab — full customer ledger with running balance

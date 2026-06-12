@@ -1,6 +1,6 @@
 .purchase-screen {
     animation: fadeIn 0.3s ease;
-    height: 100%;
+    min-height: 100%;
 }
 
 .report-card.crimson { border-left: 4px solid #ef4444; }

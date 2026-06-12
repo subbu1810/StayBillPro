@@ -15,7 +15,7 @@ import {
   Minimize
 } from 'lucide-react';
 
-const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
+import API_BASE from '../../config/serverConfig';
 
 const numberToWords = (num) => {
   const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
@@ -1144,7 +1144,7 @@ export default function WholesaleBillingPage() {
                       <img src={item.image} alt="" />
 
                       <div>
-                        <h5>{item.name}</h5>
+                        <h5 title={item.name}>{item.name}</h5>
                         <span>₹{item.price}</span>
                       </div>
 

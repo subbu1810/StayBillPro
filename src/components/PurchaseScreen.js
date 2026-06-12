@@ -9,7 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePopup } from './ui/PopupProvider';
 
-const API_BASE = process.env.REACT_APP_API_URL || "https://staybillproapi.ssquareg.tech/api";
+import API_BASE from '../config/serverConfig';
 
 const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     const popup = usePopup();
@@ -22,13 +22,18 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     const [branchList, setBranchList] = useState([]);
     const [supplierList, setSupplierList] = useState([]);
 
-    // New Filter States for GRN
+    const getLocalDateStr = () => {
+        const today = new Date();
+        return new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    };
+
+    // GRN Filters
     const [filterGrnNo, setFilterGrnNo] = useState('');
     const [filterBranch, setFilterBranch] = useState('');
     const [filterPoNo, setFilterPoNo] = useState('');
     const [filterSupplier, setFilterSupplier] = useState('');
-    const [filterFromDate, setFilterFromDate] = useState('');
-    const [filterToDate, setFilterToDate] = useState('');
+    const [filterFromDate, setFilterFromDate] = useState(getLocalDateStr());
+    const [filterToDate, setFilterToDate] = useState(getLocalDateStr());
 
     // Barcode Printing State
     const [selectedGRNItems, setSelectedGRNItems] = useState([]);
@@ -210,10 +215,11 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     };
 
     const handleSelectAll = (e) => {
-        if (selectedGRNItems.length === grns.length) {
+        const availableItems = grns.filter(item => !item.pushed_to_stock);
+        if (selectedGRNItems.length === availableItems.length && availableItems.length > 0) {
             setSelectedGRNItems([]);
         } else {
-            setSelectedGRNItems(grns);
+            setSelectedGRNItems(availableItems);
         }
     };
 
@@ -500,7 +506,9 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
         </div>
     );
 
-    const renderGRN = () => (
+    const renderGRN = () => {
+        const pendingGrns = grns.filter(item => !item.pushed_to_stock);
+        return (
         <div className="crm-content">
             <div className="grn-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0, color: '#333' }}>New GRN / GRNs</h3>
@@ -541,7 +549,7 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
             </div>
 
             <div style={{ fontSize: '12px', color: '#2980b9', marginBottom: '5px', fontWeight: 'bold' }}>
-                {grns.length < 10 ? `0${grns.length}` : grns.length} Records Found!
+                {pendingGrns.length < 10 ? `0${pendingGrns.length}` : pendingGrns.length} Records Found!
             </div>
 
             <div style={{ overflowX: 'auto' }}>
@@ -552,7 +560,8 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                                 <input 
                                     type="checkbox" 
                                     onChange={handleSelectAll} 
-                                    checked={grns.length > 0 && selectedGRNItems.length === grns.length}
+                                    checked={pendingGrns.length > 0 && selectedGRNItems.length === pendingGrns.length}
+                                    disabled={pendingGrns.length === 0}
                                 />
                             </th>
                             <th>Sl No</th>
@@ -579,8 +588,8 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                     <tbody>
                         {loading ? (
                             <tr><td colSpan="19" style={{textAlign: 'center', padding: '20px'}}>Loading...</td></tr>
-                        ) : grns.length > 0 ? (
-                            grns.map((item, index) => {
+                        ) : pendingGrns.length > 0 ? (
+                            pendingGrns.map((item, index) => {
                                 const orderQty = item.order_qty || 0;
                                 const recvdQty = item.recvd_qty || 0;
                                 const dueQty = Math.max(0, orderQty - recvdQty);
@@ -592,6 +601,7 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                                             type="checkbox" 
                                             checked={selectedGRNItems.some(i => i.grn_item_id === item.grn_item_id)}
                                             onChange={(e) => handleCheckboxChange(e, item)}
+                                            disabled={item.pushed_to_stock}
                                         />
                                     </td>
                                     <td>{index + 1}</td>
@@ -633,7 +643,8 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                 </table>
             </div>
         </div>
-    );
+        );
+    };
 
     const renderDueTracking = () => (
         <div className="crm-content">

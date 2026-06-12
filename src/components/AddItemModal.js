@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import API_BASE from '../config/serverConfig';
 import '../styles/AddItemModal.css';
 import { usePopup } from './ui/PopupProvider';
 
@@ -110,7 +111,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
         const fetchUnits = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('https://staybillproapi.ssquareg.tech/api/units', {
+                const response = await fetch(`${API_BASE}/units`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -148,7 +149,7 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
             if (!unitsList.includes(upperUnit)) {
                 try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch('https://staybillproapi.ssquareg.tech/api/units', {
+                    const response = await fetch(`${API_BASE}/units`, {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',

@@ -307,13 +307,20 @@
 .cart-product {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: stretch;
   min-width: 0;
+  width: 100%;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .cart-product img {
   display: none;
+}
+
+.cart-product > div {
+  min-width: 0;
+  width: 100%;
 }
 
 .cart-product h5 {
@@ -323,6 +330,7 @@
   white-space: nowrap;
   font-weight: 700;
   color: #1e293b;
+  width: 100%;
 }
 
 .cart-product span {

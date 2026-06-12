@@ -4,6 +4,7 @@ import { usePopup } from './ui/PopupProvider';
 import { suppliersAPI, purchaseAPI } from '../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import API_BASE from '../config/serverConfig';
 
 export default function SuppliersScreen({ defaultTab }) {
     const popup = usePopup();
@@ -41,8 +42,6 @@ export default function SuppliersScreen({ defaultTab }) {
     // Purchase History State
     const [purchaseHistory, setPurchaseHistory] = useState([]);
     const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState(false);
-
-    const API_BASE = process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech/api';
 
     // Fetch suppliers from backend
     const fetchSuppliers = async () => {

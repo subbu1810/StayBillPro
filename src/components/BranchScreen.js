@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE from '../config/serverConfig';
 import '../styles/BranchScreen.css';
 import { branchesAPI } from '../services/api';
 import { usePopup } from './ui/PopupProvider';
@@ -95,7 +96,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
 
     const fetchTransfers = async () => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/stock-transfers`, {
+            const response = await fetch(`${API_BASE}/stock-transfers`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -108,7 +109,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     const fetchProducts = async () => {
         try {
             // Fetch all products (across all branches) for transfer selection
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/products`, {
+            const response = await fetch(`${API_BASE}/products`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -120,7 +121,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
 
     const fetchConsolidatedReports = async () => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/branches/reports/consolidated`, {
+            const response = await fetch(`${API_BASE}/branches/reports/consolidated`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -135,7 +136,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         setLoadingSubData(true);
         setShowInvoicesModal(true);
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/billing?branchId=${branch.id}`, {
+            const response = await fetch(`${API_BASE}/billing?branchId=${branch.id}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -154,7 +155,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         setLoadingSubData(true);
         setShowExpensesModal(true);
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/expenses?branch_id=${branch.id}`, {
+            const response = await fetch(`${API_BASE}/expenses?branch_id=${branch.id}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             const data = await response.json();
@@ -396,7 +397,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
         try {
             // Loop and sequentially send POST requests for each item
             for (const item of transferItems) {
-                const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/stock-transfers`, {
+                const response = await fetch(`${API_BASE}/stock-transfers`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -478,7 +479,7 @@ const BranchScreen = ({ defaultTab = 'manage', branchId }) => {
     );
     const handleUpdateTransferStatus = async (id, status, reason) => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://staybillproapi.ssquareg.tech'}/api/stock-transfers/${id}/status`, {
+            const response = await fetch(`${API_BASE}/stock-transfers/${id}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

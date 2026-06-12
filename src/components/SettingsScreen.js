@@ -3,6 +3,17 @@ import '../styles/SettingsScreen.css';
 import UsersRolesScreen from './UsersRolesScreen';
 import BarcodeSettingsScreen from './BarcodeSettingsScreen';
 import { adminAuthAPI } from '../services/api';
+import { API_CONFIG } from '../config/apiConfig';
+
+const getSystemNameFromUserAgent = (userAgent) => {
+    if (!userAgent) return 'Unknown System';
+    if (userAgent.includes('Windows')) return 'Windows';
+    if (userAgent.includes('Macintosh') || userAgent.includes('Mac OS')) return 'Mac OS';
+    if (userAgent.includes('Android')) return 'Android';
+    if (userAgent.includes('Linux')) return 'Linux';
+    if (userAgent.includes('iPhone') || userAgent.includes('iPad')) return 'iOS';
+    return 'Unknown OS';
+};
 
 const SettingsScreen = ({ defaultTab = 'profile' }) => {
     const [tab, setTab] = useState(defaultTab);
@@ -21,20 +32,45 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
         setTab(defaultTab);
     }, [defaultTab]);
 
-    const [adminProfile, setAdminProfile] = useState({
-        name: 'Super Admin',
-        businessName: 'StayBill Electronics Pvt Ltd',
-        email: 'admin@staybill.com',
-        phone: '+91 98765 43210',
-        designation: 'Managing Director',
-        address: 'Sector 4, Corporate Park',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        pincode: '400001',
-        country: 'India',
-        businessType: 'Private Limited',
-        gstn: '27AADCB1234F1Z1',
-        avatar: '👨‍💼'
+    const [adminProfile, setAdminProfile] = useState(() => {
+        const userStr = localStorage.getItem('adminUser');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user) {
+                    return {
+                        name: user.admin_name || user.name || 'Admin',
+                        businessName: user.business || 'StayBill Electronics Pvt Ltd',
+                        email: user.email || '',
+                        phone: user.phone || '',
+                        designation: user.role || 'Managing Director',
+                        address: user.address || '',
+                        city: user.city || 'Mumbai',
+                        state: user.state || 'Maharashtra',
+                        pincode: user.pincode || '400001',
+                        country: user.country || 'India',
+                        businessType: user.business_type || 'Private Limited',
+                        gstn: user.gst_number || '',
+                        avatar: '👨‍💼'
+                    };
+                }
+            } catch(e) {}
+        }
+        return {
+            name: 'Super Admin',
+            businessName: 'StayBill Electronics Pvt Ltd',
+            email: 'admin@staybill.com',
+            phone: '+91 98765 43210',
+            designation: 'Managing Director',
+            address: 'Sector 4, Corporate Park',
+            city: 'Mumbai',
+            state: 'Maharashtra',
+            pincode: '400001',
+            country: 'India',
+            businessType: 'Private Limited',
+            gstn: '27AADCB1234F1Z1',
+            avatar: '👨‍💼'
+        };
     });
 
     const [corporateInfo, setCorporateInfo] = useState(() => {
@@ -108,6 +144,53 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
             }, 2000);
         } catch (err) {
             setMessage({ type: 'error', text: err.message || 'Failed to update password' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateAdminProfile = async () => {
+        setLoading(true);
+        try {
+            const response = await adminAuthAPI.updateProfile({
+                admin_name: adminProfile.name,
+                business_name: adminProfile.businessName,
+                email: adminProfile.email,
+                phone: adminProfile.phone,
+                role: adminProfile.designation,
+                address: adminProfile.address,
+                city: adminProfile.city,
+                state: adminProfile.state,
+                pincode: adminProfile.pincode,
+                country: adminProfile.country,
+                business_type: adminProfile.businessType,
+                gst_number: adminProfile.gstn
+            });
+            
+            // Update localStorage so it persists
+            try {
+                const userStr = localStorage.getItem('adminUser');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    user.admin_name = adminProfile.name;
+                    user.business = adminProfile.businessName;
+                    user.email = adminProfile.email;
+                    user.phone = adminProfile.phone;
+                    user.role = adminProfile.designation;
+                    user.address = adminProfile.address;
+                    user.city = adminProfile.city;
+                    user.state = adminProfile.state;
+                    user.pincode = adminProfile.pincode;
+                    user.country = adminProfile.country;
+                    user.business_type = adminProfile.businessType;
+                    user.gst_number = adminProfile.gstn;
+                    localStorage.setItem('adminUser', JSON.stringify(user));
+                }
+            } catch(e) { console.error('Error updating localStorage', e); }
+
+            setIsEditing(false);
+        } catch (err) {
+            console.error('Failed to update admin profile', err);
         } finally {
             setLoading(false);
         }
@@ -208,8 +291,8 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
                             <button className="btn-cancel-lock" onClick={() => setIsEditing(false)}>
                                 Cancel
                             </button>
-                            <button className="btn-primary" onClick={() => setIsEditing(false)}>
-                                Save Changes
+                            <button className="btn-primary" onClick={handleUpdateAdminProfile} disabled={loading}>
+                                {loading ? 'Saving...' : 'Save Changes'}
                             </button>
                         </>
                     )}
@@ -461,12 +544,151 @@ const SettingsScreen = ({ defaultTab = 'profile' }) => {
         );
     };
 
+    const [downloadingBackup, setDownloadingBackup] = useState(false);
+    const [backupMessage, setBackupMessage] = useState({ type: '', text: '' });
+    const [backupLogs, setBackupLogs] = useState([]);
+
+    useEffect(() => {
+        if (tab === 'security') {
+            fetchBackupLogs();
+        }
+    }, [tab]);
+
+    const fetchBackupLogs = async () => {
+        try {
+            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+            const response = await fetch(`${API_CONFIG.BASE_URL}/backup/logs`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setBackupLogs(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch backup logs", error);
+        }
+    };
+
+    const handleDownloadBackup = async () => {
+        setDownloadingBackup(true);
+        setBackupMessage({ type: '', text: '' });
+        try {
+            const token = localStorage.getItem('token') || localStorage.getItem('adminToken');
+            const response = await fetch(`${API_CONFIG.BASE_URL}/backup/download`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                window.location.href = '/';
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error("Failed to download backup");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `StayBillPro_Backup_${new Date().toISOString().split('T')[0]}.sql`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            localStorage.removeItem('last_backup_date');
+            setBackupMessage({ type: 'success', text: 'Database backup downloaded successfully!' });
+        } catch (error) {
+            console.error(error);
+            setBackupMessage({ type: 'error', text: 'Failed to generate backup. Please try again.' });
+        } finally {
+            setDownloadingBackup(false);
+            fetchBackupLogs(); // Refresh logs after download
+        }
+    };
+
+    const renderSecuritySettings = () => (
+        <div className="settings-content-pane">
+            <div className="pane-header-actions">
+                <h3 className="pane-title">Security & Data Management</h3>
+            </div>
+
+            {backupMessage.text && (
+                <div className={`alert ${backupMessage.type}`} style={{ padding: '12px 16px', marginBottom: '20px', borderRadius: '8px', fontSize: '0.9rem', background: backupMessage.type === 'error' ? '#fee2e2' : '#dcfce7', color: backupMessage.type === 'error' ? '#991b1b' : '#166534', border: `1px solid ${backupMessage.type === 'error' ? '#fecaca' : '#bbf7d0'}` }}>
+                    {backupMessage.text}
+                </div>
+            )}
+
+            <div className="st-profile-layout">
+                <div className="st-profile-main">
+                    <div className="st-form-section">
+                        <h4 className="st-section-title">Database Backup</h4>
+                        <div className="st-security-box" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div>
+                                <h5 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: '#0f172a' }}>Manual Database Backup</h5>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>Download a complete snapshot of your StayBillPro database securely.</p>
+                            </div>
+                            <button 
+                                className="btn-primary" 
+                                onClick={handleDownloadBackup} 
+                                disabled={downloadingBackup}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', whiteSpace: 'nowrap' }}
+                            >
+                                {downloadingBackup ? 'Generating...' : '📥 Download Backup'}
+                            </button>
+                        </div>
+
+                        <h4 className="st-section-title" style={{ marginTop: '30px' }}>Recent Backup Logs</h4>
+                        <div className="st-table-container">
+                            <table className="st-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>System Info</th>
+                                        <th>IP Address</th>
+                                        <th>File Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {backupLogs.length > 0 ? (
+                                        backupLogs.map(log => (
+                                            <tr key={log.id}>
+                                                <td>{new Date(log.download_time).toLocaleString()}</td>
+                                                <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.system_info}>
+                                                    {getSystemNameFromUserAgent(log.system_info)}
+                                                </td>
+                                                <td>{log.ip_address}</td>
+                                                <td>{log.file_name}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No backup logs found.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="settings-pane-container">
             {tab === 'profile' && renderAdminProfile()}
             {tab === 'corporate' && renderCorporateProfile()}
             {tab === 'users' && <div className="settings-content-pane full-width-pane"><UsersRolesScreen /></div>}
-            {tab === 'security' && <div className="settings-content-pane">Security Settings Coming Soon</div>}
+            {tab === 'security' && renderSecuritySettings()}
             {tab === 'barcode' && renderBarcodeSettings()}
         </div>
     );
