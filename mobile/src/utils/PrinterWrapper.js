@@ -40,26 +40,36 @@ export const BluetoothEscposPrinter = {
   printText: async (text, options) => {
     let formattedText = text;
     
-    // Clean up carriage returns to prevent double spacing
+    // Convert all \r\n to \n to standardise
     formattedText = formattedText.replace(/\r\n/g, '\n');
     
-    // Apply EPToolkit tags based on options
+    // Extract trailing newlines so we can put them OUTSIDE the tags
+    const trailingNewlinesMatch = formattedText.match(/\n+$/);
+    const trailingNewlines = trailingNewlinesMatch ? trailingNewlinesMatch[0] : '';
+    
+    // Remove trailing newlines from the text to be wrapped
+    let cleanText = formattedText.replace(/\n+$/, '');
+    
+    // Apply EPToolkit tags based on options (on cleanText)
     if (options) {
       if (options.widthtimes >= 2 || options.heigthtimes >= 2) {
-        formattedText = `<D>${formattedText.replace(/\n/g, '')}</D>\n`;
+        cleanText = `<D>${cleanText.replace(/\n/g, '')}</D>`;
       } else if (options.fonttype === 1 || options.bold) {
-        formattedText = `<B>${formattedText.replace(/\n/g, '')}</B>\n`;
+        cleanText = `<B>${cleanText.replace(/\n/g, '')}</B>`;
       }
     }
     
-    // Apply alignment only for Center and Right (Left is default and <L> causes extra spacing)
-    if (BluetoothEscposPrinter._alignTag === "<C>" && formattedText.trim().length > 0) {
-      formattedText = `<C>${formattedText.replace(/\n/g, '')}</C>\n`;
-    } else if (BluetoothEscposPrinter._alignTag === "<R>" && formattedText.trim().length > 0) {
-      formattedText = `<R>${formattedText.replace(/\n/g, '')}</R>\n`;
+    // Apply alignment only for Center and Right
+    if (BluetoothEscposPrinter._alignTag === "<C>" && cleanText.trim().length > 0) {
+      cleanText = `<C>${cleanText}</C>`;
+    } else if (BluetoothEscposPrinter._alignTag === "<R>" && cleanText.trim().length > 0) {
+      cleanText = `<R>${cleanText}</R>`;
     }
     
-    await BLEPrinter.printText(formattedText);
+    // Re-attach trailing newlines, but REMOVE EXACTLY ONE because the native printer module implicitly adds one!
+    let finalNewlines = trailingNewlines.length > 0 ? trailingNewlines.substring(1) : '';
+    
+    await BLEPrinter.printText(cleanText + finalNewlines);
     
     // Add a small delay to prevent BLE buffer overflow and out-of-order printing
     await new Promise(resolve => setTimeout(resolve, 150));
