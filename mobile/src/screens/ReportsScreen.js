@@ -129,7 +129,7 @@ export default function ReportsScreen({ navigation }) {
       const isWholesale = selectedInvoice.invoice_type === 'wholesale' || activeTab === 'wholesale';
       const printSize = isWholesale ? (posSettings?.wholesale_print_size || 'A4') : (posSettings?.print_size || '80mm');
       const is80mm = printSize === '80mm';
-      const lineLen = is80mm ? 48 : 32;
+      const lineLen = is80mm ? 47 : 31;
       const maxNameLen = is80mm ? 30 : 20;
       const separator = "-".repeat(lineLen) + "\r\n";
 

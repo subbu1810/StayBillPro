@@ -29,6 +29,8 @@ export const BluetoothEscposPrinter = {
   _alignTag: "",
   printerInit: async () => { 
     BluetoothEscposPrinter._alignTag = ""; 
+    // Initialize printer (ESC @) and set default line spacing (ESC 2)
+    await BLEPrinter.printText('\x1B\x40\x1B\x32');
   },
   printerLeftSpace: async () => {},
   printerAlign: async (align) => {
@@ -38,38 +40,36 @@ export const BluetoothEscposPrinter = {
   },
   setBlob: async () => {},
   printText: async (text, options) => {
-    let formattedText = text;
+    let formattedText = text.replace(/\r\n/g, '\n');
     
-    // Convert all \r\n to \n to standardise
-    formattedText = formattedText.replace(/\r\n/g, '\n');
+    // Bypassing EPToolkit tags which trigger buggy line spacing in the native module.
+    // We convert everything to raw ESC/POS commands to bypass EPToolkit's \n parser.
     
-    // Extract trailing newlines so we can put them OUTSIDE the tags
-    const trailingNewlinesMatch = formattedText.match(/\n+$/);
-    const trailingNewlines = trailingNewlinesMatch ? trailingNewlinesMatch[0] : '';
+    // Default: Align Left (ESC a 0), Normal Font (ESC ! 0)
+    let prefix = '\x1B\x61\x00\x1B\x21\x00';
     
-    // Remove trailing newlines from the text to be wrapped
-    let cleanText = formattedText.replace(/\n+$/, '');
+    if (BluetoothEscposPrinter._alignTag === "<C>") {
+      prefix = '\x1B\x61\x01'; // Align Center
+    } else if (BluetoothEscposPrinter._alignTag === "<R>") {
+      prefix = '\x1B\x61\x02'; // Align Right
+    }
     
-    // Apply EPToolkit tags based on options (on cleanText)
     if (options) {
       if (options.widthtimes >= 2 || options.heigthtimes >= 2) {
-        cleanText = `<D>${cleanText.replace(/\n/g, '')}</D>`;
+        // Double width & height: ESC ! 48 (0x30)
+        prefix += '\x1B\x21\x30';
       } else if (options.fonttype === 1 || options.bold) {
-        cleanText = `<B>${cleanText.replace(/\n/g, '')}</B>`;
+        // Bold: ESC E 1 (0x1B 0x45 0x01)
+        prefix += '\x1B\x45\x01';
       }
     }
     
-    // Apply alignment only for Center and Right
-    if (BluetoothEscposPrinter._alignTag === "<C>" && cleanText.trim().length > 0) {
-      cleanText = `<C>${cleanText}</C>`;
-    } else if (BluetoothEscposPrinter._alignTag === "<R>" && cleanText.trim().length > 0) {
-      cleanText = `<R>${cleanText}</R>`;
-    }
+    // Replace \n with Print and Feed 1 Line (ESC d 1), then reset formatting
+    // This completely bypasses EPToolkit's buggy \n parser which injects massive line gaps!
+    let reset = '\x1B\x61\x00\x1B\x21\x00\x1B\x45\x00';
+    let safeText = formattedText.replace(/\n/g, `\x1B\x64\x01${reset}`);
     
-    // Re-attach trailing newlines, but REMOVE EXACTLY ONE because the native printer module implicitly adds one!
-    let finalNewlines = trailingNewlines.length > 0 ? trailingNewlines.substring(1) : '';
-    
-    await BLEPrinter.printText(cleanText + finalNewlines);
+    await BLEPrinter.printText(prefix + safeText);
     
     // Add a small delay to prevent BLE buffer overflow and out-of-order printing
     await new Promise(resolve => setTimeout(resolve, 150));

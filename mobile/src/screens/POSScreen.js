@@ -231,7 +231,7 @@ export default function POSScreen({ navigation }) {
       const savedMac = await AsyncStorage.getItem('printer_mac');
       if (savedMac && BluetoothEscposPrinter) {
         const printSize = posSettings?.print_size || '80mm';
-        const lineLen = printSize === '80mm' ? 48 : 32;
+        const lineLen = printSize === '80mm' ? 47 : 31;
         const maxNameLen = printSize === '80mm' ? 30 : 20;
         const separator = "-".repeat(lineLen) + "\r\n";
 
