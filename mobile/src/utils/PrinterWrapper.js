@@ -40,22 +40,28 @@ export const BluetoothEscposPrinter = {
   printText: async (text, options) => {
     let formattedText = text;
     
+    // Clean up carriage returns to prevent double spacing
+    formattedText = formattedText.replace(/\r\n/g, '\n');
+    
     // Apply EPToolkit tags based on options
     if (options) {
       if (options.widthtimes >= 2 || options.heigthtimes >= 2) {
-        formattedText = `<D>${formattedText.replace(/\r\n/g, '')}</D>\r\n`;
+        formattedText = `<D>${formattedText.replace(/\n/g, '')}</D>\n`;
       } else if (options.fonttype === 1 || options.bold) {
-        formattedText = `<B>${formattedText.replace(/\r\n/g, '')}</B>\r\n`;
+        formattedText = `<B>${formattedText.replace(/\n/g, '')}</B>\n`;
       }
     }
     
-    // Apply alignment
-    if (BluetoothEscposPrinter._alignTag && formattedText.trim().length > 0) {
-      const endTag = BluetoothEscposPrinter._alignTag.replace('<', '</');
-      // Wrap content with alignment tags
-      formattedText = `${BluetoothEscposPrinter._alignTag}${formattedText.replace(/\r\n/g, '')}${endTag}\r\n`;
+    // Apply alignment only for Center and Right (Left is default and <L> causes extra spacing)
+    if (BluetoothEscposPrinter._alignTag === "<C>" && formattedText.trim().length > 0) {
+      formattedText = `<C>${formattedText.replace(/\n/g, '')}</C>\n`;
+    } else if (BluetoothEscposPrinter._alignTag === "<R>" && formattedText.trim().length > 0) {
+      formattedText = `<R>${formattedText.replace(/\n/g, '')}</R>\n`;
     }
     
     await BLEPrinter.printText(formattedText);
+    
+    // Add a small delay to prevent BLE buffer overflow and out-of-order printing
+    await new Promise(resolve => setTimeout(resolve, 150));
   }
 };
