@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BluetoothManager, BluetoothEscposPrinter } from 'react-native-thermal-receipt-printer';
+import { BluetoothManager, BluetoothEscposPrinter } from '../utils/PrinterWrapper';
 
 export default function PrinterSettingsScreen({ navigation }) {
   const [pairedDevices, setPairedDevices] = useState([]);
@@ -11,6 +11,27 @@ export default function PrinterSettingsScreen({ navigation }) {
   const [bleOpend, setBleOpend] = useState(false);
   const [loading, setLoading] = useState(false);
   const [boundAddress, setBoundAddress] = useState('');
+
+  const requestBluetoothPermissions = async () => {
+    if (Platform.OS === 'android') {
+      if (Platform.Version >= 31) {
+        const result = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        ]);
+        return (
+          result['android.permission.BLUETOOTH_SCAN'] === PermissionsAndroid.RESULTS.GRANTED &&
+          result['android.permission.BLUETOOTH_CONNECT'] === PermissionsAndroid.RESULTS.GRANTED
+        );
+      } else {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        return result === PermissionsAndroid.RESULTS.GRANTED;
+      }
+    }
+    return true;
+  };
 
   useEffect(() => {
     // Check saved printer
@@ -22,22 +43,37 @@ export default function PrinterSettingsScreen({ navigation }) {
     };
     checkSavedPrinter();
 
-    // Init Bluetooth
-    if (BluetoothManager) {
-      BluetoothManager.isBluetoothEnabled().then((enabled) => {
-        setBleOpend(Boolean(enabled));
-        if (enabled) {
-          scanDevices();
-        }
-      }, (err) => {
-        Alert.alert('Bluetooth Error', err);
-      });
-    } else {
-      Alert.alert('Native Module Missing', 'Bluetooth features are not available in Expo Go. Please build a custom development client using EAS.');
-    }
+    const initBT = async () => {
+      const hasPermission = await requestBluetoothPermissions();
+
+      if (!hasPermission) {
+        Alert.alert('Permission Denied', 'Bluetooth permissions are required to connect to the printer.');
+        return;
+      }
+
+      if (BluetoothManager) {
+        BluetoothManager.isBluetoothEnabled().then((enabled) => {
+          setBleOpend(Boolean(enabled));
+          if (enabled) {
+            scanDevices();
+          }
+        }, (err) => {
+          Alert.alert('Bluetooth Error', err);
+        });
+      } else {
+        Alert.alert('Native Module Missing', 'Bluetooth features are not available in Expo Go. Please build a custom development client using EAS.');
+      }
+    };
+
+    initBT();
   }, []);
 
   const scanDevices = async () => {
+    const hasPermission = await requestBluetoothPermissions();
+    if (!hasPermission) {
+      Alert.alert('Permission Denied', 'Bluetooth permissions are required to scan for printers.');
+      return;
+    }
     if (!BluetoothManager) return;
     setLoading(true);
     try {

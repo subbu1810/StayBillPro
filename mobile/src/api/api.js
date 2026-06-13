@@ -127,3 +127,7 @@ export const grnAPI = {
 export const branchesAPI = {
   getAll: () => apiRequest(API_ENDPOINTS.BRANCHES.LIST, 'GET')
 };
+
+export const posSettingsAPI = {
+  getSettings: (branchId) => apiRequest(API_ENDPOINTS.POS_SETTINGS.GET, 'GET', null, branchId ? { branch_id: branchId } : null)
+};

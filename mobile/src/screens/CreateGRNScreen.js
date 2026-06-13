@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS } from '../api/apiConfig';
 import axios from 'axios';
 import { branchesAPI } from '../api/api';
-import { BluetoothEscposPrinter } from 'react-native-thermal-receipt-printer';
+import { BluetoothEscposPrinter } from '../utils/PrinterWrapper';
 
 export default function CreateGRNScreen({ route, navigation }) {
   const scannedData = route.params?.scannedData || null;

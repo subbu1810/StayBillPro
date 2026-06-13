@@ -106,7 +106,7 @@ export default function POSSettingsPage() {
           <head>
             <title>Test Print - ${printSize}</title>
             <style>
-              body { font-family: 'Courier New', Courier, monospace; width: 100%; max-width: 100%; padding: 10px; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; text-align: center; box-sizing: border-box; }
+              body { font-family: 'Courier New', Courier, monospace; width: 100%; max-width: 100%; padding: 10px; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : (printSize === '55mm' ? '11px' : '12px')}; text-align: center; box-sizing: border-box; }
               .print-btn { display: block; width: 100%; padding: 10px; margin-top: 20px; background: #000; color: #fff; text-align: center; cursor: pointer; border: none; font-weight: bold; font-family: sans-serif; }
               @media print { 
                 @page { margin: 0; }
@@ -116,7 +116,7 @@ export default function POSSettingsPage() {
             </style>
           </head>
           <body>
-            <h2 style="margin: 0; font-size: ${printSize === '50mm' ? '16px' : '20px'};">Test Print</h2>
+            <h2 style="margin: 0; font-size: ${printSize === '50mm' ? '16px' : (printSize === '55mm' ? '18px' : '20px')};">Test Print</h2>
             <p style="margin: 4px 0;">Size: ${printSize}</p>
             <p style="margin: 20px 0;">Printer configuration is working perfectly!</p>
             <button class="print-btn" onclick="window.print()">PRINT</button>
@@ -186,6 +186,7 @@ export default function POSSettingsPage() {
              <label>POS Billing Print Size</label>
              <select value={printSize} onChange={(e) => setPrintSize(e.target.value)}>
                <option value="80mm">80mm (Standard)</option>
+               <option value="55mm">55mm (Medium)</option>
                <option value="50mm">50mm (Small)</option>
                <option value="A4">A4 (Full Page)</option>
              </select>
@@ -194,6 +195,7 @@ export default function POSSettingsPage() {
              <label>Wholesale Billing Print Size</label>
              <select value={wholesalePrintSize} onChange={(e) => setWholesalePrintSize(e.target.value)}>
                <option value="80mm">80mm (Standard)</option>
+               <option value="55mm">55mm (Medium)</option>
                <option value="50mm">50mm (Small)</option>
                <option value="A4">A4 (Full Page)</option>
              </select>

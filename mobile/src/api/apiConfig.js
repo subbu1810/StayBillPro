@@ -1,9 +1,9 @@
 // Update this to your local machine IP address for testing on device
 // E.g., 'http://192.168.1.100:5002/api'
-const LOCAL_IP = 'http://192.168.29.31:5002/api';
+const LOCAL_IP = 'http://10.173.45.111:5002/api';
 const HOSTINGER_URL = 'https://staybillproapi.ssquareg.tech/api';
 
-const IS_PRODUCTION = false; // set true when publishing to stores
+const IS_PRODUCTION = true; // set true when publishing to stores
 
 export const API_BASE_URL = IS_PRODUCTION ? HOSTINGER_URL : LOCAL_IP;
 
@@ -64,6 +64,9 @@ export const API_ENDPOINTS = {
   },
   BRANCHES: {
     LIST: `${API_BASE_URL}/branches`
+  },
+  POS_SETTINGS: {
+    GET: `${API_BASE_URL}/pos-settings`
   }
 };
 

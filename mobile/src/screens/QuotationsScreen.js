@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { quotationsAPI } from '../api/api';
-import { BluetoothEscposPrinter } from 'react-native-thermal-receipt-printer';
+import { BluetoothEscposPrinter } from '../utils/PrinterWrapper';
 
 export default function QuotationsScreen({ navigation }) {
   const [quotations, setQuotations] = useState([]);

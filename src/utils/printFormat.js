@@ -396,7 +396,7 @@ export const getPosInvoiceHtml = (invoice, printSize = '80mm') => {
       <head>
         <title>Invoice - ${invoice.id}</title>
         <style>
-          body { font-family: 'Courier New', Courier, monospace; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : '12px'}; max-width: ${printSize === '50mm' ? '58mm' : '100%'}; box-sizing: border-box; }
+          body { font-family: 'Courier New', Courier, monospace; margin: 0 auto; color: #000; font-size: ${printSize === '50mm' ? '10px' : (printSize === '55mm' ? '11px' : '12px')}; max-width: ${printSize === '50mm' ? '58mm' : (printSize === '55mm' ? '65mm' : '100%')}; box-sizing: border-box; }
           .center { text-align: center; }
           .header-name { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
           .header-address { font-size: 10px; margin-bottom: 2px; }

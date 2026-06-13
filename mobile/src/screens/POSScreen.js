@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, Alert, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { productsAPI, sparesAPI, customersAPI, billingAPI, branchesAPI } from '../api/api';
+import { productsAPI, sparesAPI, customersAPI, billingAPI, branchesAPI, posSettingsAPI } from '../api/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BluetoothEscposPrinter } from 'react-native-thermal-receipt-printer';
+import { BluetoothEscposPrinter } from '../utils/PrinterWrapper';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function POSScreen({ navigation }) {
@@ -28,6 +30,9 @@ export default function POSScreen({ navigation }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [posSettings, setPosSettings] = useState(null);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successInvoice, setSuccessInvoice] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -59,6 +64,13 @@ export default function POSScreen({ navigation }) {
       setBranches(branchResults);
       if (branchResults.length > 0) {
         setSelectedBranch(branchResults[0]);
+        // Fetch POS Settings for the default branch
+        try {
+          const settings = await posSettingsAPI.getSettings(branchResults[0].id);
+          setPosSettings(settings);
+        } catch (e) {
+          console.error("Could not load pos settings:", e);
+        }
       }
 
       const combined = [...prodResults, ...spareResults];
@@ -193,58 +205,18 @@ export default function POSScreen({ navigation }) {
 
       const response = await billingAPI.create(payload);
       
-      // Auto Print Receipt Logic
-      try {
-        const savedMac = await AsyncStorage.getItem('printer_mac');
-        if (savedMac && BluetoothEscposPrinter) {
-          await BluetoothEscposPrinter.printerInit();
-          await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
-          await BluetoothEscposPrinter.printText("STAYBILL PRO\r\n", { encoding: 'GBK', codepage: 0, widthtimes: 2, heigthtimes: 2, fonttype: 1 });
-          await BluetoothEscposPrinter.printText("TAX INVOICE\r\n\r\n", {});
-          
-          await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-          await BluetoothEscposPrinter.printText(`Customer: ${payload.customerName}\r\n`, {});
-          await BluetoothEscposPrinter.printText(`Phone: ${payload.customerPhone || 'N/A'}\r\n`, {});
-          await BluetoothEscposPrinter.printText(`Date: ${new Date().toLocaleString()}\r\n`, {});
-          await BluetoothEscposPrinter.printText("--------------------------------\r\n", {});
-          
-          // Items
-          for (const item of payload.items) {
-            await BluetoothEscposPrinter.printText(`${item.name.substring(0, 20)}\r\n`, {});
-            await BluetoothEscposPrinter.printText(`  ${item.qty} x ${item.price} = ${(item.qty * item.price).toFixed(2)}\r\n`, {});
-          }
-          
-          await BluetoothEscposPrinter.printText("--------------------------------\r\n", {});
-          await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.RIGHT);
-          await BluetoothEscposPrinter.printText(`Subtotal: ${subtotal.toFixed(2)}\r\n`, {});
-          await BluetoothEscposPrinter.printText(`GST: ${gstTotal.toFixed(2)}\r\n`, {});
-          if (discountAmount > 0) {
-            await BluetoothEscposPrinter.printText(`Discount: -${discountAmount.toFixed(2)}\r\n`, {});
-          }
-          await BluetoothEscposPrinter.printText(`TOTAL: ${total.toFixed(2)}\r\n`, { widthtimes: 1, heigthtimes: 1 });
-          await BluetoothEscposPrinter.printText(`Mode: ${paymentMode.toUpperCase()}\r\n`, {});
-          
-          await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
-          await BluetoothEscposPrinter.printText("\r\nThank You For Your Business!\r\n\r\n\r\n", {});
-        }
-      } catch (printError) {
-        console.error("Printing failed:", printError);
-        Alert.alert("Printing Error", "Invoice created, but printing failed. Make sure your Bluetooth printer is connected.");
-      }
+      setSuccessInvoice({
+        ...payload,
+        subtotal,
+        gstTotal,
+        discountAmount,
+        total,
+        invoiceId: response.id || `POS-${Date.now()}` // fallback id
+      });
+      setIsSuccessModalVisible(true);
+      setIsCheckoutModalVisible(false);
+      setIsCartModalVisible(false);
 
-      Alert.alert('Success', 'Invoice created successfully!', [
-        { text: 'OK', onPress: () => {
-            setIsCheckoutModalVisible(false);
-            setIsCartModalVisible(false);
-            setCart([]);
-            setPaymentMode('cash');
-            setDiscount('');
-            setCustomerName('');
-            setCustomerPhone('');
-            setSelectedCustomer(null);
-            fetchData(); // Refresh stock
-        }}
-      ]);
     } catch (error) {
       console.error(error);
       Alert.alert('Checkout Failed', error.message || 'Something went wrong.');
@@ -252,6 +224,140 @@ export default function POSScreen({ navigation }) {
       setCheckoutLoading(false);
     }
   };
+
+  const handleBluetoothPrint = async () => {
+    if (!successInvoice) return;
+    try {
+      const savedMac = await AsyncStorage.getItem('printer_mac');
+      if (savedMac && BluetoothEscposPrinter) {
+        const printSize = posSettings?.print_size || '80mm';
+        const lineLen = printSize === '80mm' ? 48 : 32;
+        const maxNameLen = printSize === '80mm' ? 30 : 20;
+        const separator = "-".repeat(lineLen) + "\r\n";
+
+        await BluetoothEscposPrinter.printerInit();
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+        await BluetoothEscposPrinter.printText(`${posSettings?.shop_name || 'STAYBILL PRO'}\r\n`, { encoding: 'GBK', codepage: 0, widthtimes: 2, heigthtimes: 2, fonttype: 1 });
+        await BluetoothEscposPrinter.printText("TAX INVOICE\r\n\r\n", {});
+        
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
+        await BluetoothEscposPrinter.printText(`Customer: ${successInvoice.customerName}\r\n`, {});
+        await BluetoothEscposPrinter.printText(`Phone: ${successInvoice.customerPhone || 'N/A'}\r\n`, {});
+        await BluetoothEscposPrinter.printText(`Date: ${new Date().toLocaleString()}\r\n`, {});
+        await BluetoothEscposPrinter.printText(separator, {});
+        
+        for (const item of successInvoice.items) {
+          await BluetoothEscposPrinter.printText(`${item.name.substring(0, maxNameLen)}\r\n`, {});
+          await BluetoothEscposPrinter.printText(`  ${item.qty} x ${item.price} = ${(item.qty * item.price).toFixed(2)}\r\n`, {});
+        }
+        
+        await BluetoothEscposPrinter.printText(separator, {});
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.RIGHT);
+        await BluetoothEscposPrinter.printText(`Subtotal: ${successInvoice.subtotal.toFixed(2)}\r\n`, {});
+        await BluetoothEscposPrinter.printText(`GST: ${successInvoice.gstTotal.toFixed(2)}\r\n`, {});
+        if (successInvoice.discountAmount > 0) {
+          await BluetoothEscposPrinter.printText(`Discount: -${successInvoice.discountAmount.toFixed(2)}\r\n`, {});
+        }
+        await BluetoothEscposPrinter.printText(`TOTAL: ${successInvoice.total.toFixed(2)}\r\n`, { widthtimes: 1, heigthtimes: 1 });
+        await BluetoothEscposPrinter.printText(`Mode: ${successInvoice.paymentMethod.toUpperCase()}\r\n`, {});
+        
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+        await BluetoothEscposPrinter.printText("\r\nThank You For Your Business!\r\n\r\n\r\n", {});
+      } else {
+        Alert.alert("Printer Not Found", "Please connect a Bluetooth printer in Settings.");
+      }
+    } catch (printError) {
+      console.error("Printing failed:", printError);
+      Alert.alert("Printing Error", "Printing failed. Make sure your Bluetooth printer is connected.");
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!successInvoice) return;
+    
+    // Determine paper width based on settings
+    const printSize = posSettings?.print_size || '80mm';
+    let paperWidth = '302px'; // default 80mm width in standard web res
+    if (printSize === 'A4') paperWidth = '794px';
+    else if (printSize === '50mm') paperWidth = '188px';
+    else if (printSize === '55mm') paperWidth = '208px';
+    
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            body { font-family: monospace; width: ${paperWidth}; padding: 10px; margin: 0 auto; color: #000; }
+            .center { text-align: center; }
+            .left { text-align: left; }
+            .right { text-align: right; }
+            .bold { font-weight: bold; }
+            .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+            .flex-between { display: flex; justify-content: space-between; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { text-align: left; padding: 4px 0; }
+            .text-right { text-align: right; }
+          </style>
+        </head>
+        <body>
+          <h2 class="center">${posSettings?.shop_name || 'STAYBILL PRO'}</h2>
+          <div class="center bold">TAX INVOICE</div>
+          <br/>
+          <div class="left">Customer: ${successInvoice.customerName}</div>
+          <div class="left">Phone: ${successInvoice.customerPhone || 'N/A'}</div>
+          <div class="left">Date: ${new Date().toLocaleString()}</div>
+          <div class="divider"></div>
+          <table>
+            <tr>
+              <th>Item</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Price</th>
+              <th class="text-right">Total</th>
+            </tr>
+            ${successInvoice.items.map(item => `
+              <tr>
+                <td>${item.name}</td>
+                <td class="text-right">${item.qty}</td>
+                <td class="text-right">${item.price.toFixed(2)}</td>
+                <td class="text-right">${(item.qty * item.price).toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </table>
+          <div class="divider"></div>
+          <div class="flex-between"><span>Subtotal:</span><span>₹${successInvoice.subtotal.toFixed(2)}</span></div>
+          <div class="flex-between"><span>GST:</span><span>₹${successInvoice.gstTotal.toFixed(2)}</span></div>
+          ${successInvoice.discountAmount > 0 ? `<div class="flex-between"><span>Discount:</span><span>-₹${successInvoice.discountAmount.toFixed(2)}</span></div>` : ''}
+          <div class="flex-between bold" style="font-size: 1.2em; margin-top: 5px;"><span>TOTAL:</span><span>₹${successInvoice.total.toFixed(2)}</span></div>
+          <div class="flex-between"><span>Mode:</span><span>${successInvoice.paymentMethod.toUpperCase()}</span></div>
+          <div class="divider"></div>
+          <div class="center">Thank You For Your Business!</div>
+        </body>
+      </html>
+    `;
+
+    try {
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
+      });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Could not generate PDF");
+    }
+  };
+
+  const handleNewSale = () => {
+    setIsSuccessModalVisible(false);
+    setCart([]);
+    setPaymentMode('cash');
+    setDiscount('');
+    setCustomerName('');
+    setCustomerPhone('');
+    setSelectedCustomer(null);
+    setSuccessInvoice(null);
+    fetchData();
+  };
+
 
   const renderProduct = ({ item }) => (
     <TouchableOpacity style={styles.productCard} onPress={() => addToCart(item)}>
@@ -528,6 +634,36 @@ export default function POSScreen({ navigation }) {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal visible={isSuccessModalVisible} animationType="fade" transparent={true}>
+        <View style={styles.successOverlay}>
+          <View style={styles.successBox}>
+            <View style={styles.successIconCircle}>
+              <MaterialCommunityIcons name="check" size={40} color="#10b981" />
+            </View>
+            <Text style={styles.successTitle}>Payment Successful!</Text>
+            <Text style={styles.successSubtitle}>Invoice has been generated.</Text>
+
+            <View style={styles.successActions}>
+              <TouchableOpacity style={styles.actionBtnPrimary} onPress={handleBluetoothPrint}>
+                <MaterialCommunityIcons name="bluetooth" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.actionBtnTextPrimary}>Print Receipt</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionBtnSecondary} onPress={handleDownloadReceipt}>
+                <MaterialCommunityIcons name="download" size={20} color="#0ea5e9" style={{ marginRight: 8 }} />
+                <Text style={styles.actionBtnTextSecondary}>Download PDF</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionBtnOutline} onPress={handleNewSale}>
+                <MaterialCommunityIcons name="plus" size={20} color="#64748b" style={{ marginRight: 8 }} />
+                <Text style={styles.actionBtnTextOutline}>New Sale</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
     </SafeAreaView>
@@ -911,6 +1047,84 @@ const styles = StyleSheet.create({
   completeBtnText: {
     color: '#ffffff',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  successOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successBox: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+  },
+  successIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#d1fae5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+  successSubtitle: {
+    fontSize: 16,
+    color: '#64748b',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  successActions: {
+    width: '100%',
+  },
+  actionBtnPrimary: {
+    backgroundColor: '#10b981',
+    flexDirection: 'row',
+    padding: 14,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionBtnTextPrimary: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  actionBtnSecondary: {
+    backgroundColor: '#e0f2fe',
+    flexDirection: 'row',
+    padding: 14,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  actionBtnTextSecondary: {
+    color: '#0ea5e9',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  actionBtnOutline: {
+    backgroundColor: '#f1f5f9',
+    flexDirection: 'row',
+    padding: 14,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnTextOutline: {
+    color: '#64748b',
+    fontSize: 16,
     fontWeight: 'bold',
   }
 });
