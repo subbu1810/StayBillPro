@@ -197,6 +197,13 @@ exports.getAllGRNs = async (req, res) => {
             SELECT 
                 gi.id as grn_item_id,
                 gi.product_name as item_name,
+                gi.category_name as category_name,
+                gi.hsn as hsn,
+                gi.gst as gst,
+                gi.net_rate as net_rate,
+                gi.rate as rate,
+                gi.discount as discount,
+                gi.amount as amount,
                 gi.quantity_received as recvd_qty,
                 gi.damaged_quantity as damaged_qty,
                 gi.pushed_to_stock,
@@ -286,8 +293,8 @@ exports.createGRN = async (req, res) => {
         // Insert items into grn_items
         for (const item of items) {
             await db.execute(
-                `INSERT INTO grn_items (grn_id, product_name, category_name, quantity_received, damaged_quantity, mapped_inventory_id, inventory_type) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO grn_items (grn_id, product_name, category_name, quantity_received, damaged_quantity, mapped_inventory_id, inventory_type, hsn, gst, net_rate, rate, discount, amount) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     grn_id, 
                     item.product_name, 
@@ -295,7 +302,13 @@ exports.createGRN = async (req, res) => {
                     item.quantity_received, 
                     item.damaged_quantity || 0,
                     item.mapped_inventory_id || null, 
-                    item.inventory_type || 'sales'
+                    item.inventory_type || 'sales',
+                    item.hsn || null,
+                    item.gst || 0,
+                    item.netRate || 0,
+                    item.rate || 0,
+                    item.discount || 0,
+                    item.amount || 0
                 ]
             );
         }
@@ -376,11 +389,38 @@ exports.pushToStock = async (req, res) => {
 
             if (item.mapped_inventory_id) {
                 const tableName = item.inventory_type === 'service' ? 'service_inventory' : 'sales_inventory';
+                
+                // Build dynamic update query to include pricing fields if they exist
+                let updateFields = 'quantity = quantity + ?';
+                let queryParams = [valid_quantity];
+                
+                if (item.rate > 0) {
+                    updateFields += ', price = ?';
+                    queryParams.push(item.rate);
+                }
+                if (item.net_rate > 0) {
+                    updateFields += ', purchase_price = ?';
+                    queryParams.push(item.net_rate);
+                    // Update wholesale_price to match purchase_price by default or if needed
+                    updateFields += ', wholesale_price = ?';
+                    queryParams.push(item.net_rate);
+                }
+                if (item.hsn) {
+                    updateFields += ', hsn_code = ?';
+                    queryParams.push(item.hsn);
+                }
+                if (item.gst > 0) {
+                    updateFields += ', gst_rate = ?';
+                    queryParams.push(item.gst);
+                }
+                
+                queryParams.push(item.mapped_inventory_id, item.branch_id, adminId);
+                
                 const [updateResult] = await db.execute(`
                     UPDATE ${tableName} 
-                    SET quantity = quantity + ? 
+                    SET ${updateFields}
                     WHERE id = ? AND branch_id = ? AND admin_id = ?
-                `, [valid_quantity, item.mapped_inventory_id, item.branch_id, adminId]);
+                `, queryParams);
 
                 if (updateResult.affectedRows > 0) {
                     const [invRows] = await db.query(
@@ -399,11 +439,22 @@ exports.pushToStock = async (req, res) => {
             }
 
             // Fallback logic if mapping wasn't provided or update failed
+            // Update existing by name
+            let updateFieldsFb = 'quantity = quantity + ?';
+            let queryParamsFb = [valid_quantity];
+            
+            if (item.rate > 0) { updateFieldsFb += ', price = ?'; queryParamsFb.push(item.rate); }
+            if (item.net_rate > 0) { updateFieldsFb += ', purchase_price = ?, wholesale_price = ?'; queryParamsFb.push(item.net_rate, item.net_rate); }
+            if (item.hsn) { updateFieldsFb += ', hsn_code = ?'; queryParamsFb.push(item.hsn); }
+            if (item.gst > 0) { updateFieldsFb += ', gst_rate = ?'; queryParamsFb.push(item.gst); }
+            
+            queryParamsFb.push(item.product_name, item.branch_id, adminId);
+
             const [updateResult] = await db.execute(`
                 UPDATE sales_inventory 
-                SET quantity = quantity + ? 
+                SET ${updateFieldsFb}
                 WHERE name = ? AND branch_id = ? AND admin_id = ?
-            `, [valid_quantity, item.product_name, item.branch_id, adminId]);
+            `, queryParamsFb);
 
             if (updateResult.affectedRows === 0) {
                 let finalCategoryId = null;
@@ -426,9 +477,20 @@ exports.pushToStock = async (req, res) => {
                 }
 
                 await db.execute(`
-                    INSERT INTO sales_inventory (admin_id, branch_id, name, quantity, category_id)
-                    VALUES (?, ?, ?, ?, ?)
-                `, [adminId, item.branch_id, item.product_name, valid_quantity, finalCategoryId]);
+                    INSERT INTO sales_inventory (admin_id, branch_id, name, quantity, category_id, purchase_price, wholesale_price, price, hsn_code, gst_rate)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    adminId, 
+                    item.branch_id, 
+                    item.product_name, 
+                    valid_quantity, 
+                    finalCategoryId,
+                    item.net_rate || 0,
+                    item.net_rate || 0,
+                    item.rate || 0,
+                    item.hsn || '',
+                    item.gst || 0
+                ]);
             }
 
             const [invRows] = await db.query(

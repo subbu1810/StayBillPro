@@ -50,6 +50,39 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const [editOriginalName, setEditOriginalName] = useState('');
 	const [newCategoryName, setNewCategoryName] = useState('');
 	const [showAddItemModal, setShowAddItemModal] = useState(false);
+	const [selectedItems, setSelectedItems] = useState([]);
+
+	const handleSelectAll = (e) => {
+		if (e.target.checked) {
+			setSelectedItems(filteredItems.map(item => item.id));
+		} else {
+			setSelectedItems([]);
+		}
+	};
+
+	const handleSelectItem = (id) => {
+		setSelectedItems(prev => {
+			if (prev.includes(id)) {
+				return prev.filter(itemId => itemId !== id);
+			} else {
+				return [...prev, id];
+			}
+		});
+	};
+
+	const handleDeleteSelected = async () => {
+		if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} selected items?`)) return;
+		try {
+			const api = activeSection === 'sales' ? productsAPI : sparesAPI;
+			await Promise.all(selectedItems.map(id => api.delete(id)));
+			fetchItems();
+			setSelectedItems([]);
+			showMessage(`${selectedItems.length} items deleted successfully!`);
+		} catch (error) {
+			console.error('Failed to delete selected items', error);
+			showMessage('Failed to delete some items.', 'error');
+		}
+	};
 
 	const [isScanning, setIsScanning] = useState(false);
 	const [scanMessageIndex, setScanMessageIndex] = useState(0);
@@ -644,6 +677,24 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 							>
 								{showForm ? '✕ Close Form' : '＋ New Entry'}
 							</button>
+							{selectedItems.length > 0 && (
+								<button 
+									onClick={handleDeleteSelected}
+									style={{ 
+										padding: '6px 14px', 
+										background: '#ef4444', 
+										color: 'white', 
+										border: 'none', 
+										borderRadius: '6px', 
+										fontWeight: 'bold', 
+										cursor: 'pointer', 
+										fontSize: '0.75rem',
+										boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)'
+									}}
+								>
+									🗑️ Delete Selected ({selectedItems.length})
+								</button>
+							)}
 						</div>
 					)}
 				</header>
@@ -664,6 +715,14 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
 									<thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 1 }}>
 										<tr style={{ textAlign: 'left', borderBottom: '1px solid #f1f5f9' }}>
+											<th style={{ padding: '8px 12px', width: '40px', textAlign: 'center' }}>
+												<input 
+													type="checkbox" 
+													checked={selectedItems.length > 0 && selectedItems.length === filteredItems.length}
+													onChange={handleSelectAll}
+													style={{ cursor: 'pointer' }}
+												/>
+											</th>
 											<th style={{ padding: '8px 12px', color: '#64748b', width: '20%' }}>Product Name</th>
 											<th style={{ padding: '8px 12px', color: '#64748b' }}>Category</th>
 											<th style={{ padding: '8px 12px', color: '#64748b' }}>Brand</th>
@@ -686,6 +745,14 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 									<tbody>
 										{filteredItems.map(item => (
 											<tr key={item.id} style={{ borderBottom: '1px solid #f8fafc', verticalAlign: 'middle' }} className="stock-table-row">
+												<td style={{ padding: '6px 12px', textAlign: 'center' }}>
+													<input 
+														type="checkbox"
+														checked={selectedItems.includes(item.id)}
+														onChange={() => handleSelectItem(item.id)}
+														style={{ cursor: 'pointer' }}
+													/>
+												</td>
 												<td style={{ padding: '6px 12px' }}>
 													<div style={{ fontWeight: '700', color: '#1e293b' }}>{item.name}</div>
 												</td>

@@ -480,7 +480,8 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                             <table className="crm-table" style={{ marginBottom: '15px', overflow: 'visible' }}>
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '30%' }}>Product Name</th>
+                                        <th style={{ width: '20%' }}>Product Name</th>
+                                    <th style={{ width: '15%' }}>Category</th>
                                     <th style={{ width: '80px', textAlign: 'center' }}>HSN/SAC</th>
                                     <th style={{ width: '60px', textAlign: 'center' }}>GST%</th>
                                     <th style={{ width: '80px', textAlign: 'center' }}>Qty</th>
@@ -521,6 +522,15 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                                     value: `${inv.inv_type}_${inv.id}`,
                                                     label: inv.category_name ? `${inv.name || 'Unnamed'} (${inv.category_name})` : (inv.name || 'Unnamed')
                                                 }))}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '4px' }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Category"
+                                                value={item.category_name || ''}
+                                                onChange={e => handleItemChange(index, 'category_name', e.target.value)}
+                                                style={{ width: '100%', fontSize: '0.95rem', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                                             />
                                         </td>
                                         <td style={{ padding: '4px' }}>

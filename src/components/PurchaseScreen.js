@@ -572,6 +572,10 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                             <th>PO Ref# ↕</th>
                             <th>Item Code ↕</th>
                             <th>Item Name ↕</th>
+                            <th>HSN</th>
+                            <th>Net Rate</th>
+                            <th>Rate</th>
+                            <th>Amount</th>
                             <th>Order Qty</th>
                             <th>Recvd.Qty</th>
                             <th>Damaged</th>
@@ -612,6 +616,10 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                                     <td>{item.po_number || '-'}</td>
                                     <td>{/* Placeholder Item Code */} 841030</td>
                                     <td>{item.item_name}</td>
+                                    <td>{item.hsn || '-'}</td>
+                                    <td>{item.net_rate > 0 ? `₹${item.net_rate}` : '-'}</td>
+                                    <td>{item.rate > 0 ? `₹${item.rate}` : '-'}</td>
+                                    <td>{item.amount > 0 ? `₹${item.amount}` : '-'}</td>
                                     <td>{orderQty}</td>
                                     <td>{recvdQty}</td>
                                     <td style={{ color: item.damaged_qty > 0 ? '#e74c3c' : 'inherit' }}>{item.damaged_qty || 0}</td>
