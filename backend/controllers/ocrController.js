@@ -58,18 +58,19 @@ Rules:
 Expected JSON structure:
 
 {
-  "supplierName": null,
-  "invoiceNumber": null,
+  "supplierName": "Name of the supplier",
+  "invoiceNumber": "Invoice number",
   "items": [
     {
-      "name": null,
-      "hsn": null,
-      "gst": null,
-      "quantity": null,
-      "netRate": null,
-      "rate": null,
-      "discount": null,
-      "amount": null
+      "name": "Name of the item or product",
+      "category": "Logical category (e.g. Stationery, Electronics, Hardware)",
+      "hsn": "HSN Code",
+      "gst": 0.0,
+      "quantity": 0,
+      "netRate": 0.0,
+      "rate": 0.0,
+      "discount": 0.0,
+      "amount": 0.0
     }
   ]
 }`;
@@ -140,6 +141,7 @@ Expected JSON structure:
 
         const items = (parsedData.items || []).map(item => ({
             name: item.name || "Unknown Item",
+            category: item.category || "",
             hsn: item.hsn || "",
             gst: item.gst || 0,
             quantity: item.quantity || 0,

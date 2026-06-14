@@ -286,11 +286,12 @@ exports.createGRN = async (req, res) => {
         // Insert items into grn_items
         for (const item of items) {
             await db.execute(
-                `INSERT INTO grn_items (grn_id, product_name, quantity_received, damaged_quantity, mapped_inventory_id, inventory_type) 
-                 VALUES (?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO grn_items (grn_id, product_name, category_name, quantity_received, damaged_quantity, mapped_inventory_id, inventory_type) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [
                     grn_id, 
                     item.product_name, 
+                    item.category_name || null,
                     item.quantity_received, 
                     item.damaged_quantity || 0,
                     item.mapped_inventory_id || null, 
@@ -405,10 +406,29 @@ exports.pushToStock = async (req, res) => {
             `, [valid_quantity, item.product_name, item.branch_id, adminId]);
 
             if (updateResult.affectedRows === 0) {
+                let finalCategoryId = null;
+                if (item.category_name && item.category_name.trim() !== '') {
+                    // Check if category exists
+                    const [catRows] = await db.query(
+                        'SELECT id FROM categories WHERE admin_id = ? AND branch_id = ? AND name = ? LIMIT 1',
+                        [adminId, item.branch_id, item.category_name]
+                    );
+                    if (catRows.length > 0) {
+                        finalCategoryId = catRows[0].id;
+                    } else {
+                        // Create it
+                        const [insertCat] = await db.execute(
+                            'INSERT INTO categories (admin_id, branch_id, name, type) VALUES (?, ?, ?, "sales")',
+                            [adminId, item.branch_id, item.category_name]
+                        );
+                        finalCategoryId = insertCat.insertId;
+                    }
+                }
+
                 await db.execute(`
                     INSERT INTO sales_inventory (admin_id, branch_id, name, quantity, category_id)
-                    VALUES (?, ?, ?, ?, NULL)
-                `, [adminId, item.branch_id, item.product_name, valid_quantity]);
+                    VALUES (?, ?, ?, ?, ?)
+                `, [adminId, item.branch_id, item.product_name, valid_quantity, finalCategoryId]);
             }
 
             const [invRows] = await db.query(

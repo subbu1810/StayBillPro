@@ -1,6 +1,7 @@
 const fs = require('fs');
 const FormData = require('form-data');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 async function testUpload() {
     try {
@@ -10,23 +11,25 @@ async function testUpload() {
         const form = new FormData();
         form.append('document', imgBuffer, { filename: 'test.png', contentType: 'image/png' });
 
-        const token = jwt.sign({ id: 1, role: 'SUPERADMIN' }, 'your_super_secret_jwt_key_123', { expiresIn: '1h' });
+        const token = jwt.sign({ id: 3, role: 'SUPERADMIN' }, 'your_super_secret_jwt_key_123', { expiresIn: '1h' });
 
-        console.log("Sending POST to localhost:5000/api/ocr/scan-bill...");
-        const response = await fetch('http://localhost:5000/api/ocr/scan-bill', {
-            method: 'POST',
+        console.log("Sending POST to localhost:5002/api/ocr/scan-bill...");
+        const response = await axios.post('http://localhost:5002/api/ocr/scan-bill', form, {
             headers: {
                 ...form.getHeaders(),
                 'Authorization': `Bearer ${token}`
-            },
-            body: form
+            }
         });
         
         console.log("Status:", response.status);
-        const text = await response.text();
-        console.log("Response:", text);
+        console.log("Response:", response.data);
     } catch(e) {
-        console.error("Test failed:", e);
+        if(e.response) {
+            console.error("Test failed with status:", e.response.status);
+            console.error(e.response.data);
+        } else {
+            console.error("Test failed:", e.message);
+        }
     }
 }
 testUpload();

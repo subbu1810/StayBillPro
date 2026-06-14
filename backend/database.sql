@@ -500,6 +500,7 @@ CREATE TABLE IF NOT EXISTS grn_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     grn_id INT NOT NULL,
     product_name VARCHAR(255) NOT NULL,
+    category_name VARCHAR(100) NULL,
     quantity_received DECIMAL(10,3) DEFAULT 1,
     damaged_quantity DECIMAL(10,3) DEFAULT 0,
     return_status ENUM('Pending', 'Returned') DEFAULT 'Pending',

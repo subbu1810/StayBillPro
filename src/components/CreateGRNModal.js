@@ -85,6 +85,12 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Select..." 
     );
 };
 
+const getLocalDateStr = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+};
+
 const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
     const popup = usePopup();
     const fileInputRef = useRef(null);
@@ -98,12 +104,12 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
         po_id: '',
         supplier_name: '',
         warehouse: 'Main Warehouse',
-        grn_date: new Date().toISOString().split('T')[0],
+        grn_date: getLocalDateStr(),
         status: 'Stocked'
     });
     
     const [items, setItems] = useState([
-        { product_name: '', quantity_received: 1, damaged_quantity: 0 }
+        { product_name: '', category_name: '', quantity_received: 1, damaged_quantity: 0 }
     ]);
     
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,7 +192,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
             }
         } else {
             // Reset to empty row if "None" selected
-            setItems([{ product_name: '', quantity_received: 1, damaged_quantity: 0 }]);
+            setItems([{ product_name: '', category_name: '', quantity_received: 1, damaged_quantity: 0 }]);
         }
     };
 
@@ -197,7 +203,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
     };
 
     const addItemRow = () => {
-        setItems([...items, { product_name: '', quantity_received: 1, damaged_quantity: 0 }]);
+        setItems([...items, { product_name: '', category_name: '', quantity_received: 1, damaged_quantity: 0 }]);
     };
 
     const removeItemRow = (index) => {
@@ -237,10 +243,10 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                 po_id: '',
                 supplier_name: '',
                 warehouse: 'Main Warehouse',
-                grn_date: new Date().toISOString().split('T')[0],
+                grn_date: getLocalDateStr(),
                 status: 'Stocked'
             });
-            setItems([{ product_name: '', quantity_received: 1, damaged_quantity: 0 }]);
+            setItems([{ product_name: '', category_name: '', quantity_received: 1, damaged_quantity: 0 }]);
             
             onSuccess();
         } catch (err) {
@@ -303,6 +309,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                 if (data.items && data.items.length > 0) {
                     const scannedItems = data.items.map(item => ({
                         product_name: item.name || '',
+                        category_name: item.category || '',
                         hsn: item.hsn || '',
                         gst: item.gst || 0,
                         quantity_received: item.quantity || 1,

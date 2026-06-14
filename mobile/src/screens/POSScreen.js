@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, A
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { productsAPI, sparesAPI, customersAPI, billingAPI, branchesAPI, posSettingsAPI } from '../api/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BluetoothEscposPrinter } from '../utils/PrinterWrapper';
+import { BluetoothEscposPrinter } from 'react-native-thermal-receipt-printer';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,11 +13,11 @@ export default function POSScreen({ navigation }) {
   const [customers, setCustomers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [cart, setCart] = useState([]);
-  
+
   // Checkout states
   const [isCartModalVisible, setIsCartModalVisible] = useState(false);
   const [isCheckoutModalVisible, setIsCheckoutModalVisible] = useState(false);
@@ -60,7 +60,7 @@ export default function POSScreen({ navigation }) {
       const spareResults = extractResults(spareRes);
       const custResults = extractResults(custRes);
       const branchResults = extractResults(branchRes);
-      
+
       setBranches(branchResults);
       if (branchResults.length > 0) {
         setSelectedBranch(branchResults[0]);
@@ -74,7 +74,7 @@ export default function POSScreen({ navigation }) {
       }
 
       const combined = [...prodResults, ...spareResults];
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -175,7 +175,7 @@ export default function POSScreen({ navigation }) {
       Alert.alert('Error', 'Cart is empty');
       return;
     }
-    
+
     if (paymentMode === 'credit' && !selectedCustomer && (!customerName.trim() || !customerPhone.trim())) {
       Alert.alert('Error', 'Customer Name and Phone are required for Credit payments');
       return;
@@ -183,7 +183,7 @@ export default function POSScreen({ navigation }) {
 
     try {
       setCheckoutLoading(true);
-      
+
       const payload = {
         branch_id: selectedBranch ? selectedBranch.id : 1,
         customerId: selectedCustomer ? selectedCustomer.id : null,
@@ -204,7 +204,7 @@ export default function POSScreen({ navigation }) {
       };
 
       const response = await billingAPI.create(payload);
-      
+
       setSuccessInvoice({
         ...payload,
         subtotal,
@@ -230,28 +230,23 @@ export default function POSScreen({ navigation }) {
     try {
       const savedMac = await AsyncStorage.getItem('printer_mac');
       if (savedMac && BluetoothEscposPrinter) {
-        const printSize = posSettings?.print_size || '80mm';
-        const lineLen = printSize === '80mm' ? 47 : 31;
-        const maxNameLen = printSize === '80mm' ? 30 : 20;
-        const separator = "-".repeat(lineLen) + "\r\n";
-
         await BluetoothEscposPrinter.printerInit();
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
         await BluetoothEscposPrinter.printText(`${posSettings?.shop_name || 'STAYBILL PRO'}\r\n`, { encoding: 'GBK', codepage: 0, widthtimes: 2, heigthtimes: 2, fonttype: 1 });
         await BluetoothEscposPrinter.printText("TAX INVOICE\r\n\r\n", {});
-        
+
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
         await BluetoothEscposPrinter.printText(`Customer: ${successInvoice.customerName}\r\n`, {});
         await BluetoothEscposPrinter.printText(`Phone: ${successInvoice.customerPhone || 'N/A'}\r\n`, {});
         await BluetoothEscposPrinter.printText(`Date: ${new Date().toLocaleString()}\r\n`, {});
-        await BluetoothEscposPrinter.printText(separator, {});
-        
+        await BluetoothEscposPrinter.printText("--------------------------------\r\n", {});
+
         for (const item of successInvoice.items) {
-          await BluetoothEscposPrinter.printText(`${item.name.substring(0, maxNameLen)}\r\n`, {});
+          await BluetoothEscposPrinter.printText(`${item.name.substring(0, 20)}\r\n`, {});
           await BluetoothEscposPrinter.printText(`  ${item.qty} x ${item.price} = ${(item.qty * item.price).toFixed(2)}\r\n`, {});
         }
-        
-        await BluetoothEscposPrinter.printText(separator, {});
+
+        await BluetoothEscposPrinter.printText("--------------------------------\r\n", {});
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.RIGHT);
         await BluetoothEscposPrinter.printText(`Subtotal: ${successInvoice.subtotal.toFixed(2)}\r\n`, {});
         await BluetoothEscposPrinter.printText(`GST: ${successInvoice.gstTotal.toFixed(2)}\r\n`, {});
@@ -260,7 +255,7 @@ export default function POSScreen({ navigation }) {
         }
         await BluetoothEscposPrinter.printText(`TOTAL: ${successInvoice.total.toFixed(2)}\r\n`, { widthtimes: 1, heigthtimes: 1 });
         await BluetoothEscposPrinter.printText(`Mode: ${successInvoice.paymentMethod.toUpperCase()}\r\n`, {});
-        
+
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
         await BluetoothEscposPrinter.printText("\r\nThank You For Your Business!\r\n\r\n\r\n", {});
       } else {
@@ -274,14 +269,11 @@ export default function POSScreen({ navigation }) {
 
   const handleDownloadReceipt = async () => {
     if (!successInvoice) return;
-    
-    // Determine paper width based on settings
-    const printSize = posSettings?.print_size || '80mm';
-    let paperWidth = '302px'; // default 80mm width in standard web res
-    if (printSize === 'A4') paperWidth = '794px';
-    else if (printSize === '50mm') paperWidth = '188px';
-    else if (printSize === '55mm') paperWidth = '208px';
-    
+
+    // Check if 80mm or A4
+    const is80mm = posSettings?.print_size === '80mm';
+    const paperWidth = is80mm ? '302px' : '794px'; // 80mm ~ 302px width in standard web res
+
     const htmlContent = `
       <html>
         <head>
@@ -399,7 +391,7 @@ export default function POSScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header & Search */}
       <View style={styles.header}>
-        <TextInput 
+        <TextInput
           style={styles.searchInput}
           placeholder="Search products by name or SKU..."
           value={searchQuery}
@@ -411,8 +403,8 @@ export default function POSScreen({ navigation }) {
       <View style={styles.categoriesContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {categories.map(cat => (
-            <TouchableOpacity 
-              key={cat} 
+            <TouchableOpacity
+              key={cat}
               style={[styles.categoryTab, activeCategory === cat && styles.activeCategoryTab]}
               onPress={() => setActiveCategory(cat)}
             >
@@ -471,7 +463,7 @@ export default function POSScreen({ navigation }) {
                 renderItem={renderCartItem}
                 style={styles.cartList}
               />
-              
+
               <View style={styles.cartSummary}>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Subtotal</Text>
@@ -492,7 +484,7 @@ export default function POSScreen({ navigation }) {
                   <Text style={styles.grandTotalValue}>₹{total.toFixed(2)}</Text>
                 </View>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.checkoutBtn}
                   onPress={() => setIsCheckoutModalVisible(true)}
                 >
@@ -518,7 +510,7 @@ export default function POSScreen({ navigation }) {
             <ScrollView>
               <Text style={styles.sectionTitle}>Branch Details</Text>
               <View style={styles.inputGroup}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.dropdownToggle}
                   onPress={() => setShowBranchDropdown(!showBranchDropdown)}
                 >
@@ -527,15 +519,15 @@ export default function POSScreen({ navigation }) {
                   </Text>
                   <MaterialCommunityIcons name={showBranchDropdown ? "chevron-up" : "chevron-down"} size={20} color="#64748b" />
                 </TouchableOpacity>
-                
+
                 {showBranchDropdown && (
                   <View style={styles.dropdown}>
                     {branches.length === 0 ? (
                       <Text style={styles.dropdownEmptyText}>No branches available</Text>
                     ) : (
                       branches.map(b => (
-                        <TouchableOpacity 
-                          key={b.id} 
+                        <TouchableOpacity
+                          key={b.id}
                           style={styles.dropdownItem}
                           onPress={() => {
                             setSelectedBranch(b);
@@ -551,11 +543,11 @@ export default function POSScreen({ navigation }) {
               </View>
 
               <Text style={styles.sectionTitle}>Customer Details</Text>
-              
+
               <View style={styles.inputGroup}>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Customer Name (Optional)" 
+                <TextInput
+                  style={styles.input}
+                  placeholder="Customer Name (Optional)"
                   value={customerName}
                   onChangeText={(t) => {
                     setCustomerName(t);
@@ -567,8 +559,8 @@ export default function POSScreen({ navigation }) {
                 {showCustDropdown && filteredCustomers.length > 0 && (
                   <View style={styles.dropdown}>
                     {filteredCustomers.slice(0, 5).map(c => (
-                      <TouchableOpacity 
-                        key={c.id} 
+                      <TouchableOpacity
+                        key={c.id}
                         style={styles.dropdownItem}
                         onPress={() => {
                           setSelectedCustomer(c);
@@ -585,9 +577,9 @@ export default function POSScreen({ navigation }) {
               </View>
 
               <View style={styles.inputGroup}>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Phone Number (Optional)" 
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone Number (Optional)"
                   keyboardType="phone-pad"
                   value={customerPhone}
                   onChangeText={setCustomerPhone}
@@ -596,9 +588,9 @@ export default function POSScreen({ navigation }) {
 
               <Text style={styles.sectionTitle}>Discount</Text>
               <View style={styles.inputGroup}>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Discount % (Optional)" 
+                <TextInput
+                  style={styles.input}
+                  placeholder="Discount % (Optional)"
                   keyboardType="numeric"
                   value={discount}
                   onChangeText={setDiscount}
@@ -608,7 +600,7 @@ export default function POSScreen({ navigation }) {
               <Text style={styles.sectionTitle}>Payment Method</Text>
               <View style={styles.paymentMethods}>
                 {['cash', 'upi', 'card', 'credit'].map(method => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     key={method}
                     style={[styles.paymentBtn, paymentMode === method && styles.activePaymentBtn]}
                     onPress={() => setPaymentMode(method)}
@@ -624,7 +616,7 @@ export default function POSScreen({ navigation }) {
                 <Text style={styles.checkoutTotalText}>Total to Pay: ₹{total.toFixed(2)}</Text>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.completeBtn, checkoutLoading && styles.disabledBtn]}
                 onPress={handleCheckout}
                 disabled={checkoutLoading}
@@ -651,12 +643,12 @@ export default function POSScreen({ navigation }) {
                 <MaterialCommunityIcons name="bluetooth" size={20} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.actionBtnTextPrimary}>Print Receipt</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.actionBtnSecondary} onPress={handleDownloadReceipt}>
                 <MaterialCommunityIcons name="download" size={20} color="#0ea5e9" style={{ marginRight: 8 }} />
                 <Text style={styles.actionBtnTextSecondary}>Download PDF</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.actionBtnOutline} onPress={handleNewSale}>
                 <MaterialCommunityIcons name="plus" size={20} color="#64748b" style={{ marginRight: 8 }} />
                 <Text style={styles.actionBtnTextOutline}>New Sale</Text>
