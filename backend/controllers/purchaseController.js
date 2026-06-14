@@ -548,10 +548,24 @@ exports.pushToStock = async (req, res) => {
             const [updateResult] = await db.execute(`
                 UPDATE sales_inventory 
                 SET ${updateFieldsFb}
-                WHERE name = ? AND branch_id = ? AND admin_id = ?
+                WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') AND branch_id = ? AND admin_id = ?
             `, queryParamsFb);
 
-            if (updateResult.affectedRows === 0) {
+            let affected = updateResult.affectedRows;
+            let finalInventoryType = 'sales';
+
+            // Try service inventory if not found in sales
+            if (affected === 0) {
+                const [serviceUpdateResult] = await db.execute(`
+                    UPDATE service_inventory 
+                    SET ${updateFieldsFb}
+                    WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') AND branch_id = ? AND admin_id = ?
+                `, queryParamsFb);
+                affected = serviceUpdateResult.affectedRows;
+                if (affected > 0) finalInventoryType = 'service';
+            }
+
+            if (affected === 0) {
                 let finalCategoryId = null;
                 if (item.category_name && item.category_name.trim() !== '') {
                     // Check if category exists
@@ -589,15 +603,15 @@ exports.pushToStock = async (req, res) => {
             }
 
             const [invRows] = await db.query(
-                `SELECT id, quantity FROM sales_inventory WHERE name = ? AND branch_id = ? AND admin_id = ? LIMIT 1`, 
+                `SELECT id, quantity FROM ${finalInventoryType}_inventory WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') AND branch_id = ? AND admin_id = ? LIMIT 1`, 
                 [item.product_name, item.branch_id, adminId]
             );
 
             if (invRows.length > 0) {
                  await db.execute(`
                     INSERT INTO stock_log (admin_id, branch_id, item_id, item_type, item_name, change_type, quantity_changed, resulting_quantity, reason)
-                    VALUES (?, ?, ?, 'sales', ?, 'in', ?, ?, ?)
-                 `, [adminId, item.branch_id, invRows[0].id, item.product_name, valid_quantity, invRows[0].quantity, 'GRN Push to Stock']);
+                    VALUES (?, ?, ?, ?, ?, 'in', ?, ?, ?)
+                 `, [adminId, item.branch_id, invRows[0].id, finalInventoryType, item.product_name, valid_quantity, invRows[0].quantity, 'GRN Push to Stock']);
             }
 
             await db.execute('UPDATE grn_items SET pushed_to_stock = TRUE WHERE id = ?', [itemId]);

@@ -647,7 +647,7 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                                     <td>{item.grn_number}</td>
                                     <td>{new Date(item.grn_date).toLocaleDateString()}</td>
                                     <td>{item.po_number || '-'}</td>
-                                    <td>{/* Placeholder Item Code */} 841030</td>
+                                    <td>ITM-{item.grn_item_id}</td>
                                     <td>{item.item_name}</td>
                                     <td>{item.hsn || '-'}</td>
                                     <td>{item.net_rate > 0 ? `₹${item.net_rate}` : '-'}</td>

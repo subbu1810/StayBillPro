@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { purchaseAPI, branchesAPI, productsAPI, sparesAPI, suppliersAPI } from '../services/api';
+import { purchaseAPI, branchesAPI, productsAPI, sparesAPI, suppliersAPI, categoriesAPI } from '../services/api';
 import '../styles/AddItemModal.css';
 import { usePopup } from './ui/PopupProvider';
 import ScanningOverlay from './ScanningOverlay';
@@ -123,6 +123,7 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
     const [error, setError] = useState(null);
     const [inventoryList, setInventoryList] = useState([]);
     const [supplierList, setSupplierList] = useState([]);
+    const [categoryList, setCategoryList] = useState([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -132,12 +133,13 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
 
     const fetchInitialData = async () => {
         try {
-            const [branchesData, poData, productsData, sparesData, suppliersData] = await Promise.all([
+            const [branchesData, poData, productsData, sparesData, suppliersData, categoriesData] = await Promise.all([
                 branchesAPI.getAll(),
                 purchaseAPI.getOrders(),
                 productsAPI.getAll(),
                 sparesAPI.getAll(),
-                suppliersAPI.getAll()
+                suppliersAPI.getAll(),
+                categoriesAPI.getAll()
             ]);
             
             setBranches(branchesData);
@@ -163,6 +165,10 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
 
             if (suppliersData && Array.isArray(suppliersData)) {
                 setSupplierList(suppliersData);
+            }
+
+            if (categoriesData && Array.isArray(categoriesData)) {
+                setCategoryList(categoriesData);
             }
 
         } catch (err) {
@@ -590,12 +596,20 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
+                                                list="category-options"
                                                 type="text" 
                                                 placeholder="Category"
                                                 value={item.category_name || ''}
                                                 onChange={e => handleItemChange(index, 'category_name', e.target.value)}
                                                 style={{ width: '100%', fontSize: '0.95rem', padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                                             />
+                                            {index === 0 && (
+                                                <datalist id="category-options">
+                                                    {categoryList.map(cat => (
+                                                        <option key={cat.id} value={cat.name} />
+                                                    ))}
+                                                </datalist>
+                                            )}
                                         </td>
                                         <td style={{ padding: '4px' }}>
                                             <input 
