@@ -3,6 +3,7 @@ import '../styles/PurchaseScreen.css';
 import { purchaseAPI, branchesAPI, suppliersAPI } from '../services/api';
 import CreatePOModal from './CreatePOModal';
 import CreateGRNModal from './CreateGRNModal';
+import EditGRNItemModal from './EditGRNItemModal';
 import ViewPOModal from './ViewPOModal';
 import PrintBarcodeModal from './PrintBarcodeModal';
 import jsPDF from 'jspdf';
@@ -18,6 +19,8 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
     const [loading, setLoading] = useState(false);
     const [showPOModal, setShowPOModal] = useState(false);
     const [showGRNModal, setShowGRNModal] = useState(false);
+    const [showEditGRNModal, setShowEditGRNModal] = useState(false);
+    const [editGRNItem, setEditGRNItem] = useState(null);
     const [viewPOId, setViewPOId] = useState(null);
     const [branchList, setBranchList] = useState([]);
     const [supplierList, setSupplierList] = useState([]);
@@ -669,7 +672,7 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                                             {item.pushed_to_stock ? 'In Stock' : (item.status || 'New')}
                                         </span>
                                     </td>
-                                    <td><button className="btn-icon" style={{color:'#2ecc71', fontSize:'14px'}} onClick={() => setPopupMessage({ title: 'Editing Disabled', content: 'Editing GRN items directly is disabled to maintain integrity. Please delete and recreate if an error was made.' })}>✏️</button></td>
+                                    <td><button className="btn-icon" style={{color:'#2ecc71', fontSize:'14px'}} onClick={() => { setEditGRNItem(item); setShowEditGRNModal(true); }}>✏️</button></td>
                                     <td><button className="btn-icon" style={{color:'#e74c3c', fontSize:'14px'}} onClick={() => handleDeleteGRNItem(item.grn_item_id)}>🗑️</button></td>
                                 </tr>
                                 );
@@ -969,6 +972,18 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
                     </div>
                 </div>
             )}
+
+            <EditGRNItemModal 
+                isOpen={showEditGRNModal} 
+                onClose={() => { setShowEditGRNModal(false); setEditGRNItem(null); }} 
+                onSuccess={() => {
+                    setShowEditGRNModal(false);
+                    setEditGRNItem(null);
+                    fetchGRNs();
+                }} 
+                item={editGRNItem}
+            />
+
         </div>
     );
 };

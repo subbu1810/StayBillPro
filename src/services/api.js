@@ -284,6 +284,7 @@ export const purchaseAPI = {
   createOrder: (orderData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/orders`, HTTP_METHODS.POST, orderData),
   getGRNs: (params) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn`, HTTP_METHODS.GET, null, params),
   createGRN: (grnData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn`, HTTP_METHODS.POST, grnData),
+  updateGRNItem: (id, itemData) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn/${id}`, HTTP_METHODS.PUT, itemData),
   deleteGRNItem: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/grn/${id}`, HTTP_METHODS.DELETE),
   getDamaged: () => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/damaged`, HTTP_METHODS.GET),
   processReturn: (id) => apiRequest(`${API_ENDPOINTS.BASE_URL}/purchases/damaged/${id}/return`, HTTP_METHODS.POST),

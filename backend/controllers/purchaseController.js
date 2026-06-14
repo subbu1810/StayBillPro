@@ -330,6 +330,101 @@ exports.createGRN = async (req, res) => {
     }
 };
 
+// Update GRN Item
+exports.updateGRNItem = async (req, res) => {
+    const adminId = req.user.id;
+    const { id } = req.params; // this is grn_item_id
+    const { product_name, category_name, hsn, gst, rate, netRate, discount, amount, quantity_received, damaged_quantity } = req.body;
+
+    try {
+        await db.query('START TRANSACTION');
+
+        // First verify ownership and fetch old item
+        const [rows] = await db.query(`
+            SELECT gi.*, g.branch_id
+            FROM grn_items gi 
+            JOIN grns g ON gi.grn_id = g.id 
+            WHERE gi.id = ? AND g.admin_id = ?
+        `, [id, adminId]);
+
+        if (rows.length === 0) {
+            await db.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'GRN item not found or unauthorized' });
+        }
+
+        const oldItem = rows[0];
+        const oldValidQty = oldItem.quantity_received - (oldItem.damaged_quantity || 0);
+        const newValidQty = quantity_received - (damaged_quantity || 0);
+        const deltaQty = newValidQty - oldValidQty;
+
+        // Update the GRN item
+        await db.execute(`
+            UPDATE grn_items 
+            SET product_name = ?, category_name = ?, hsn = ?, gst = ?, rate = ?, net_rate = ?, discount = ?, amount = ?, quantity_received = ?, damaged_quantity = ?
+            WHERE id = ?
+        `, [product_name, category_name || null, hsn || null, gst || 0, rate || 0, netRate || 0, discount || 0, amount || 0, quantity_received, damaged_quantity || 0, id]);
+
+        // If it was already pushed to stock, sync the stock
+        if (oldItem.pushed_to_stock) {
+            if (oldItem.mapped_inventory_id) {
+                const tableName = oldItem.inventory_type === 'service' ? 'service_inventory' : 'sales_inventory';
+                
+                let updateFields = 'quantity = quantity + ?';
+                let queryParams = [deltaQty];
+                
+                if (rate > 0) { updateFields += ', price = ?'; queryParams.push(rate); }
+                if (netRate > 0) { updateFields += ', purchase_price = ?, wholesale_price = ?'; queryParams.push(netRate, netRate); }
+                if (hsn) { updateFields += ', hsn_code = ?'; queryParams.push(hsn); }
+                if (gst > 0) { updateFields += ', gst_rate = ?'; queryParams.push(gst); }
+                
+                queryParams.push(oldItem.mapped_inventory_id, oldItem.branch_id, adminId);
+                
+                const [updateResult] = await db.execute(`
+                    UPDATE ${tableName} 
+                    SET ${updateFields}
+                    WHERE id = ? AND branch_id = ? AND admin_id = ?
+                `, queryParams);
+
+                if (updateResult.affectedRows > 0 && deltaQty !== 0) {
+                    const changeType = deltaQty > 0 ? 'in' : 'out';
+                    const absDelta = Math.abs(deltaQty);
+                    const [invRows] = await db.query(`SELECT quantity, name FROM ${tableName} WHERE id = ?`, [oldItem.mapped_inventory_id]);
+                    if (invRows.length > 0) {
+                        await db.execute(`
+                            INSERT INTO stock_log (admin_id, branch_id, item_id, item_type, item_name, change_type, quantity_changed, resulting_quantity, reason)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `, [adminId, oldItem.branch_id, oldItem.mapped_inventory_id, oldItem.inventory_type || 'sales', invRows[0].name, changeType, absDelta, invRows[0].quantity, 'GRN Item Edit Sync']);
+                    }
+                }
+            } else {
+                // Fallback by name
+                let updateFieldsFb = 'quantity = quantity + ?';
+                let queryParamsFb = [deltaQty];
+                
+                if (rate > 0) { updateFieldsFb += ', price = ?'; queryParamsFb.push(rate); }
+                if (netRate > 0) { updateFieldsFb += ', purchase_price = ?, wholesale_price = ?'; queryParamsFb.push(netRate, netRate); }
+                if (hsn) { updateFieldsFb += ', hsn_code = ?'; queryParamsFb.push(hsn); }
+                if (gst > 0) { updateFieldsFb += ', gst_rate = ?'; queryParamsFb.push(gst); }
+                
+                queryParamsFb.push(oldItem.product_name, oldItem.branch_id, adminId);
+                
+                await db.execute(`
+                    UPDATE sales_inventory 
+                    SET ${updateFieldsFb}
+                    WHERE name = ? AND branch_id = ? AND admin_id = ?
+                `, queryParamsFb);
+            }
+        }
+
+        await db.query('COMMIT');
+        res.json({ success: true, message: 'GRN item updated successfully' });
+    } catch (error) {
+        await db.query('ROLLBACK');
+        console.error('Error updating GRN item:', error);
+        res.status(500).json({ success: false, message: 'Error updating GRN item', error: error.message });
+    }
+};
+
 // Delete GRN Item
 exports.deleteGRNItem = async (req, res) => {
     const adminId = req.user.id;

@@ -15,6 +15,7 @@ router.get('/orders/:id', authMiddleware, purchaseController.getPurchaseOrder);
 router.get('/grn', authMiddleware, purchaseController.getAllGRNs);
 router.post('/grn', authMiddleware, purchaseController.createGRN);
 router.post('/grn/push-to-stock', authMiddleware, purchaseController.pushToStock);
+router.put('/grn/:id', authMiddleware, purchaseController.updateGRNItem);
 router.delete('/grn/:id', authMiddleware, purchaseController.deleteGRNItem);
 
 // Damaged & Returns

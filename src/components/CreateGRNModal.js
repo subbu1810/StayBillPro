@@ -3,6 +3,8 @@ import { purchaseAPI, branchesAPI, productsAPI, sparesAPI, suppliersAPI } from '
 import '../styles/AddItemModal.css';
 import { usePopup } from './ui/PopupProvider';
 import ScanningOverlay from './ScanningOverlay';
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 const SearchableSelect = ({ options, value, onChange, placeholder = "Select..." }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -94,7 +96,12 @@ const getLocalDateStr = () => {
 const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
     const popup = usePopup();
     const fileInputRef = useRef(null);
+    const imgRef = useRef(null);
     const [isScanning, setIsScanning] = useState(false);
+    
+    const [imageToCrop, setImageToCrop] = useState(null);
+    const [crop, setCrop] = useState();
+    const [completedCrop, setCompletedCrop] = useState(null);
     
     const [branches, setBranches] = useState([]);
     const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -256,17 +263,82 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
         }
     };
 
-    const handleFileUpload = async (e) => {
+    const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            setImageToCrop(reader.result);
+            // reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            // default crop
+            setCrop({ unit: '%', width: 100, height: 100, x: 0, y: 0 });
+        });
+        reader.readAsDataURL(file);
+    };
+
+    const getCroppedImg = async (image, crop) => {
+        const canvas = document.createElement('canvas');
+        const scaleX = image.naturalWidth / image.width;
+        const scaleY = image.naturalHeight / image.height;
+        canvas.width = crop.width;
+        canvas.height = crop.height;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(
+            image,
+            crop.x * scaleX,
+            crop.y * scaleY,
+            crop.width * scaleX,
+            crop.height * scaleY,
+            0,
+            0,
+            crop.width,
+            crop.height
+        );
+
+        return new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    reject(new Error('Canvas is empty'));
+                    return;
+                }
+                blob.name = 'cropped.jpg';
+                resolve(blob);
+            }, 'image/jpeg');
+        });
+    };
+
+    const confirmCropAndScan = async () => {
+        if (!completedCrop || !imgRef.current) {
+            popup.showError("Please select a crop area.");
+            return;
+        }
+
+        const isConfirmed = await popup.confirm("5 Points will be deducted from your wallet for this AI scan. Do you want to proceed?");
+        if (!isConfirmed) return;
+
+        try {
+            const croppedBlob = await getCroppedImg(imgRef.current, completedCrop);
+            setImageToCrop(null); // Close cropper modal
+            await processScan(croppedBlob);
+        } catch (e) {
+            console.error(e);
+            popup.showError("Failed to crop image.");
+        }
+    };
+
+    const processScan = async (fileBlob) => {
         try {
             setIsScanning(true);
             setError(null);
             
             const token = localStorage.getItem('token');
             const formDataData = new FormData();
-            formDataData.append('document', file);
+            formDataData.append('document', fileBlob, 'scan.jpg');
 
             // Using the same endpoint as InventoryScreen
             const { API_CONFIG } = require('../config/apiConfig');
@@ -332,9 +404,6 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
             popup.showError(err.message || 'Failed to process invoice image.');
         } finally {
             setIsScanning(false);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
         }
     };
 
@@ -445,16 +514,11 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                                     accept="image/*,application/pdf"
                                     style={{ display: 'none' }}
                                     ref={fileInputRef}
-                                    onChange={handleFileUpload}
+                                    onChange={handleFileSelect}
                                 />
                                 <button 
                                     type="button" 
-                                    onClick={async () => {
-                                        const isConfirmed = await popup.confirm("5 Points will be deducted from your wallet for this AI scan. Do you want to proceed?");
-                                        if (isConfirmed) {
-                                            fileInputRef.current.click();
-                                        }
-                                    }} 
+                                    onClick={() => fileInputRef.current.click()} 
                                     disabled={isScanning}
                                     style={{ 
                                         background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
@@ -631,6 +695,46 @@ const CreateGRNModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                 </form>
             </div>
+
+            {imageToCrop && (
+                <div className="modal-overlay" style={{ zIndex: 1100 }}>
+                    <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', height: '90vh', width: '90vw', padding: '20px' }}>
+                        <div className="modal-header">
+                            <h2>Crop Invoice Document</h2>
+                            <button className="close-btn" onClick={() => setImageToCrop(null)}>&times;</button>
+                        </div>
+                        <div style={{ flex: 1, overflow: 'auto', background: '#f1f5f9', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', borderRadius: '4px' }}>
+                            <ReactCrop 
+                                crop={crop} 
+                                onChange={c => setCrop(c)}
+                                onComplete={c => setCompletedCrop(c)}
+                            >
+                                <img 
+                                    ref={imgRef}
+                                    src={imageToCrop} 
+                                    alt="Crop me" 
+                                    style={{ maxHeight: '70vh', maxWidth: '100%', objectFit: 'contain' }} 
+                                    onLoad={(e) => {
+                                        // Set initial crop to 100% of the image size
+                                        const { width, height } = e.currentTarget;
+                                        setCrop({
+                                            unit: 'px',
+                                            width,
+                                            height,
+                                            x: 0,
+                                            y: 0
+                                        });
+                                    }}
+                                />
+                            </ReactCrop>
+                        </div>
+                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button className="btn-secondary" onClick={() => setImageToCrop(null)}>Cancel</button>
+                            <button className="btn-primary" onClick={confirmCropAndScan}>Confirm Crop & Scan</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
