@@ -22,9 +22,19 @@ export default function CreateGRNScreen({ route, navigation }) {
         id: Date.now().toString() + index,
         product_name: item.name || '',
         quantity_received: item.quantity?.toString() || '1',
-        damaged_quantity: '0'
+        damaged_quantity: '0',
+        hsn: item.hsn || '',
+        category: item.category || '',
+        gst: item.gst?.toString() || '0',
+        net_rate: item.netRate?.toString() || '0',
+        rate: item.rate?.toString() || '0',
+        discount: item.discount?.toString() || '0',
+        amount: item.amount?.toString() || '0'
       }))
-    : [{ id: Date.now().toString(), product_name: '', quantity_received: '1', damaged_quantity: '0' }];
+    : [{ 
+        id: Date.now().toString(), product_name: '', quantity_received: '1', damaged_quantity: '0',
+        hsn: '', category: '', gst: '0', net_rate: '0', rate: '0', discount: '0', amount: '0'
+      }];
 
   const [items, setItems] = useState(initialItems);
   const [saving, setSaving] = useState(false);
@@ -53,7 +63,10 @@ export default function CreateGRNScreen({ route, navigation }) {
   const handleAddItem = () => {
     setItems([
       ...items, 
-      { id: Date.now().toString(), product_name: '', quantity_received: '1', damaged_quantity: '0' }
+      { 
+        id: Date.now().toString(), product_name: '', quantity_received: '1', damaged_quantity: '0',
+        hsn: '', category: '', gst: '0', net_rate: '0', rate: '0', discount: '0', amount: '0'
+      }
     ]);
   };
 
@@ -106,7 +119,14 @@ export default function CreateGRNScreen({ route, navigation }) {
       items: validItems.map(item => ({
         product_name: item.product_name,
         quantity_received: parseFloat(item.quantity_received) || 1,
-        damaged_quantity: parseFloat(item.damaged_quantity) || 0
+        damaged_quantity: parseFloat(item.damaged_quantity) || 0,
+        hsn: item.hsn || null,
+        category: item.category || null,
+        gst: parseFloat(item.gst) || 0,
+        net_rate: parseFloat(item.net_rate) || 0,
+        rate: parseFloat(item.rate) || 0,
+        discount: parseFloat(item.discount) || 0,
+        amount: parseFloat(item.amount) || 0
       }))
     };
 
@@ -298,6 +318,32 @@ export default function CreateGRNScreen({ route, navigation }) {
                     value={item.product_name}
                     onChangeText={(val) => handleItemChange(item.id, 'product_name', val)}
                   />
+                </View>
+
+                <View style={styles.row}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 4 }]}>
+                    <Text style={styles.label}>Category</Text>
+                    <TextInput style={styles.input} value={item.category} onChangeText={(val) => handleItemChange(item.id, 'category', val)} />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 4 }]}>
+                    <Text style={styles.label}>HSN</Text>
+                    <TextInput style={styles.input} value={item.hsn} onChangeText={(val) => handleItemChange(item.id, 'hsn', val)} />
+                  </View>
+                </View>
+
+                <View style={styles.row}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 4 }]}>
+                    <Text style={styles.label}>Rate (₹)</Text>
+                    <TextInput style={styles.input} keyboardType="numeric" value={item.rate} onChangeText={(val) => handleItemChange(item.id, 'rate', val)} />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginHorizontal: 4 }]}>
+                    <Text style={styles.label}>GST (%)</Text>
+                    <TextInput style={styles.input} keyboardType="numeric" value={item.gst} onChangeText={(val) => handleItemChange(item.id, 'gst', val)} />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 4 }]}>
+                    <Text style={styles.label}>Amount</Text>
+                    <TextInput style={styles.input} keyboardType="numeric" value={item.amount} onChangeText={(val) => handleItemChange(item.id, 'amount', val)} />
+                  </View>
                 </View>
 
                 <View style={styles.row}>
