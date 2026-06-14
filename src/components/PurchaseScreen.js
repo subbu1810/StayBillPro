@@ -277,6 +277,27 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
         }
     };
 
+    const handleBulkDelete = async () => {
+        if (selectedGRNItems.length === 0) return;
+        const ok = await popup.confirm(`Are you sure you want to delete the ${selectedGRNItems.length} selected GRN item(s)?`);
+        if (!ok) return;
+
+        setLoading(true);
+        try {
+            for (const item of selectedGRNItems) {
+                await purchaseAPI.deleteGRNItem(item.grn_item_id);
+            }
+            popup.showSuccess("Selected items deleted successfully!");
+            setSelectedGRNItems([]);
+            fetchGRNs();
+        } catch (err) {
+            console.error("Error deleting GRN items:", err);
+            popup.showError("Failed to delete some items");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleViewGRNItem = (item) => {
         setPopupMessage({
             title: "GRN Details",
@@ -546,6 +567,15 @@ const PurchaseScreen = ({ defaultTab = 'po', autoOpenModal = false }) => {
             <div className="grn-actions-bar" style={{ display: 'flex', gap: '5px', marginBottom: '15px', alignItems: 'center' }}>
                 <button className="btn-primary" onClick={handlePushToStock} style={{ background: '#27ae60', padding: '6px 12px', fontSize: '12px' }}>📦 Push to Stock</button>
                 <button className="btn-primary" onClick={() => setShowBarcodeModal(true)} style={{ background: '#e74c3c', padding: '6px 12px', fontSize: '12px' }}>Print Barcode</button>
+                {selectedGRNItems.length > 0 && (
+                    <button 
+                        className="btn-primary" 
+                        onClick={handleBulkDelete} 
+                        style={{ background: '#c0392b', padding: '6px 12px', fontSize: '12px', marginLeft: 'auto' }}
+                    >
+                        🗑️ Delete Selected ({selectedGRNItems.length})
+                    </button>
+                )}
             </div>
 
             <div style={{ fontSize: '12px', color: '#2980b9', marginBottom: '5px', fontWeight: 'bold' }}>
