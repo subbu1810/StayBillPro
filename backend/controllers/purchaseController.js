@@ -163,8 +163,25 @@ exports.createPurchaseOrder = async (req, res) => {
 
         const po_id = poResult.insertId;
 
-        // Insert items into purchase_order_items
+        // Aggregate items by product_name to prevent duplicates
+        const uniqueItems = {};
         for (const item of items) {
+            const key = item.product_name;
+            if (uniqueItems[key]) {
+                uniqueItems[key].quantity += Number(item.quantity) || 0;
+                uniqueItems[key].total_price += Number(item.total_price) || 0;
+            } else {
+                uniqueItems[key] = {
+                    product_name: item.product_name,
+                    quantity: Number(item.quantity) || 0,
+                    unit_price: Number(item.unit_price) || 0,
+                    total_price: Number(item.total_price) || 0
+                };
+            }
+        }
+
+        // Insert items into purchase_order_items
+        for (const item of Object.values(uniqueItems)) {
             await db.execute(
                 `INSERT INTO purchase_order_items (po_id, product_name, quantity, unit_price, total_price) 
                  VALUES (?, ?, ?, ?, ?)`,
@@ -290,8 +307,24 @@ exports.createGRN = async (req, res) => {
 
         const grn_id = grnResult.insertId;
 
-        // Insert items into grn_items
+        // Aggregate items by product_name to prevent duplicates
+        const uniqueItems = {};
         for (const item of items) {
+            const key = item.product_name;
+            if (uniqueItems[key]) {
+                uniqueItems[key].quantity_received += Number(item.quantity_received) || 0;
+                uniqueItems[key].damaged_quantity += Number(item.damaged_quantity) || 0;
+                uniqueItems[key].amount += Number(item.amount) || 0;
+            } else {
+                uniqueItems[key] = { ...item };
+                uniqueItems[key].quantity_received = Number(item.quantity_received) || 0;
+                uniqueItems[key].damaged_quantity = Number(item.damaged_quantity) || 0;
+                uniqueItems[key].amount = Number(item.amount) || 0;
+            }
+        }
+
+        // Insert items into grn_items
+        for (const item of Object.values(uniqueItems)) {
             await db.execute(
                 `INSERT INTO grn_items (grn_id, product_name, category_name, quantity_received, damaged_quantity, mapped_inventory_id, inventory_type, hsn, gst, net_rate, rate, discount, amount) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -300,7 +333,7 @@ exports.createGRN = async (req, res) => {
                     item.product_name, 
                     item.category_name || null,
                     item.quantity_received, 
-                    item.damaged_quantity || 0,
+                    item.damaged_quantity,
                     item.mapped_inventory_id || null, 
                     item.inventory_type || 'sales',
                     item.hsn || null,
@@ -308,7 +341,7 @@ exports.createGRN = async (req, res) => {
                     item.netRate || 0,
                     item.rate || 0,
                     item.discount || 0,
-                    item.amount || 0
+                    item.amount
                 ]
             );
         }
