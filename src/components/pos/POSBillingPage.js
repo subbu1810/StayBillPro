@@ -439,7 +439,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
                 </div>
                 <div class="invoice-meta">
                   <h2>TAX INVOICE</h2>
-                  <p><strong>Invoice ID:</strong> INV-${String(invoiceId).padStart(4, '0')}</p>
+                  <p><strong>Invoice ID:</strong> POSINV${String(invoiceId).padStart(2, '0')}</p>
                   <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
                 </div>
               </div>

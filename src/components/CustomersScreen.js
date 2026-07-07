@@ -1088,7 +1088,7 @@ export default function CustomersScreen({ defaultTab }) {
                         <td>{new Date(pay.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                         <td><span className="cell-name">{pay.customer_name}</span></td>
                         <td className="cell-phone">{pay.customer_phone || '—'}</td>
-                        <td style={{ color: '#14b8a6', fontWeight: 600 }}>INV-{String(pay.invoice_id).padStart(4, '0')}</td>
+                        <td style={{ color: '#14b8a6', fontWeight: 600 }}>POSINV{String(pay.invoice_id).padStart(2, '0')}</td>
                         <td>
                           <span style={{ 
                             textTransform: 'capitalize',
@@ -1189,7 +1189,7 @@ export default function CustomersScreen({ defaultTab }) {
                     <tr key={ret.id}>
                       <td>{new Date(ret.return_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                       <td><span className="cell-name">{ret.customer_name || 'Walk-in'}</span></td>
-                      <td style={{ color: '#14b8a6', fontWeight: 600 }}>INV-{String(ret.invoice_id).padStart(4, '0')}</td>
+                      <td style={{ color: '#14b8a6', fontWeight: 600 }}>POSINV{String(ret.invoice_id).padStart(2, '0')}</td>
                       <td style={{ fontWeight: 700, color: '#dc2626' }}>{fmt(ret.total_refund_amount)}</td>
                       <td style={{ textTransform: 'capitalize' }}>
                          <span style={{ 

@@ -446,7 +446,7 @@ export default function InvoiceHistory({ invoiceType }) {
                 {filteredInvoices.map(invoice => (
                   <tr key={invoice.id}>
                     <td className="invoice-id">
-                      <strong>INV-{String(invoice.id).padStart(4, '0')}</strong>
+                      <strong>POSINV{String(invoice.id).padStart(2, '0')}</strong>
                     </td>
                     <td>
                       <div className="customer-info">
@@ -569,7 +569,7 @@ export default function InvoiceHistory({ invoiceType }) {
                   <p>Phone: {selectedInvoice.customer_phone || 'N/A'}</p>
                 </div>
                 <div className="invoice-meta">
-                  <p><strong>Invoice No:</strong> INV-{String(selectedInvoice.id).padStart(4, '0')}</p>
+                  <p><strong>Invoice No:</strong> POSINV{String(selectedInvoice.id).padStart(2, '0')}</p>
                   <p><strong>Date:</strong> {new Date(selectedInvoice.created_at).toLocaleDateString()}</p>
                   <p><strong>Time:</strong> {new Date(selectedInvoice.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   <p><strong>Payment Mode:</strong> {selectedInvoice.payment_method.toUpperCase()}</p>

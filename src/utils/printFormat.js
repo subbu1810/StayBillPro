@@ -168,7 +168,7 @@ export const getWholesaleInvoiceHtml = (invoice) => {
             <div class="meta-col">
               <div class="meta-row">
                 <div class="meta-label">Invoice No.</div>
-                <div class="meta-value">: INV-${String(invoice.id).padStart(4, '0')}</div>
+                <div class="meta-value">: POSINV${String(invoice.id).padStart(2, '0')}</div>
               </div>
               <div class="meta-row">
                 <div class="meta-label">Dated</div>

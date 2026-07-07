@@ -38,7 +38,7 @@ exports.getSalesReport = async (req, res) => {
         const detailQuery = `
             SELECT 
                 ROW_NUMBER() OVER (ORDER BY i.created_at DESC) as sno,
-                CONCAT('INV-', LPAD(i.id, 4, '0')) as invoice_no,
+                CONCAT('POSINV', LPAD(i.id, 2, '0')) as invoice_no,
                 DATE(i.created_at) as invoice_date,
                 i.customer_name,
                 i.customer_phone,

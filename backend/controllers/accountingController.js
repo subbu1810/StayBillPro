@@ -230,7 +230,7 @@ exports.getGSTR1Data = async (req, res) => {
         let query = `
             SELECT 
                 i.created_at as invoiceDate,
-                CONCAT('INV-', LPAD(i.id, 4, '0')) as invoiceNo,
+                CONCAT('POSINV', LPAD(i.id, 2, '0')) as invoiceNo,
                 i.customer_name,
                 'N/A' as customerGSTIN,
                 ROUND((i.total_amount - i.gst_amount), 2) as taxableVal,

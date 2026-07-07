@@ -757,7 +757,7 @@ export default function WholesaleBillingPage() {
                   <h2>${shopName}</h2>
                   <div>TAX INVOICE</div>
                   <div>GSTIN: ${gstin}</div>
-                  <div>INV-${String(invoiceId).padStart(4, '0')}</div>
+                  <div>POSINV${String(invoiceId).padStart(2, '0')}</div>
                   <div>${new Date().toLocaleString()}</div>
                 </div>
                 <div class="divider"></div>

@@ -271,7 +271,7 @@ exports.getCustomerLedger = async (req, res) => {
                     date: inv.created_at,
                     type: 'sale',
                     description: inv.items_summary ? `Invoice — ${inv.items_summary}` : 'Invoice',
-                    invoiceNo: `INV-${String(inv.id).padStart(4, '0')}`,
+                    invoiceNo: `POSINV${String(inv.id).padStart(2, '0')}`,
                     debit: amount,
                     credit: 0,
                     balance: runningBalance,
@@ -283,7 +283,7 @@ exports.getCustomerLedger = async (req, res) => {
                     date: inv.created_at,
                     type: 'payment',
                     description: `Payment received (${inv.payment_method || 'cash'})`,
-                    invoiceNo: `INV-${String(inv.id).padStart(4, '0')}`,
+                    invoiceNo: `POSINV${String(inv.id).padStart(2, '0')}`,
                     debit: 0,
                     credit: amount,
                     balance: runningBalance,
@@ -296,7 +296,7 @@ exports.getCustomerLedger = async (req, res) => {
                     date: inv.created_at,
                     type: 'sale',
                     description: inv.items_summary ? `Invoice — ${inv.items_summary}` : 'Invoice',
-                    invoiceNo: `INV-${String(inv.id).padStart(4, '0')}`,
+                    invoiceNo: `POSINV${String(inv.id).padStart(2, '0')}`,
                     debit: amount,
                     credit: 0,
                     balance: runningBalance,
@@ -308,7 +308,7 @@ exports.getCustomerLedger = async (req, res) => {
                     date: inv.created_at,
                     type: 'cancelled',
                     description: 'Invoice Cancelled',
-                    invoiceNo: `INV-${String(inv.id).padStart(4, '0')}`,
+                    invoiceNo: `POSINV${String(inv.id).padStart(2, '0')}`,
                     debit: 0,
                     credit: 0,
                     balance: runningBalance,
@@ -436,7 +436,7 @@ exports.sendCustomerLedgerEmail = async (req, res) => {
                   <tr>
                     <td style="border: 1px solid #e5e7eb; padding: 8px;">${new Date(inv.created_at).toLocaleDateString('en-IN')}</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; font-weight: bold; color: #c2410c;">SALE</td>
-                    <td style="border: 1px solid #e5e7eb; padding: 8px;">Invoice INV-${String(inv.id).padStart(4, '0')}</td>
+                    <td style="border: 1px solid #e5e7eb; padding: 8px;">Invoice POSINV${String(inv.id).padStart(2, '0')}</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right; color: #c2410c;">${fmt(amount)}</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right;">—</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right; font-weight: bold;">${fmt(runningBalance)}</td>
@@ -459,7 +459,7 @@ exports.sendCustomerLedgerEmail = async (req, res) => {
                   <tr>
                     <td style="border: 1px solid #e5e7eb; padding: 8px;">${new Date(inv.created_at).toLocaleDateString('en-IN')}</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; font-weight: bold; color: #c2410c;">SALE</td>
-                    <td style="border: 1px solid #e5e7eb; padding: 8px;">Invoice INV-${String(inv.id).padStart(4, '0')}</td>
+                    <td style="border: 1px solid #e5e7eb; padding: 8px;">Invoice POSINV${String(inv.id).padStart(2, '0')}</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right; color: #c2410c;">${fmt(amount)}</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right;">—</td>
                     <td style="border: 1px solid #e5e7eb; padding: 8px; text-align: right; font-weight: bold;">${fmt(runningBalance)}</td>

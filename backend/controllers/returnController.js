@@ -169,7 +169,7 @@ exports.createReturn = async (req, res) => {
                 const currentBalance = lastEntry.length > 0 ? parseFloat(lastEntry[0].balance) : 0;
                 const newBalance = currentBalance - totalRefundAmount;
                 
-                const particulars = `Refund for Invoice INV-${String(invoiceId).padStart(4, '0')}${reason ? ' - ' + reason : ''}`;
+                const particulars = `Refund for Invoice POSINV${String(invoiceId).padStart(2, '0')}${reason ? ' - ' + reason : ''}`;
                 
                 await connection.execute(
                     `INSERT INTO ledger (admin_id, branch_id, account_type, transaction_type, voucher_no, particulars, amount, balance, transaction_date) 

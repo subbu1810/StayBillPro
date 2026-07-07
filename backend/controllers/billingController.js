@@ -100,7 +100,7 @@ exports.createInvoice = async (req, res) => {
                 
                 const currentBalance = lastEntry.length > 0 ? parseFloat(lastEntry[0].balance) : 0;
                 const newBalance = currentBalance + parseFloat(totalAmount);
-                const voucherNo = `INV-${invoiceId}`;
+                const voucherNo = `POSINV${String(invoiceId).padStart(2, '0')}`;
                 const particulars = `Sales Invoice #${invoiceId} - ${customerName || 'Walk-in'}`;
                 const txnDate = new Date().toISOString().split('T')[0];
 

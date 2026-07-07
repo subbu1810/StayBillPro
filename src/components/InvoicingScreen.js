@@ -58,7 +58,7 @@ export default function InvoicingScreen() {
 						<tbody>
 							{invoices.map((inv) => (
 								<tr key={inv.id}>
-									<td style={{ fontWeight: 'bold' }}>INV-{inv.id.toString().padStart(4, '0')}</td>
+									<td style={{ fontWeight: 'bold' }}>POSINV{inv.id.toString().padStart(2, '0')}</td>
 									<td className="table-id">{inv.job_number}</td>
 									<td style={{ fontWeight: 600, color: 'var(--text-dark)' }}>
 										₹{inv.total_cost || (inv.labor_cost + (inv.parts_cost || 0)) || 'Pending'}

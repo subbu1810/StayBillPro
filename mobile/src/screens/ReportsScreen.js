@@ -109,7 +109,7 @@ export default function ReportsScreen({ navigation }) {
       await BluetoothEscposPrinter.printText("REPRINT - TAX INVOICE\r\n\r\n", {});
 
       await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-      await BluetoothEscposPrinter.printText(`INV: INV-${String(selectedInvoice.id).padStart(4, '0')}\r\n`, {});
+      await BluetoothEscposPrinter.printText(`INV: POSINV${String(selectedInvoice.id).padStart(2, '0')}\r\n`, {});
       await BluetoothEscposPrinter.printText(`Customer: ${selectedInvoice.customer_name || 'Walk-in'}\r\n`, {});
       await BluetoothEscposPrinter.printText(`Phone: ${selectedInvoice.customer_phone || 'N/A'}\r\n`, {});
       await BluetoothEscposPrinter.printText(`Date: ${new Date(selectedInvoice.created_at).toLocaleString()}\r\n`, {});
@@ -162,7 +162,7 @@ export default function ReportsScreen({ navigation }) {
   const renderInvoiceCard = ({ item }) => (
     <TouchableOpacity style={styles.card} onPress={() => fetchInvoiceDetails(item.id)}>
       <View style={styles.cardHeader}>
-        <Text style={styles.invoiceId}>INV-{String(item.id).padStart(4, '0')}</Text>
+        <Text style={styles.invoiceId}>POSINV{String(item.id).padStart(2, '0')}</Text>
         <Text style={[styles.statusBadge, { color: getStatusColor(item.status), backgroundColor: getStatusColor(item.status) + '1A' }]}>
           {item.status?.toUpperCase() || 'UNKNOWN'}
         </Text>
@@ -275,7 +275,7 @@ export default function ReportsScreen({ navigation }) {
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.metaLabel}>Invoice No:</Text>
-                    <Text style={styles.metaValue}>INV-{String(selectedInvoice.id).padStart(4, '0')}</Text>
+                    <Text style={styles.metaValue}>POSINV{String(selectedInvoice.id).padStart(2, '0')}</Text>
                     <Text style={styles.metaSubValue}>{new Date(selectedInvoice.created_at).toLocaleDateString()}</Text>
                   </View>
                 </View>
