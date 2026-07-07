@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useService } from '../context/ServiceContext';
+import { useService } from '../hooks/useService';
 
 function ApplianceForm() {
   const { addAppliance, applianceCategories } = useService();

@@ -46,6 +46,8 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
 
         // Service Stock
         { id: 'inventory-service', label: 'Spare Parts List', icon: '🔧', group: 'Service Stock' },
+        { id: 'inventory-service-expiry', label: 'Expiry Monitor', icon: '⏳', group: 'Service Stock' },
+        { id: 'inventory-service-categories', label: 'Categories', icon: '🏷️', group: 'Service Stock' },
         { id: 'inventory-service-log', label: 'Service Stock Log', icon: '📜', group: 'Service Stock' },
         
         // Customer CRM

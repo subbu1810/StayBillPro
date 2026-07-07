@@ -623,7 +623,7 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 					)}
 
-					{(hasPermission('inventory-service') || hasPermission('inventory-service-log')) && (
+					{(hasPermission('inventory-service') || hasPermission('inventory-service-log') || hasPermission('inventory-service-categories') || hasPermission('inventory-service-expiry')) && (
 						<button
 							className={currentScreen === 'inventory-service' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('inventoryService')}
@@ -638,6 +638,15 @@ export default function AdminPanel({ onLogout }) {
 						<div className="sub-nav-group">
 							{hasPermission('inventory-service') && (
 								<button className={`sub-nav-item ${currentScreen === 'inventory-service' && currentSubScreen === 'stock' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-service', 'stock')}><span>🔧</span> Spare Parts List</button>
+							)}
+							{hasPermission('inventory-service-expiry') && (
+								<button className={`sub-nav-item ${currentScreen === 'inventory-service' && currentSubScreen === 'expiry' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-service', 'expiry')}><span>⏳</span> Expiry Monitor</button>
+							)}
+							{hasPermission('inventory-service-categories') && (
+								<button className={`sub-nav-item ${currentScreen === 'inventory-service' && currentSubScreen === 'categories' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-service', 'categories')}><span>🏷️</span> Categories</button>
+							)}
+							{hasPermission('inventory-service-categories') && (
+								<button className={`sub-nav-item ${currentScreen === 'inventory-service' && currentSubScreen === 'appliances' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-service', 'appliances')}><span>📦</span> Appliances</button>
 							)}
 							{hasPermission('inventory-service-log') && (
 								<button className={`sub-nav-item ${currentScreen === 'inventory-service' && currentSubScreen === 'ledger' ? 'active' : ''}`} onClick={() => handleScreenChange('inventory-service', 'ledger')}><span>📜</span> Stock Log</button>

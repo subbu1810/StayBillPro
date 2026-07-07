@@ -104,8 +104,11 @@ const AddItemModal = ({ isOpen, onClose, onSave, categories = [], initialData = 
                 hasExpiry: false,
                 expiryDate: ''
             });
+            setShowWholesale(false);
+            setImagePreview(null);
         }
-    }, [initialData, isOpen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     React.useEffect(() => {
         const fetchUnits = async () => {

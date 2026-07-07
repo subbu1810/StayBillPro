@@ -521,3 +521,37 @@ CREATE TABLE IF NOT EXISTS backup_logs (
     file_name VARCHAR(255),
     FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
 );
+
+-- Technicians Table
+CREATE TABLE IF NOT EXISTS technicians (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    branch_id INT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(150),
+    phone VARCHAR(20) NOT NULL,
+    specialization VARCHAR(255),
+    status ENUM('active', 'inactive', 'on_leave') DEFAULT 'active',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
+);
+
+-- Appliances Table
+CREATE TABLE IF NOT EXISTS appliances (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    branch_id INT,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100),
+    brand VARCHAR(100),
+    model VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
+);
+

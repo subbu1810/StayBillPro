@@ -173,7 +173,7 @@ export default function NewJob({ onBack, onSuccess }) {
 					<h1>📋 Create New Service Request</h1>
 					<p>Quickly add a new service job to your system</p>
 				</div>
-				<button type="button" className="btn-close" onClick={onBack}>✕</button>
+				<button type="button" className="nj-btn-close" onClick={onBack}>✕</button>
 			</div>
 
 			<form onSubmit={handleSubmit} className="new-job-layout">
@@ -326,7 +326,7 @@ export default function NewJob({ onBack, onSuccess }) {
 											.filter((p) => (selectedCategory ? p.category === selectedCategory : true))
 											.map((p) => (
 												<option key={p.id} value={p.id}>
-													{p.brand} - {p.name || p.model || p.category}
+													{p.brand ? `${p.brand} - ` : ''}{p.name || p.model || p.category}
 												</option>
 											))}
 									</select>

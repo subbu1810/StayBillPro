@@ -186,21 +186,6 @@ export function ServiceProvider({ children, isAuthenticated }) {
 			unknown: 'unknown',
 		};
 
-		// Option B: keep appliance customer/product details in sync with the job form
-		if (jobData?.productId) {
-			const applianceUpdatePayload = {
-				customer_name: jobData.customerName || null,
-				phone: jobData.mobile || null,
-				email: jobData.email || null,
-				brand: jobData.brand || null,
-				model: jobData.model || null,
-				serial_number: jobData.serial || null,
-				purchase_date: jobData.purchaseDate || null,
-				warranty_status: warrantyStatusMap[(jobData.warrantyStatus || '').toLowerCase()] || 'unknown',
-				notes: jobData.problemDescription || null,
-			};
-			await appliancesAPI.update(Number(jobData.productId), applianceUpdatePayload);
-		}
 
 		const serviceRequestPayload = {
 			appliance_id: Number(jobData.productId),

@@ -217,6 +217,28 @@ export default function POSBillingPage({ mode = 'billing' }) {
     );
   };
 
+  const handleQtyChange = (id, value) => {
+    let val = value === '' ? '' : parseInt(value);
+    if (val === '') {
+        setCart(cart.map(item => item.id === id ? { ...item, qty: '' } : item));
+        return;
+    }
+    if (isNaN(val) || val < 1) val = 1;
+    
+    setCart(
+      cart.map(item => {
+        if (item.id === id) {
+          if (val > item.stock) {
+            showToast(`Only ${item.stock} units available in stock.`, 'error');
+            return { ...item, qty: item.stock };
+          }
+          return { ...item, qty: val };
+        }
+        return item;
+      })
+    );
+  };
+
   const removeItem = id => {
     setCart(cart.filter(i => i.id !== id));
   };
@@ -329,7 +351,8 @@ export default function POSBillingPage({ mode = 'billing' }) {
           id: item.id,
           name: item.name,
           qty: item.qty,
-          price: item.price
+          price: item.price,
+          gst: item.gst
         })),
         totalAmount: parseFloat(total.toFixed(2)),
         gstAmount: parseFloat(gstTotal.toFixed(2)),
@@ -1059,7 +1082,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
 
                     </div>
 
-                    <div className="qty-box">
+                    <div className="qty-box" style={{ display: 'flex', alignItems: 'center' }}>
 
                       <button
                         onClick={() =>
@@ -1069,7 +1092,26 @@ export default function POSBillingPage({ mode = 'billing' }) {
                         <Minus size={14} />
                       </button>
 
-                      <span>{item.qty}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.qty}
+                        onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                        onBlur={(e) => {
+                          if (e.target.value === '' || isNaN(parseInt(e.target.value)) || parseInt(e.target.value) < 1) {
+                            handleQtyChange(item.id, 1);
+                          }
+                        }}
+                        style={{
+                          width: '40px',
+                          textAlign: 'center',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '4px',
+                          padding: '2px',
+                          margin: '0 5px',
+                          outline: 'none'
+                        }}
+                      />
 
                       <button
                         onClick={() =>

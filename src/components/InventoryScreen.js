@@ -6,6 +6,8 @@ import '../styles/Forms.css';
 import '../styles/InventoryScreen.css';
 import AddItemModal from './AddItemModal';
 import '../styles/AddItemModal.css';
+import ApplianceList from './ApplianceList';
+import ApplianceForm from './ApplianceForm';
 
 export default function InventoryScreen({ initialSection = 'sales', defaultTab = 'stock' }) {
 	const { selectedBranchId } = useService();
@@ -50,6 +52,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 	const [editOriginalName, setEditOriginalName] = useState('');
 	const [newCategoryName, setNewCategoryName] = useState('');
 	const [showAddItemModal, setShowAddItemModal] = useState(false);
+	const [showApplianceForm, setShowApplianceForm] = useState(false);
 	const [selectedItems, setSelectedItems] = useState([]);
 
 	const handleSelectAll = (e) => {
@@ -196,6 +199,7 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 			else if (defaultTab === 'categories') setViewMode('categories');
 			else if (defaultTab === 'ledger') setViewMode('ledger');
 			else if (defaultTab === 'expiry') setViewMode('expiry');
+			else if (defaultTab === 'appliances') setViewMode('appliances');
 			else setViewMode('stock');
 		}
 	}, [defaultTab]);
@@ -640,27 +644,6 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 
 					{viewMode === 'stock' && (
 						<div style={{ display: 'flex', gap: '8px' }}>
-							<input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
-							<button 
-								onClick={() => fileInputRef.current && fileInputRef.current.click()}
-								disabled={isScanning}
-								style={{ 
-									padding: '6px 14px', 
-									background: '#f59e0b', 
-									color: 'white', 
-									border: 'none', 
-									borderRadius: '6px', 
-									fontWeight: 'bold', 
-									cursor: isScanning ? 'not-allowed' : 'pointer', 
-									fontSize: '0.75rem',
-									display: 'flex',
-									alignItems: 'center',
-									gap: '6px',
-									boxShadow: '0 2px 4px rgba(245, 158, 11, 0.2)'
-								}}
-							>
-								{isScanning ? '⏳ Scanning...' : '📷 Scan Bill'}
-							</button>
 							<button 
 								onClick={handleToggleForm}
 								style={{ 
@@ -912,6 +895,10 @@ export default function InventoryScreen({ initialSection = 'sales', defaultTab =
 								</div>
 							</div>
 						</div>
+					)}
+
+					{viewMode === 'appliances' && (
+						<ApplianceList />
 					)}
 
 					{viewMode === 'expiry' && (
