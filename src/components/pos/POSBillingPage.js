@@ -95,6 +95,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
           if (data.shop_name) setShopName(data.shop_name);
           if (data.gstin) setGstin(data.gstin);
           if (data.print_size) setPrintSize(data.print_size);
+          if (data.inclusive_gst !== undefined) setInclusiveGst(!!data.inclusive_gst);
         }
       } catch (err) {
         console.error('Failed to fetch POS settings:', err);
@@ -127,6 +128,7 @@ export default function POSBillingPage({ mode = 'billing' }) {
   const [shopName, setShopName] = useState(bProf.business || bProf.business_name || '');
   const [gstin, setGstin] = useState(bProf.gst_number || '');
   const [printSize, setPrintSize] = useState('80mm');
+  const [inclusiveGst, setInclusiveGst] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
@@ -243,13 +245,21 @@ export default function POSBillingPage({ mode = 'billing' }) {
     setCart(cart.filter(i => i.id !== id));
   };
 
-  const subtotal = cart.reduce(
-    (a, b) => a + b.price * b.qty,
-    0
-  );
+  const subtotal = cart.reduce((acc, item) => {
+    const gst = Number(item.gst || 0);
+    if (inclusiveGst) {
+      const basePrice = item.price / (1 + gst / 100);
+      return acc + basePrice * item.qty;
+    }
+    return acc + item.price * item.qty;
+  }, 0);
 
   const gstTotal = cart.reduce((acc, item) => {
     const gst = Number(item.gst || 0);
+    if (inclusiveGst) {
+      const basePrice = item.price / (1 + gst / 100);
+      return acc + (item.price - basePrice) * item.qty;
+    }
     return acc + item.price * item.qty * (gst / 100);
   }, 0);
 
@@ -510,13 +520,17 @@ export default function POSBillingPage({ mode = 'billing' }) {
         const taxGroups = {};
         cart.forEach(item => {
           const rate = Number(item.gst || 0);
-          const amt = item.price * item.qty;
+          const amt = inclusiveGst 
+             ? (item.price / (1 + rate / 100)) * item.qty 
+             : item.price * item.qty;
           if (!taxGroups[rate]) {
             taxGroups[rate] = { items: [], taxable: 0, cgst: 0, sgst: 0, totalTax: 0 };
           }
           taxGroups[rate].items.push(item);
           taxGroups[rate].taxable += amt;
-          const itemGst = amt * (rate / 100);
+          const itemGst = inclusiveGst
+             ? (item.price - (item.price / (1 + rate / 100))) * item.qty
+             : amt * (rate / 100);
           taxGroups[rate].cgst += itemGst / 2;
           taxGroups[rate].sgst += itemGst / 2;
           taxGroups[rate].totalTax += itemGst;
@@ -537,12 +551,16 @@ export default function POSBillingPage({ mode = 'billing' }) {
             </tr>
           `;
           for (const item of group.items) {
+            const itemRate = Number(item.gst || 0);
+            const basePrice = inclusiveGst 
+                 ? item.price / (1 + itemRate / 100) 
+                 : item.price;
             itemsHtml += `
               <tr>
                 <td style="padding-right: 2px;">${item.name.substring(0, 16)}</td>
                 <td style="text-align: center; white-space: nowrap;">${item.qty}</td>
-                <td style="text-align: right; white-space: nowrap;">${item.price.toFixed(2)}</td>
-                <td style="text-align: right; white-space: nowrap;">${(item.price * item.qty).toFixed(2)}</td>
+                <td style="text-align: right; white-space: nowrap;">${basePrice.toFixed(2)}</td>
+                <td style="text-align: right; white-space: nowrap;">${(basePrice * item.qty).toFixed(2)}</td>
               </tr>
             `;
           }

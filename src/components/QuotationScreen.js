@@ -25,6 +25,7 @@ export default function QuotationScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const [historySearchTerm, setHistorySearchTerm] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [inclusiveGst, setInclusiveGst] = useState(false);
   
   // For autocomplete
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -33,6 +34,21 @@ export default function QuotationScreen() {
   useEffect(() => {
     fetchProducts();
     
+    const fetchSettings = async () => {
+      try {
+        const storedBranch = localStorage.getItem('selectedBranchId');
+        const branchId = (storedBranch && storedBranch !== 'undefined' && storedBranch !== 'null') ? storedBranch : '1';
+        const { posSettingsAPI } = require('../services/api');
+        const data = await posSettingsAPI.get(branchId);
+        if (data && data.inclusive_gst !== undefined) {
+          setInclusiveGst(!!data.inclusive_gst);
+        }
+      } catch (error) {
+        console.error('Failed to fetch POS settings:', error);
+      }
+    };
+    fetchSettings();
+
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setActiveDropdown(null);
@@ -134,13 +150,28 @@ export default function QuotationScreen() {
   };
 
   const calculateSubtotal = () => {
-    return items.reduce((sum, item) => sum + (parseFloat(item.qty || 0) * parseFloat(item.price || 0)), 0);
+    return items.reduce((sum, item) => {
+      const price = parseFloat(item.price || 0);
+      const qty = parseFloat(item.qty || 0);
+      const tax = parseFloat(item.tax || 0);
+      if (inclusiveGst) {
+        const basePrice = price / (1 + tax / 100);
+        return sum + (basePrice * qty);
+      }
+      return sum + (price * qty);
+    }, 0);
   };
 
   const calculateTotalTax = () => {
     return items.reduce((sum, item) => {
-      const lineTotal = parseFloat(item.qty || 0) * parseFloat(item.price || 0);
-      return sum + (lineTotal * (parseFloat(item.tax || 0) / 100));
+      const price = parseFloat(item.price || 0);
+      const qty = parseFloat(item.qty || 0);
+      const tax = parseFloat(item.tax || 0);
+      if (inclusiveGst) {
+        const basePrice = price / (1 + tax / 100);
+        return sum + ((price - basePrice) * qty);
+      }
+      return sum + ((price * qty) * (tax / 100));
     }, 0);
   };
 
@@ -373,8 +404,8 @@ export default function QuotationScreen() {
                   const qty = parseFloat(item.qty || 0);
                   const price = parseFloat(item.price || 0);
                   const tax = parseFloat(item.tax || 0);
-                  const lineTotal = qty * price;
-                  const lineTotalWithTax = lineTotal + (lineTotal * (tax/100));
+                  const basePrice = inclusiveGst ? price / (1 + tax / 100) : price;
+                  const lineTotalWithTax = inclusiveGst ? (price * qty) : ((price * qty) + (price * qty * (tax / 100)));
                   return `
                     <tr>
                       <td>00${idx + 1}</td>
@@ -383,7 +414,7 @@ export default function QuotationScreen() {
                         ${item.description ? `<div class="item-desc">${item.description}</div>` : ''}
                       </td>
                       <td>${qty}</td>
-                      <td>₹${price.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                      <td>₹${basePrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                       <td>${tax > 0 ? tax + '%' : '-'}</td>
                       <td>₹${lineTotalWithTax.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     </tr>

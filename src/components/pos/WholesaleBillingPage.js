@@ -116,6 +116,7 @@ export default function WholesaleBillingPage() {
           if (data.gstin) setGstin(data.gstin);
           if (data.wholesale_print_size) setPrintSize(data.wholesale_print_size);
           else if (data.print_size) setPrintSize(data.print_size);
+          if (data.inclusive_gst !== undefined) setInclusiveGst(!!data.inclusive_gst);
         }
         
         try {
@@ -167,6 +168,7 @@ export default function WholesaleBillingPage() {
   const [branchPhone, setBranchPhone] = useState('9845122669');
   const [branchEmail, setBranchEmail] = useState('mohan.mv2@gmail.com');
   const [branchCity, setBranchCity] = useState('Sindhanur');
+  const [inclusiveGst, setInclusiveGst] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
@@ -283,13 +285,21 @@ export default function WholesaleBillingPage() {
     setCart(cart.filter(i => i.id !== id));
   };
 
-  const subtotal = cart.reduce(
-    (a, b) => a + b.price * b.qty,
-    0
-  );
+  const subtotal = cart.reduce((acc, item) => {
+    const gst = Number(item.gst || 0);
+    if (inclusiveGst) {
+      const basePrice = item.price / (1 + gst / 100);
+      return acc + basePrice * item.qty;
+    }
+    return acc + item.price * item.qty;
+  }, 0);
 
   const gstTotal = cart.reduce((acc, item) => {
     const gst = Number(item.gst || 0);
+    if (inclusiveGst) {
+      const basePrice = item.price / (1 + gst / 100);
+      return acc + (item.price - basePrice) * item.qty;
+    }
     return acc + item.price * item.qty * (gst / 100);
   }, 0);
 
@@ -434,31 +444,41 @@ export default function WholesaleBillingPage() {
         const taxGroups = {};
         cart.forEach(item => {
           const rate = Number(item.gst || 0);
-          const amt = item.price * item.qty;
+          const amt = inclusiveGst 
+             ? (item.price / (1 + rate / 100)) * item.qty 
+             : item.price * item.qty;
           if (!taxGroups[rate]) {
             taxGroups[rate] = { taxable: 0, cgst: 0, sgst: 0, totalTax: 0 };
           }
           taxGroups[rate].taxable += amt;
-          const itemGst = amt * (rate / 100);
+          const itemGst = inclusiveGst
+             ? (item.price - (item.price / (1 + rate / 100))) * item.qty
+             : amt * (rate / 100);
           taxGroups[rate].cgst += itemGst / 2;
           taxGroups[rate].sgst += itemGst / 2;
           taxGroups[rate].totalTax += itemGst;
         });
 
         // Rows for the main items table
-        const tableRowsHtml = cart.map((item, idx) => `
+        const tableRowsHtml = cart.map((item, idx) => {
+          const itemRate = Number(item.gst || item.gst_rate || 0);
+          const basePrice = inclusiveGst 
+               ? Number(item.price || item.unit_price || 0) / (1 + itemRate / 100) 
+               : Number(item.price || item.unit_price || 0);
+          return `
     <tr style="border-bottom: 1px solid #cbd5e1; font-size: 11px;">
       <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
       <td style="padding: 3px 6px; text-align: left; font-weight: 600; border-right: 1px solid #cbd5e1;">${item.name || item.item_name}</td>
       <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.hsn || item.hsn_code || '—'}</td>
-      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.gst || item.gst_rate || 0}%</td>
+      <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${itemRate}%</td>
       <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${Number(item.qty || item.quantity).toFixed(2)}</td>
       <td style="padding: 3px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${item.unit || 'Units'}</td>
       <td style="padding: 3px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${Number(item.retailPrice || item.price || item.unit_price || 0).toFixed(2)}</td>
-      <td style="padding: 3px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${Number(item.price || item.unit_price || 0).toFixed(2)}</td>
-      <td style="padding: 3px 6px; text-align: right; font-weight: 600;">₹${(Number(item.price || item.unit_price || 0) * Number(item.qty || item.quantity || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+      <td style="padding: 3px 6px; text-align: right; border-right: 1px solid #cbd5e1;">${basePrice.toFixed(2)}</td>
+      <td style="padding: 3px 6px; text-align: right; font-weight: 600;">₹${(basePrice * Number(item.qty || item.quantity || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
     </tr>
-  `).join('');
+  `;
+        }).join('');
 
 
 
