@@ -50,7 +50,7 @@ export default function DirectBillingPage() {
   const custDropdownRef = useRef(null);
 
   // Bill Config
-  const [isCustomBillNo, setIsCustomBillNo] = useState(false);
+  const [isCustomBillNo, setIsCustomBillNo] = useState(true);
   const [customBillNo, setCustomBillNo] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -206,7 +206,7 @@ export default function DirectBillingPage() {
     setCustomerName('');
     setCustomerPhone('');
     setCustSearch('');
-    setIsCustomBillNo(false);
+    setIsCustomBillNo(true);
     setCustomBillNo('');
     setDescription('Counter Sale / General Purchase');
     setAmount('');
@@ -322,7 +322,7 @@ export default function DirectBillingPage() {
       setCustomerName('');
       setCustomerPhone('');
       setCustSearch('');
-      setIsCustomBillNo(false);
+      setIsCustomBillNo(true);
       setCustomBillNo('');
       setDescription('Counter Sale / General Purchase');
       setAmount('');
