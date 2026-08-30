@@ -318,6 +318,20 @@ export default function DirectBillingPage() {
         popup.showSuccess(`Bill #${billData.invoiceNumber} saved & recorded successfully in ${paymentMode.toUpperCase()}!`);
       }
 
+      // Automatically clear and reset form fields for next sale
+      setSelectedCustomer(null);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustSearch('');
+      setIsCustomBillNo(false);
+      setCustomBillNo('');
+      setDescription('Counter Sale / General Purchase');
+      setAmount('');
+      setDiscountAmount('0');
+      setTaxPercent('0');
+      setNotes('');
+      setPaymentMode('cash');
+
       // Trigger Print only if requested
       if (shouldPrint) {
         printDirectBill(billData);
