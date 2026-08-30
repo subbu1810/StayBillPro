@@ -222,8 +222,8 @@ export default function DirectBillingPage() {
     setAmount(String(current + val));
   };
 
-  const handleGenerateDirectBill = async (e) => {
-    if (e) e.preventDefault();
+  const handleGenerateDirectBill = async (e, shouldPrint = true) => {
+    if (e && e.preventDefault) e.preventDefault();
 
     if (rawAmt <= 0) {
       popup.showError('Please enter a valid bill amount greater than 0');
@@ -313,13 +313,15 @@ export default function DirectBillingPage() {
       setLastBill(billData);
       
       if (paymentMode === 'credit') {
-        popup.showSuccess(`Bill #${billData.invoiceNumber} recorded as CREDIT DUE on ${billData.customerName}'s account balance!`);
+        popup.showSuccess(`Bill #${billData.invoiceNumber} saved as CREDIT DUE on ${billData.customerName}'s account!`);
       } else {
-        popup.showSuccess(`Bill #${billData.invoiceNumber} recorded & received in ${paymentMode.toUpperCase()}!`);
+        popup.showSuccess(`Bill #${billData.invoiceNumber} saved & recorded successfully in ${paymentMode.toUpperCase()}!`);
       }
 
-      // Trigger Print
-      printDirectBill(billData);
+      // Trigger Print only if requested
+      if (shouldPrint) {
+        printDirectBill(billData);
+      }
 
     } catch (err) {
       console.error(err);
@@ -1289,10 +1291,12 @@ export default function DirectBillingPage() {
             </div>
 
             {/* Actions Card Footer */}
-            <div style={{ padding: '0 16px 16px 16px' }}>
+            <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              
+              {/* Primary: Save & Print Bill */}
               <button
                 type="button"
-                onClick={handleGenerateDirectBill}
+                onClick={(e) => handleGenerateDirectBill(e, true)}
                 disabled={loading || rawAmt <= 0}
                 style={{
                   width: '100%',
@@ -1303,7 +1307,7 @@ export default function DirectBillingPage() {
                     : '#94a3b8',
                   color: '#fff',
                   border: 'none',
-                  fontSize: '0.95rem',
+                  fontSize: '0.92rem',
                   fontWeight: 800,
                   cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
                   boxShadow: rawAmt > 0 ? (paymentMode === 'credit' ? '0 4px 14px rgba(217, 119, 6, 0.4)' : '0 4px 14px rgba(13, 148, 136, 0.4)') : 'none',
@@ -1311,7 +1315,6 @@ export default function DirectBillingPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  marginBottom: '8px',
                   transition: 'all 0.15s'
                 }}
               >
@@ -1319,9 +1322,34 @@ export default function DirectBillingPage() {
                   'Processing...'
                 ) : (
                   <>
-                    <Printer size={17} /> {paymentMode === 'credit' ? 'Generate Credit Bill' : 'Generate & Print Bill'} (₹{grandTotal.toFixed(2)})
+                    <Printer size={17} /> {paymentMode === 'credit' ? 'Save & Print Credit Bill' : 'Save & Print Bill'} (₹{grandTotal.toFixed(2)})
                   </>
                 )}
+              </button>
+
+              {/* Secondary: Save Bill (No Print) */}
+              <button
+                type="button"
+                onClick={(e) => handleGenerateDirectBill(e, false)}
+                disabled={loading || rawAmt <= 0}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  background: rawAmt > 0 ? '#ffffff' : '#f8fafc',
+                  color: rawAmt > 0 ? (paymentMode === 'credit' ? '#b45309' : '#0f766e') : '#94a3b8',
+                  border: rawAmt > 0 ? (paymentMode === 'credit' ? '1.5px solid #d97706' : '1.5px solid #0d9488') : '1.5px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s'
+                }}
+              >
+                💾 Save Bill (Without Print)
               </button>
 
               {lastBill && (
