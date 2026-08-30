@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     PAYROLL_HISTORY: `${API_BASE_URL}/staff-mgmt/payroll/history`,
     PAYROLL_SAVE_DRAFT: `${API_BASE_URL}/staff-mgmt/payroll/save-draft`,
     PAYROLL_PAY: `${API_BASE_URL}/staff-mgmt/payroll/pay`,
+    PAYROLL_ADVANCE: `${API_BASE_URL}/staff-mgmt/payroll/advance`,
   },
 
   // Appliances

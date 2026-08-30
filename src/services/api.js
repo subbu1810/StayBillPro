@@ -319,6 +319,7 @@ export const staffManagementAPI = {
   getPayrollHistory: (params) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_HISTORY, HTTP_METHODS.GET, null, params),
   savePayrollDraft: (data) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_SAVE_DRAFT, HTTP_METHODS.POST, data),
   processPayment: (paymentData) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_PAY, HTTP_METHODS.POST, paymentData),
+  recordAdvance: (advanceData) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_ADVANCE, HTTP_METHODS.POST, advanceData),
 };
 
 // ========== SERVICE JOB PAYMENTS API ==========

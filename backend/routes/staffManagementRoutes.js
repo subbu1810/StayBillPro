@@ -16,5 +16,6 @@ router.get('/payroll', staffManagementController.getPayroll);
 router.get('/payroll/history', staffManagementController.getPayrollHistory);
 router.post('/payroll/save-draft', staffManagementController.savePayrollDraft);
 router.post('/payroll/pay', staffManagementController.processPayment);
+router.post('/payroll/advance', staffManagementController.recordAdvancePayment);
 
 module.exports = router;

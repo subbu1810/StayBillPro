@@ -190,59 +190,175 @@ exports.savePayrollDraft = async (req, res) => {
     }
 };
 
-// Process a payroll payment
+// Process a payroll payment (Full / Partial / Final Salary)
 exports.processPayment = async (req, res) => {
     try {
         const adminId = req.user.id;
-        const { staff_id, month, base_salary, allowances, deductions, net_payable } = req.body;
+        const { staff_id, month, base_salary, allowances, deductions, net_payable, payment_mode, payment_date, remarks } = req.body;
 
         if (!staff_id || !month) return res.status(400).json({ message: 'Staff ID and month are required' });
 
+        // Ensure salary_payments table exists
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS staff_salary_payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                admin_id INT NOT NULL,
+                staff_id INT NOT NULL,
+                month VARCHAR(20) NOT NULL,
+                payment_type ENUM('salary', 'advance') DEFAULT 'salary',
+                base_salary DECIMAL(15, 2) DEFAULT 0.00,
+                allowances DECIMAL(15, 2) DEFAULT 0.00,
+                deductions DECIMAL(15, 2) DEFAULT 0.00,
+                amount_paid DECIMAL(15, 2) NOT NULL,
+                payment_mode VARCHAR(50) DEFAULT 'bank',
+                payment_date DATE NOT NULL,
+                remarks VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        const pDate = payment_date || new Date().toISOString().split('T')[0];
+
+        // 1. Insert distinct payment transaction record
+        await db.execute(
+            `INSERT INTO staff_salary_payments (admin_id, staff_id, month, payment_type, base_salary, allowances, deductions, amount_paid, payment_mode, payment_date, remarks)
+             VALUES (?, ?, ?, 'salary', ?, ?, ?, ?, ?, ?, ?)`,
+            [adminId, staff_id, month, base_salary || 0, allowances || 0, deductions || 0, net_payable, payment_mode || 'bank', pDate, remarks || null]
+        );
+
+        // 2. Update monthly snapshot table
         await db.execute(
             `INSERT INTO staff_payroll (admin_id, staff_id, month, base_salary, allowances, deductions, net_payable, status, payment_date) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'Paid', NOW())
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'Paid', ?) 
              ON DUPLICATE KEY UPDATE 
                 status = 'Paid', 
                 base_salary = VALUES(base_salary),
                 allowances = VALUES(allowances),
                 deductions = VALUES(deductions),
                 net_payable = VALUES(net_payable),
-                payment_date = NOW()`,
-            [adminId, staff_id, month, base_salary, allowances, deductions, net_payable]
+                payment_date = VALUES(payment_date)`,
+            [adminId, staff_id, month, base_salary || 0, allowances || 0, deductions || 0, net_payable, pDate]
         );
 
-        res.json({ success: true, message: 'Salary paid successfully.' });
+        res.json({ success: true, message: 'Salary payment recorded successfully.' });
     } catch (error) {
         console.error('Error processing payroll payment:', error);
         res.status(500).json({ message: 'Error processing payment', error: error.message });
     }
 };
 
-// Get full payroll payment history (all Paid records)
+// Record an Advance Payment as an individual payment entry
+exports.recordAdvancePayment = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const { staff_id, month, amount, payment_mode, date, remarks } = req.body;
+
+        if (!staff_id || !amount) return res.status(400).json({ message: 'Staff ID and amount are required' });
+
+        // Ensure table exists
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS staff_salary_payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                admin_id INT NOT NULL,
+                staff_id INT NOT NULL,
+                month VARCHAR(20) NOT NULL,
+                payment_type ENUM('salary', 'advance') DEFAULT 'salary',
+                base_salary DECIMAL(15, 2) DEFAULT 0.00,
+                allowances DECIMAL(15, 2) DEFAULT 0.00,
+                deductions DECIMAL(15, 2) DEFAULT 0.00,
+                amount_paid DECIMAL(15, 2) NOT NULL,
+                payment_mode VARCHAR(50) DEFAULT 'cash',
+                payment_date DATE NOT NULL,
+                remarks VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        const pDate = date || new Date().toISOString().split('T')[0];
+        const mth = month || pDate.slice(0, 7);
+
+        await db.execute(
+            `INSERT INTO staff_salary_payments (admin_id, staff_id, month, payment_type, base_salary, allowances, deductions, amount_paid, payment_mode, payment_date, remarks)
+             VALUES (?, ?, ?, 'advance', 0, 0, ?, ?, ?, ?, ?)`,
+            [adminId, staff_id, mth, amount, amount, payment_mode || 'cash', pDate, remarks || 'Salary Advance']
+        );
+
+        res.json({ success: true, message: 'Advance payment recorded successfully.' });
+    } catch (error) {
+        console.error('Error recording advance:', error);
+        res.status(500).json({ message: 'Error recording advance', error: error.message });
+    }
+};
+
+// Get full payment & advance transaction history (every individual payment transaction)
 exports.getPayrollHistory = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { staff_id, from_month, to_month } = req.query;
 
-        let query = `
-            SELECT sp.id, sp.month, sp.base_salary, sp.allowances, sp.deductions, 
-                   sp.net_payable, sp.status, sp.payment_date,
-                   a.admin_name as name, a.id as staff_id
-            FROM staff_payroll sp
-            JOIN admins a ON a.id = sp.staff_id
-            WHERE sp.admin_id = ? AND sp.status = 'Paid'
-        `;
-        const params = [adminId];
+        // Check if individual transaction table exists
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS staff_salary_payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                admin_id INT NOT NULL,
+                staff_id INT NOT NULL,
+                month VARCHAR(20) NOT NULL,
+                payment_type ENUM('salary', 'advance') DEFAULT 'salary',
+                base_salary DECIMAL(15, 2) DEFAULT 0.00,
+                allowances DECIMAL(15, 2) DEFAULT 0.00,
+                deductions DECIMAL(15, 2) DEFAULT 0.00,
+                amount_paid DECIMAL(15, 2) NOT NULL,
+                payment_mode VARCHAR(50) DEFAULT 'bank',
+                payment_date DATE NOT NULL,
+                remarks VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        if (staff_id) { query += ` AND sp.staff_id = ?`; params.push(staff_id); }
-        if (from_month) { query += ` AND sp.month >= ?`; params.push(from_month); }
-        if (to_month) { query += ` AND sp.month <= ?`; params.push(to_month); }
+        // Check count of transactions in staff_salary_payments
+        const [txnCount] = await db.execute(`SELECT COUNT(*) as cnt FROM staff_salary_payments WHERE admin_id = ?`, [adminId]);
+        
+        let records = [];
+        if (txnCount[0].cnt > 0) {
+            let query = `
+                SELECT ssp.id, ssp.month, ssp.payment_type, ssp.base_salary, ssp.allowances, ssp.deductions, 
+                       ssp.amount_paid as net_payable, 'Paid' as status, ssp.payment_date, ssp.payment_mode, ssp.remarks,
+                       a.admin_name as name, a.id as staff_id
+                FROM staff_salary_payments ssp
+                JOIN admins a ON a.id = ssp.staff_id
+                WHERE ssp.admin_id = ?
+            `;
+            const params = [adminId];
 
-        query += ` ORDER BY sp.month DESC, a.admin_name ASC`;
+            if (staff_id) { query += ` AND ssp.staff_id = ?`; params.push(staff_id); }
+            if (from_month) { query += ` AND ssp.month >= ?`; params.push(from_month); }
+            if (to_month) { query += ` AND ssp.month <= ?`; params.push(to_month); }
 
-        const [records] = await db.execute(query, params);
+            query += ` ORDER BY ssp.payment_date DESC, ssp.id DESC`;
+            const [rows] = await db.execute(query, params);
+            records = rows;
+        } else {
+            // Fallback for existing legacy records in staff_payroll
+            let query = `
+                SELECT sp.id, sp.month, 'salary' as payment_type, sp.base_salary, sp.allowances, sp.deductions, 
+                       sp.net_payable, sp.status, sp.payment_date, 'bank' as payment_mode, NULL as remarks,
+                       a.admin_name as name, a.id as staff_id
+                FROM staff_payroll sp
+                JOIN admins a ON a.id = sp.staff_id
+                WHERE sp.admin_id = ? AND sp.status = 'Paid'
+            `;
+            const params = [adminId];
 
-        const totalDisbursed = records.reduce((acc, r) => acc + parseFloat(r.net_payable), 0);
+            if (staff_id) { query += ` AND sp.staff_id = ?`; params.push(staff_id); }
+            if (from_month) { query += ` AND sp.month >= ?`; params.push(from_month); }
+            if (to_month) { query += ` AND sp.month <= ?`; params.push(to_month); }
+
+            query += ` ORDER BY sp.month DESC, a.admin_name ASC`;
+            const [rows] = await db.execute(query, params);
+            records = rows;
+        }
+
+        const totalDisbursed = records.reduce((acc, r) => acc + parseFloat(r.net_payable || 0), 0);
 
         res.json({ success: true, history: records, totalDisbursed });
     } catch (error) {

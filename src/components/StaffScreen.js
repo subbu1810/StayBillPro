@@ -562,7 +562,21 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                 console.warn("Accounting entry warning:", accErr);
             }
 
-            // 2. Automatically update deduction in payroll for this staff & month
+            // 2. Record advance payment transaction in staff management payments
+            try {
+                await staffManagementAPI.recordAdvance({
+                    staff_id: advanceForm.staff_id,
+                    month: payrollMonth,
+                    amount: advAmt,
+                    payment_mode: advanceForm.payment_mode,
+                    date: advanceForm.date,
+                    remarks: advanceForm.remarks
+                });
+            } catch (recErr) {
+                console.warn("Advance payment logging note:", recErr);
+            }
+
+            // 3. Automatically update deduction in payroll for this staff & month
             const currentStaffPayroll = payrollList.find(item => item.staff_id === advanceForm.staff_id);
             if (currentStaffPayroll) {
                 const updatedDeductions = (parseFloat(currentStaffPayroll.deductions) || 0) + advAmt;
@@ -634,7 +648,10 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                 base_salary: paySalaryForm.base_salary,
                 allowances: paySalaryForm.allowances,
                 deductions: paySalaryForm.deductions,
-                net_payable: paySalaryForm.net_payable
+                net_payable: paySalaryForm.net_payable,
+                payment_mode: paySalaryForm.payment_mode,
+                payment_date: paySalaryForm.payment_date,
+                remarks: paySalaryForm.remarks
             });
 
             // 2. Record salary payout in accounting cash / bank register
@@ -1152,26 +1169,60 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                     <thead>
                                         <tr>
                                             <th>Employee</th>
-                                            <th>Base Salary</th>
-                                            <th>Allowances</th>
-                                            <th>Deductions</th>
-                                            <th>Net Paid</th>
+                                            <th>Payment Type</th>
+                                            <th>Amount Paid</th>
+                                            <th>Mode</th>
                                             <th>Payment Date</th>
+                                            <th>Note / Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {monthRecords.map(r => (
-                                            <tr key={r.id}>
-                                                <td style={{ fontWeight: '600' }}>{r.name}</td>
-                                                <td>₹{Number(r.base_salary).toLocaleString('en-IN')}</td>
-                                                <td style={{ color: '#059669' }}>+₹{Number(r.allowances).toLocaleString('en-IN')}</td>
-                                                <td style={{ color: '#ef4444' }}>−₹{Number(r.deductions).toLocaleString('en-IN')}</td>
-                                                <td style={{ fontWeight: '800', color: '#0f172a' }}>₹{Number(r.net_payable).toLocaleString('en-IN')}</td>
-                                                <td style={{ color: '#64748b', fontSize: '0.82rem' }}>
-                                                    {r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {monthRecords.map(r => {
+                                            const isAdvance = r.payment_type === 'advance';
+                                            return (
+                                                <tr key={r.id}>
+                                                    <td style={{ fontWeight: '700', color: '#0f172a' }}>{r.name}</td>
+                                                    <td>
+                                                        <span style={{
+                                                            padding: '3px 8px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.74rem',
+                                                            fontWeight: 700,
+                                                            background: isAdvance ? '#fffbeb' : '#dcfce7',
+                                                            color: isAdvance ? '#b45309' : '#15803d',
+                                                            border: isAdvance ? '1px solid #fde68a' : '1px solid #bbf7d0',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px'
+                                                        }}>
+                                                            {isAdvance ? '💵 Salary Advance' : '💰 Salary Payout'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.92rem' }}>
+                                                        ₹{Number(r.net_payable).toLocaleString('en-IN')}
+                                                    </td>
+                                                    <td>
+                                                        <span style={{
+                                                            fontSize: '0.75rem',
+                                                            textTransform: 'uppercase',
+                                                            fontWeight: 700,
+                                                            color: '#475569',
+                                                            background: '#f1f5f9',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '4px'
+                                                        }}>
+                                                            {r.payment_mode || 'BANK'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ color: '#475569', fontSize: '0.82rem', fontWeight: 500 }}>
+                                                        {r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                                    </td>
+                                                    <td style={{ color: '#64748b', fontSize: '0.8rem', fontStyle: r.remarks ? 'normal' : 'italic' }}>
+                                                        {r.remarks || (isAdvance ? 'Advance Deduction' : 'Monthly Salary')}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
