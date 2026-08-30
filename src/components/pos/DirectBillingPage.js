@@ -6,28 +6,34 @@ import {
   Phone, 
   CreditCard, 
   Printer, 
-  CheckCircle, 
-  FileText, 
+  CheckCircle2, 
   Plus, 
   RotateCcw,
-  Building,
   QrCode,
   Tag,
   Hash,
-  ArrowRight,
-  ShieldCheck
+  Sparkles,
+  Percent,
+  FileCheck,
+  Building2,
+  Wallet,
+  Smartphone,
+  CreditCard as CardIcon,
+  Clock
 } from 'lucide-react';
 import API_BASE from '../../config/serverConfig';
 import { usePopup } from '../ui/PopupProvider';
 import { branchesAPI, posSettingsAPI } from '../../services/api';
 
 const DEFAULT_UPI_ACCOUNTS = [
-  { id: 'upi_1', name: 'Primary Shop UPI (Main QR)', upiId: 'primary@upi', bank: 'Main Account' },
-  { id: 'upi_2', name: 'Counter 1 - HDFC Bank', upiId: 'counter1.hdfc@upi', bank: 'HDFC Bank' },
-  { id: 'upi_3', name: 'Counter 2 - SBI QR', upiId: 'counter2.sbi@upi', bank: 'State Bank of India' },
-  { id: 'upi_4', name: 'Manager / Owner GPay', upiId: 'manager@okaxis', bank: 'Axis Bank' },
-  { id: 'upi_5', name: 'ICICI Current Account QR', upiId: 'icicicurrent@icici', bank: 'ICICI Bank' }
+  { id: 'upi_1', name: 'Shop Primary Scanner', upiId: 'primary@upi', bank: 'Main Current A/C' },
+  { id: 'upi_2', name: 'Counter 1 (HDFC)', upiId: 'counter1.hdfc@upi', bank: 'HDFC Bank' },
+  { id: 'upi_3', name: 'Counter 2 (SBI QR)', upiId: 'counter2.sbi@upi', bank: 'State Bank of India' },
+  { id: 'upi_4', name: 'Owner GPay / PhonePe', upiId: 'owner@okaxis', bank: 'Axis Bank' },
+  { id: 'upi_5', name: 'ICICI QR POS', upiId: 'icici.pos@icici', bank: 'ICICI Bank' }
 ];
+
+const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 
 export default function DirectBillingPage() {
   const popup = usePopup();
@@ -49,7 +55,6 @@ export default function DirectBillingPage() {
   // Payment Options
   const [paymentMode, setPaymentMode] = useState('cash'); // 'cash' | 'upi' | 'card' | 'credit'
   const [selectedUpiAccount, setSelectedUpiAccount] = useState('upi_1');
-  const [customUpiLabel, setCustomUpiLabel] = useState('');
   const [upiAccounts, setUpiAccounts] = useState(DEFAULT_UPI_ACCOUNTS);
   const [showAddUpiModal, setShowAddUpiModal] = useState(false);
   const [newUpiName, setNewUpiName] = useState('');
@@ -141,7 +146,7 @@ export default function DirectBillingPage() {
     setShowAddUpiModal(false);
     setNewUpiName('');
     setNewUpiId('');
-    popup.showSuccess('New UPI Account / QR added successfully!');
+    popup.showSuccess('New UPI Account added successfully!');
   };
 
   const handleResetForm = () => {
@@ -158,8 +163,13 @@ export default function DirectBillingPage() {
     setLastBill(null);
   };
 
+  const handleAddPresetAmount = (val) => {
+    const current = parseFloat(amount) || 0;
+    setAmount(String(current + val));
+  };
+
   const handleGenerateDirectBill = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     if (rawAmt <= 0) {
       popup.showError('Please enter a valid bill amount greater than 0');
@@ -177,7 +187,6 @@ export default function DirectBillingPage() {
       const token = localStorage.getItem('token');
       const branchId = localStorage.getItem('selectedBranchId') || '1';
 
-      // 1. Determine particulars & chosen UPI Account details
       let chosenAccountLabel = '';
       if (paymentMode === 'upi') {
         const acc = upiAccounts.find(a => a.id === selectedUpiAccount);
@@ -188,13 +197,12 @@ export default function DirectBillingPage() {
         ? customBillNo.trim() 
         : `DB-${Date.now().toString().slice(-6)}`;
 
-      // 2. Prepare payload for billing API (creates real invoice & ledger entry)
       const payload = {
         customerName: customerName.trim() || 'Walk-in Customer',
         customerPhone: customerPhone.trim() || '',
         items: [
           {
-            id: null, // open billing without DB item
+            id: null,
             name: description.trim() || 'Direct Counter Sale',
             qty: 1,
             price: rawAmt,
@@ -225,8 +233,6 @@ export default function DirectBillingPage() {
         throw new Error(data.message || 'Failed to generate direct bill');
       }
 
-      const generatedInvoiceId = data.invoiceId || (data.invoice && data.invoice.id) || finalBillNumber;
-      
       const billData = {
         invoiceNumber: isCustomBillNo ? finalBillNumber : (data.invoiceId ? `POSINV${String(data.invoiceId).padStart(2, '0')}` : finalBillNumber),
         date: billDate,
@@ -244,9 +250,9 @@ export default function DirectBillingPage() {
       };
 
       setLastBill(billData);
-      popup.showSuccess(`Bill #${billData.invoiceNumber} generated & recorded into ledger successfully!`);
+      popup.showSuccess(`Bill #${billData.invoiceNumber} recorded successfully!`);
 
-      // Trigger Instant Print
+      // Trigger Print
       printDirectBill(billData);
 
     } catch (err) {
@@ -275,20 +281,20 @@ export default function DirectBillingPage() {
         <head>
           <title>Invoice - ${bill.invoiceNumber}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; max-width: 210mm; margin: 0 auto; line-height: 1.5; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 25px; }
-            .shop-title { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 30px; color: #0f172a; max-width: 210mm; margin: 0 auto; line-height: 1.5; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px; }
+            .shop-title { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }
             .meta-box { text-align: right; }
-            .invoice-tag { font-size: 20px; font-weight: 800; color: #0ea5e9; margin: 0 0 5px 0; }
-            .cust-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 13px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
-            td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+            .invoice-tag { font-size: 18px; font-weight: 800; color: #0d9488; margin: 0 0 4px 0; }
+            .cust-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 12px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
+            td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
             .total-section { display: flex; justify-content: flex-end; }
-            .total-table { width: 320px; }
+            .total-table { width: 300px; }
             .total-table td { padding: 6px 10px; }
-            .grand-total { font-size: 18px; font-weight: 800; color: #0f172a; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; }
-            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+            .grand-total { font-size: 17px; font-weight: 800; color: #0f172a; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
             @media print { body { padding: 0; } }
           </style>
         </head>
@@ -296,26 +302,26 @@ export default function DirectBillingPage() {
           <div class="header">
             <div>
               <h1 class="shop-title">${shopName}</h1>
-              ${gstin ? `<p style="margin: 3px 0; color: #64748b; font-size: 13px;">GSTIN: ${gstin}</p>` : ''}
-              <p style="margin: 3px 0; color: #64748b; font-size: 13px;">${branchDetails.address || ''} ${branchDetails.city ? `(${branchDetails.city})` : ''}</p>
-              <p style="margin: 3px 0; color: #64748b; font-size: 13px;">Tel: ${branchDetails.phone || '—'}</p>
+              ${gstin ? `<p style="margin: 2px 0; color: #64748b; font-size: 13px;">GSTIN: ${gstin}</p>` : ''}
+              <p style="margin: 2px 0; color: #64748b; font-size: 13px;">${branchDetails.address || ''} ${branchDetails.city ? `(${branchDetails.city})` : ''}</p>
+              <p style="margin: 2px 0; color: #64748b; font-size: 13px;">Tel: ${branchDetails.phone || '—'}</p>
             </div>
             <div class="meta-box">
               <div class="invoice-tag">RETAIL BILL / RECEIPT</div>
-              <p style="margin: 3px 0;"><strong>Bill No:</strong> ${bill.invoiceNumber}</p>
-              <p style="margin: 3px 0;"><strong>Date:</strong> ${bill.date}</p>
-              <p style="margin: 3px 0;"><strong>Payment:</strong> <span style="text-transform: uppercase; color: #16a34a; font-weight: bold;">${bill.paymentMode}</span></p>
-              ${bill.upiAccount ? `<p style="margin: 3px 0; font-size: 12px; color: #64748b;">A/C: ${bill.upiAccount}</p>` : ''}
+              <p style="margin: 2px 0;"><strong>Bill No:</strong> ${bill.invoiceNumber}</p>
+              <p style="margin: 2px 0;"><strong>Date:</strong> ${bill.date}</p>
+              <p style="margin: 2px 0;"><strong>Payment:</strong> <span style="text-transform: uppercase; color: #0d9488; font-weight: bold;">${bill.paymentMode}</span></p>
+              ${bill.upiAccount ? `<p style="margin: 2px 0; font-size: 12px; color: #64748b;">A/C: ${bill.upiAccount}</p>` : ''}
             </div>
           </div>
 
           <div class="cust-box">
             <div>
-              <span style="font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold; display: block;">Customer Details</span>
-              <strong style="font-size: 15px;">${bill.customerName}</strong>
+              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; display: block;">Customer Details</span>
+              <strong style="font-size: 14px;">${bill.customerName}</strong>
               ${bill.customerPhone ? `<p style="margin: 2px 0; color: #475569;">Mobile: ${bill.customerPhone}</p>` : ''}
             </div>
-            ${bill.notes ? `<div><span style="font-size: 12px; color: #64748b; font-weight: bold;">Notes:</span><p style="margin: 2px 0;">${bill.notes}</p></div>` : ''}
+            ${bill.notes ? `<div><span style="font-size: 11px; color: #64748b; font-weight: bold;">Notes:</span><p style="margin: 2px 0;">${bill.notes}</p></div>` : ''}
           </div>
 
           <table>
@@ -363,14 +369,13 @@ export default function DirectBillingPage() {
           </div>
 
           <div class="footer">
-            <p>Thank you for your business! For queries, contact ${branchDetails.phone || 'our counter'}.</p>
+            <p>Thank you for your business!</p>
           </div>
           <script>window.onload = function() { window.print(); };</script>
         </body>
         </html>
       `;
     } else {
-      // 80mm / 55mm Thermal Slip
       receiptHtml = `
         <!DOCTYPE html>
         <html>
@@ -409,7 +414,7 @@ export default function DirectBillingPage() {
           <div class="divider"></div>
 
           <div class="row">
-            <span>Bill No: <strong>${bill.invoiceNumber}</strong></span>
+            <span>Bill: <strong>${bill.invoiceNumber}</strong></span>
             <span>${bill.date}</span>
           </div>
           <div class="row">
@@ -417,7 +422,7 @@ export default function DirectBillingPage() {
           </div>
           ${bill.customerPhone ? `<div class="row"><span>Ph: ${bill.customerPhone}</span></div>` : ''}
           <div class="row">
-            <span>Pay Mode: <strong style="text-transform: uppercase;">${bill.paymentMode}</strong></span>
+            <span>Mode: <strong style="text-transform: uppercase;">${bill.paymentMode}</strong></span>
           </div>
           ${bill.upiAccount ? `<div style="font-size: 10px; color: #444;">A/C: ${bill.upiAccount}</div>` : ''}
 
@@ -456,7 +461,6 @@ export default function DirectBillingPage() {
 
           <div class="footer">
             <div>Thank You! Visit Again</div>
-            <div style="font-size: 9px; margin-top: 3px;">StayBillPro Quick POS</div>
           </div>
           <script>window.onload = function() { window.print(); };</script>
         </body>
@@ -470,272 +474,248 @@ export default function DirectBillingPage() {
   };
 
   return (
-    <div className="direct-billing-container" style={{ padding: '8px 12px', background: '#f8fafc', minHeight: '100%', overflowY: 'auto' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: '#f8fafc',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#0f172a'
+    }}>
       
-      {/* Header Banner - Compact Slim Design */}
+      {/* 1. TOP FAST ACTION BAR */}
       <div style={{
-        background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
-        borderRadius: '8px',
-        padding: '8px 14px',
-        color: '#fff',
-        marginBottom: '10px',
+        background: '#ffffff',
+        borderBottom: '1px solid #e2e8f0',
+        padding: '10px 18px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 2px 8px -2px rgba(20, 184, 166, 0.2)'
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            background: 'rgba(255, 255, 255, 0.2)',
-            padding: '6px',
-            borderRadius: '6px',
+            background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+            color: '#fff',
+            borderRadius: '8px',
+            width: '32px',
+            height: '32px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(13, 148, 136, 0.3)'
           }}>
-            <Zap size={18} color="#fff" />
+            <Zap size={18} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, letterSpacing: '0.2px' }}>
-              ⚡ Direct Open Billing (Quick Sale)
-            </h1>
+            <div style={{ fontWeight: 800, fontSize: '0.98rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Direct Counter POS
+              <span style={{ fontSize: '0.7rem', background: '#f0fdfa', color: '#0d9488', border: '1px solid #ccfbf1', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                Instant Sale
+              </span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              Quick open billing without catalog selection
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             type="button"
             onClick={handleResetForm}
             style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-              color: '#fff',
-              padding: '5px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 700,
+              background: '#f1f5f9',
+              border: '1px solid #cbd5e1',
+              color: '#475569',
+              padding: '6px 14px',
+              borderRadius: '7px',
               fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px'
+              gap: '5px',
+              transition: 'all 0.15s'
             }}
           >
-            <RotateCcw size={13} /> Clear Form
+            <RotateCcw size={13} /> Reset Form
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(0, 0.95fr)', gap: '24px' }}>
+      {/* 2. MAIN 2-COLUMN DESK LAYOUT */}
+      <div style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.45fr) minmax(360px, 1fr)',
+        gap: '16px',
+        padding: '14px 18px',
+        overflowY: 'auto'
+      }}>
         
-        {/* LEFT COLUMN: Input Form */}
-        <form onSubmit={handleGenerateDirectBill}>
+        {/* LEFT COLUMN: Entry Desk */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          
+          {/* STEP 1: Hero Amount Entry Card */}
           <div style={{
-            background: '#fff',
-            borderRadius: '14px',
-            padding: '24px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-            marginBottom: '20px'
+            background: '#ffffff',
+            borderRadius: '12px',
+            border: '1.5px solid #ccfbf1',
+            padding: '18px 20px',
+            boxShadow: '0 4px 20px -4px rgba(13, 148, 136, 0.08)'
           }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <User size={18} color="#0f766e" /> 1. Customer & Bill Number Details
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                  Customer Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ramesh Kumar (or Walk-in)"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                  Mobile / Phone Number
-                </label>
-                <input
-                  type="tel"
-                  placeholder="e.g. 9876543210"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Bill Number Config */}
-            <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              padding: '14px 16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Hash size={16} color="#0f766e" />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
-                    Bill / Invoice Number Mode
-                  </span>
-                </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#0f766e', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={isCustomBillNo}
-                    onChange={(e) => setIsCustomBillNo(e.target.checked)}
-                    style={{ width: '16px', height: '16px', accentColor: '#0f766e' }}
-                  />
-                  Enter Bill # Manually
-                </label>
-              </div>
-
-              {isCustomBillNo ? (
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Enter manual bill number (e.g. INV-2026-088 or Bill #45)"
-                    value={customBillNo}
-                    onChange={(e) => setCustomBillNo(e.target.value)}
-                    required={isCustomBillNo}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: '6px',
-                      border: '1.5px solid #0f766e',
-                      fontSize: '0.85rem',
-                      background: '#fff'
-                    }}
-                  />
-                  <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                    💡 Matches your physical counter receipt book / custom series.
-                  </span>
-                </div>
-              ) : (
-                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                  ✨ Auto-generating sequential system invoice number automatically.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ITEM & AMOUNT SECTION */}
-          <div style={{
-            background: '#fff',
-            borderRadius: '14px',
-            padding: '24px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-            marginBottom: '20px'
-          }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Tag size={18} color="#0f766e" /> 2. Sale Particulars & Direct Amount
-            </h3>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                Item / Service Particulars
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Tag size={15} /> Bill Amount & Description *
               </label>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Enter direct charge amount</span>
+            </div>
+
+            {/* Giant Amount Input */}
+            <div style={{ position: 'relative', marginBottom: '12px' }}>
+              <span style={{
+                position: 'absolute',
+                left: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '1.6rem',
+                fontWeight: 900,
+                color: '#0d9488'
+              }}>
+                ₹
+              </span>
               <input
-                type="text"
-                placeholder="e.g. General Hardware / Counter Sale / Urgent Service"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
+                type="number"
+                step="any"
+                min="1"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                autoFocus
                 style={{
                   width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1.5px solid #cbd5e1',
-                  fontSize: '0.88rem'
+                  padding: '12px 16px 12px 42px',
+                  borderRadius: '10px',
+                  border: '2px solid #0d9488',
+                  background: '#f0fdfa',
+                  fontSize: '1.75rem',
+                  fontWeight: 900,
+                  color: '#0f172a',
+                  outline: 'none',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
                 }}
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#0f766e', marginBottom: '6px' }}>
-                  Bill Amount (₹) *
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  min="1"
-                  placeholder="e.g. 4000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
+            {/* Quick Currency Pills */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', alignSelf: 'center', marginRight: '4px' }}>
+                Quick Add:
+              </span>
+              {PRESET_AMOUNTS.map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handleAddPresetAmount(p)}
                   style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '2px solid #0f766e',
-                    fontSize: '1.1rem',
-                    fontWeight: 800,
-                    color: '#0f172a'
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: '#334155',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
                   }}
-                />
-              </div>
+                >
+                  +₹{p}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setAmount('')}
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#ef4444',
+                  cursor: 'pointer'
+                }}
+              >
+                Clear
+              </button>
+            </div>
 
+            {/* Item Particulars / Title */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
+                Item / Service Particulars (Shown on Printed Receipt)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Counter Sale / Hardware Supplies / Fast Repair"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #cbd5e1',
+                  fontSize: '0.86rem',
+                  outline: 'none',
+                  background: '#fff'
+                }}
+              />
+            </div>
+
+            {/* Discount & GST Controls */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
                   Discount (₹)
                 </label>
                 <input
                   type="number"
-                  step="any"
                   min="0"
+                  step="any"
                   placeholder="0"
                   value={discountAmount}
                   onChange={(e) => setDiscountAmount(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 14px',
+                    padding: '8px 12px',
                     borderRadius: '8px',
                     border: '1.5px solid #cbd5e1',
-                    fontSize: '0.9rem'
+                    fontSize: '0.86rem',
+                    outline: 'none'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                  GST / Tax (%)
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
+                  Tax / GST Rate (%)
                 </label>
                 <select
                   value={taxPercent}
                   onChange={(e) => setTaxPercent(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '8px 12px',
                     borderRadius: '8px',
                     border: '1.5px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    background: '#fff'
+                    fontSize: '0.86rem',
+                    background: '#fff',
+                    outline: 'none',
+                    fontWeight: 600
                   }}
                 >
-                  <option value="0">0% (Exempt/None)</option>
+                  <option value="0">0% (Exempt / No Tax)</option>
                   <option value="5">5% GST</option>
                   <option value="12">12% GST</option>
                   <option value="18">18% GST</option>
@@ -745,93 +725,187 @@ export default function DirectBillingPage() {
             </div>
           </div>
 
-          {/* PAYMENT MODE & MULTI-UPI */}
+          {/* STEP 2: Customer & Bill Mode Card */}
           <div style={{
-            background: '#fff',
-            borderRadius: '14px',
-            padding: '24px',
+            background: '#ffffff',
+            borderRadius: '12px',
             border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+            padding: '16px 20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
           }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CreditCard size={18} color="#0f766e" /> 3. Payment Mode & Account Selection
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={15} color="#0d9488" /> Customer & Invoice Number
+              </span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 700, color: '#0d9488', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={isCustomBillNo}
+                  onChange={(e) => setIsCustomBillNo(e.target.checked)}
+                  style={{ accentColor: '#0d9488', width: '15px', height: '15px' }}
+                />
+                Manual Bill No.
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isCustomBillNo ? '1fr 1fr 1fr' : '1.2fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Walk-in Customer"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
+                  Mobile / Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="Optional phone"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.85rem'
+                  }}
+                />
+              </div>
+
+              {isCustomBillNo && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#0d9488', marginBottom: '4px' }}>
+                    Bill / Voucher # *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. INV-902"
+                    value={customBillNo}
+                    onChange={(e) => setCustomBillNo(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #0d9488',
+                      fontSize: '0.85rem',
+                      background: '#f0fdfa',
+                      fontWeight: 700
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* STEP 3: Payment Modes & UPI Selector */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '16px 20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wallet size={15} color="#0d9488" /> Payment Mode & Settlement
+              </span>
+            </div>
 
             {/* Mode selection buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '18px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '14px' }}>
               {[
-                { id: 'cash', label: '💵 Cash in Hand', desc: 'Auto-adds to Cash Register' },
-                { id: 'upi', label: '📱 UPI / QR Code', desc: 'Select Bank / Counter QR' },
-                { id: 'card', label: '💳 Card Swipe / POS', desc: 'Card Terminal' },
-                { id: 'credit', label: '⏳ Due / Credit', desc: 'Record in Customer Due' }
-              ].map(m => (
-                <div
-                  key={m.id}
-                  onClick={() => setPaymentMode(m.id)}
-                  style={{
-                    border: paymentMode === m.id ? '2px solid #0f766e' : '1.5px solid #e2e8f0',
-                    background: paymentMode === m.id ? '#f0fdfa' : '#fff',
-                    borderRadius: '10px',
-                    padding: '12px 10px',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: paymentMode === m.id ? '#0f766e' : '#1e293b' }}>
-                    {m.label}
+                { id: 'cash', label: 'Cash', icon: Wallet, desc: 'Cash Register' },
+                { id: 'upi', label: 'UPI / QR', icon: Smartphone, desc: 'Multi-Account QR' },
+                { id: 'card', label: 'Card / POS', icon: CardIcon, desc: 'Card Swipe' },
+                { id: 'credit', label: 'Credit / Due', icon: Clock, desc: 'Customer Due' }
+              ].map(m => {
+                const Icon = m.icon;
+                const isSelected = paymentMode === m.id;
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => setPaymentMode(m.id)}
+                    style={{
+                      border: isSelected ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                      background: isSelected ? '#f0fdfa' : '#f8fafc',
+                      borderRadius: '8px',
+                      padding: '10px 8px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <Icon size={18} color={isSelected ? '#0d9488' : '#64748b'} style={{ margin: '0 auto 4px auto', display: 'block' }} />
+                    <div style={{ fontWeight: 800, fontSize: '0.82rem', color: isSelected ? '#0d9488' : '#1e293b' }}>
+                      {m.label}
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
+                      {m.desc}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
-                    {m.desc}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Multi-UPI Account Selector (When UPI is selected) */}
             {paymentMode === 'upi' && (
               <div style={{
-                background: '#f8fafc',
-                border: '1.5px solid #ccfbf1',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '16px'
+                background: '#f0fdfa',
+                border: '1px solid #ccfbf1',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f766e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <QrCode size={16} /> Select Received UPI Account / Counter QR:
-                  </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f766e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <QrCode size={14} /> Select Account / QR:
+                  </span>
                   <button
                     type="button"
                     onClick={() => setShowAddUpiModal(true)}
                     style={{
-                      background: '#0f766e',
+                      background: '#0d9488',
                       color: '#fff',
                       border: 'none',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      fontSize: '0.72rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '3px'
                     }}
                   >
-                    <Plus size={13} /> Add New UPI QR
+                    <Plus size={11} /> New QR
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
                   {upiAccounts.map(acc => (
                     <div
                       key={acc.id}
                       onClick={() => setSelectedUpiAccount(acc.id)}
                       style={{
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: selectedUpiAccount === acc.id ? '2px solid #0f766e' : '1px solid #cbd5e1',
-                        background: selectedUpiAccount === acc.id ? '#fff' : '#f1f5f9',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: selectedUpiAccount === acc.id ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                        background: selectedUpiAccount === acc.id ? '#fff' : '#f8fafc',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
@@ -839,202 +913,197 @@ export default function DirectBillingPage() {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a' }}>{acc.name}</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.78rem', color: '#0f172a' }}>{acc.name}</span>
                         {selectedUpiAccount === acc.id && (
-                          <span style={{ color: '#0f766e', fontSize: '0.75rem', fontWeight: 800 }}>● Selected</span>
+                          <span style={{ color: '#0d9488', fontSize: '0.7rem', fontWeight: 800 }}>✓ Active</span>
                         )}
                       </div>
-                      <span style={{ fontSize: '0.74rem', color: '#64748b' }}>{acc.upiId}</span>
+                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{acc.upiId}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Optional Note */}
+            {/* Note */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                Internal Bill Remark / Transaction Ref (Optional)
-              </label>
               <input
                 type="text"
-                placeholder="e.g. UTR #3948291039 / Paid by Rahul"
+                placeholder="Optional internal remark (e.g. Paid via GPay Ref #8291)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: '1.5px solid #cbd5e1',
-                  fontSize: '0.85rem'
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.8rem',
+                  background: '#f8fafc'
                 }}
               />
             </div>
           </div>
-        </form>
 
-        {/* RIGHT COLUMN: Live Bill Preview & Action Card */}
+        </div>
+
+        {/* RIGHT COLUMN: Receipt Preview & Terminal Actions */}
         <div>
           <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            padding: '24px',
+            background: '#ffffff',
+            borderRadius: '12px',
             border: '1px solid #e2e8f0',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+            boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)',
+            display: 'flex',
+            flexDirection: 'column',
             position: 'sticky',
-            top: '20px'
+            top: '10px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            
+            {/* Header */}
+            <div style={{
+              background: '#0f172a',
+              color: '#fff',
+              padding: '12px 16px',
+              borderRadius: '12px 12px 0 0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Receipt size={20} color="#0f766e" />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
-                  Bill Summary
-                </h3>
+                <Receipt size={16} color="#2dd4bf" />
+                <span style={{ fontWeight: 800, fontSize: '0.88rem' }}>Live Bill Receipt</span>
               </div>
-              <span style={{
-                background: '#f0fdfa',
-                color: '#0f766e',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                border: '1px solid #ccfbf1'
-              }}>
-                Instant Direct Mode
+              <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.15)', padding: '2px 8px', borderRadius: '4px', color: '#e2e8f0' }}>
+                Print Ready
               </span>
             </div>
 
-            {/* Bill Info Card */}
-            <div style={{
-              background: '#f8fafc',
-              borderRadius: '10px',
-              padding: '14px 16px',
-              marginBottom: '20px',
-              border: '1px solid #e2e8f0',
-              fontSize: '0.82rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Customer:</span>
-                <strong style={{ color: '#0f172a' }}>{customerName.trim() || 'Walk-in Customer'}</strong>
-              </div>
-              {customerPhone && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>Phone:</span>
-                  <span>{customerPhone}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Invoice No:</span>
-                <span style={{ fontWeight: 700, color: '#0f766e' }}>
-                  {isCustomBillNo && customBillNo.trim() ? customBillNo.trim() : '(Auto Generate)'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Payment Mode:</span>
-                <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0f172a' }}>{paymentMode}</span>
-              </div>
-              {paymentMode === 'upi' && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#0f766e' }}>
-                  <span>Account:</span>
-                  <span>{upiAccounts.find(a => a.id === selectedUpiAccount)?.name}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Calculation Table */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#475569' }}>
-                <span>Subtotal Amount:</span>
-                <span style={{ fontWeight: 600 }}>₹{rawAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-              </div>
-
-              {discAmt > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#dc2626' }}>
-                  <span>Discount:</span>
-                  <span style={{ fontWeight: 600 }}>−₹{discAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-              )}
-
-              {calculatedTax > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#059669' }}>
-                  <span>GST ({taxPercent}%):</span>
-                  <span style={{ fontWeight: 600 }}>+₹{calculatedTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-              )}
-
+            {/* Thermal / Visual Receipt Container */}
+            <div style={{ padding: '16px' }}>
               <div style={{
-                borderTop: '2px dashed #cbd5e1',
-                paddingTop: '12px',
-                marginTop: '6px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline'
+                background: '#fafafa',
+                border: '1px dashed #cbd5e1',
+                borderRadius: '8px',
+                padding: '14px',
+                fontSize: '0.8rem',
+                color: '#334155'
               }}>
-                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Grand Total:</span>
-                <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f766e' }}>
-                  ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
+                <div style={{ textAlign: 'center', borderBottom: '1px dashed #cbd5e1', paddingBottom: '8px', marginBottom: '8px' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>{shopName.toUpperCase()}</div>
+                  {gstin && <div style={{ fontSize: '0.72rem', color: '#64748b' }}>GSTIN: {gstin}</div>}
+                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{branchDetails.city || 'Counter POS'}</div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: '#64748b' }}>Bill No:</span>
+                  <strong style={{ color: '#0f172a' }}>{isCustomBillNo && customBillNo.trim() ? customBillNo.trim() : '(Auto Generated)'}</strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: '#64748b' }}>Customer:</span>
+                  <span>{customerName.trim() || 'Walk-in'}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Mode:</span>
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0d9488' }}>{paymentMode}</span>
+                </div>
+
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ flex: 1, paddingRight: '8px' }}>{description.trim() || 'Direct Item'}</span>
+                    <span style={{ fontWeight: 700 }}>₹{rawAmt.toFixed(2)}</span>
+                  </div>
+
+                  {discAmt > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginBottom: '2px' }}>
+                      <span>Discount (−):</span>
+                      <span>−₹{discAmt.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {calculatedTax > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', marginBottom: '2px' }}>
+                      <span>GST ({taxPercent}%):</span>
+                      <span>+₹{calculatedTax.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{
+                  borderTop: '2px solid #0f172a',
+                  borderBottom: '2px solid #0f172a',
+                  padding: '8px 0',
+                  marginTop: '8px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline'
+                }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>TOTAL PAYABLE:</span>
+                  <span style={{ fontWeight: 900, fontSize: '1.25rem', color: '#0f766e' }}>₹{grandTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="button"
-              onClick={handleGenerateDirectBill}
-              disabled={loading || rawAmt <= 0}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '10px',
-                background: rawAmt > 0 ? 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)' : '#94a3b8',
-                color: '#fff',
-                border: 'none',
-                fontSize: '1rem',
-                fontWeight: 800,
-                cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
-                boxShadow: rawAmt > 0 ? '0 8px 20px -4px rgba(20, 184, 166, 0.4)' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                marginBottom: '10px'
-              }}
-            >
-              {loading ? (
-                'Generating Bill...'
-              ) : (
-                <>
-                  <Printer size={18} /> Generate & Print Bill (₹{grandTotal.toLocaleString()})
-                </>
-              )}
-            </button>
-
-            {lastBill && (
+            {/* Actions Card Footer */}
+            <div style={{ padding: '0 16px 16px 16px' }}>
               <button
                 type="button"
-                onClick={() => printDirectBill(lastBill)}
+                onClick={handleGenerateDirectBill}
+                disabled={loading || rawAmt <= 0}
                 style={{
                   width: '100%',
-                  padding: '10px',
+                  padding: '12px',
                   borderRadius: '8px',
-                  background: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
+                  background: rawAmt > 0 ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' : '#94a3b8',
+                  color: '#fff',
+                  border: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
+                  boxShadow: rawAmt > 0 ? '0 4px 14px rgba(13, 148, 136, 0.4)' : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '8px',
+                  marginBottom: '8px',
+                  transition: 'all 0.15s'
                 }}
               >
-                <Printer size={15} /> Re-print Last Bill (#{lastBill.invoiceNumber})
+                {loading ? (
+                  'Processing...'
+                ) : (
+                  <>
+                    <Printer size={17} /> Generate & Print Bill (₹{grandTotal.toFixed(2)})
+                  </>
+                )}
               </button>
-            )}
+
+              {lastBill && (
+                <button
+                  type="button"
+                  onClick={() => printDirectBill(lastBill)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Printer size={14} /> Re-print Bill #{lastBill.invoiceNumber}
+                </button>
+              )}
+            </div>
+
           </div>
         </div>
 
@@ -1043,62 +1112,62 @@ export default function DirectBillingPage() {
       {/* MODAL: Add New UPI Account */}
       {showAddUpiModal && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="modal-content" style={{ maxWidth: '420px', width: '90%', background: '#fff', borderRadius: '12px' }}>
-            <div className="modal-header" style={{ background: '#0f766e', color: '#fff', padding: '14px 18px' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#fff' }}>
-                ➕ Register New UPI QR Account
+          <div className="modal-content" style={{ maxWidth: '380px', width: '90%', background: '#fff', borderRadius: '10px' }}>
+            <div className="modal-header" style={{ background: '#0f766e', color: '#fff', padding: '12px 16px' }}>
+              <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#fff' }}>
+                ➕ Register UPI QR
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddUpiModal(false)}
-                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', cursor: 'pointer' }}
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleAddNewUpiAccount}>
-              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Account / Counter Label *
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Counter / Account Label *
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Reception GPay / Counter 3 Scanner"
+                    placeholder="e.g. Counter 3 GPay / Branch Scanner"
                     value={newUpiName}
                     onChange={(e) => setNewUpiName(e.target.value)}
                     required
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                     UPI ID / VPA (Optional)
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. shopname@okhdfcbank"
+                    placeholder="e.g. storename@okhdfc"
                     value={newUpiId}
                     onChange={(e) => setNewUpiId(e.target.value)}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                   />
                 </div>
               </div>
 
-              <div style={{ padding: '12px 18px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div style={{ padding: '10px 16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button
                   type="button"
                   onClick={() => setShowAddUpiModal(false)}
-                  style={{ padding: '8px 14px', borderRadius: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ padding: '6px 12px', borderRadius: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 18px', borderRadius: '6px', background: '#0f766e', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                  style={{ padding: '6px 14px', borderRadius: '6px', background: '#0f766e', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
                 >
-                  Save UPI Account
+                  Save QR
                 </button>
               </div>
             </form>
