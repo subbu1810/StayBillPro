@@ -16,8 +16,19 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
     const [loading, setLoading] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [showCloseDayModal, setShowCloseDayModal] = useState(false);
+    const [closeDaySaving, setCloseDaySaving] = useState(false);
     
     const [activeSubTab, setActiveSubTab] = useState('cash'); 
+    const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
+    const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+
+    // Denominations for cash tally
+    const [denominations, setDenominations] = useState({
+        500: '', 200: '', 100: '', 50: '', 20: '', 10: '', 5: '', 2: '', 1: ''
+    });
+    const [transferToBankAmt, setTransferToBankAmt] = useState('');
+    const [closingRemarks, setClosingRemarks] = useState('');
     
     const [newEntry, setNewEntry] = useState({
         account_type: 'cash',
@@ -51,13 +62,13 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
             fetchPnLData();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [defaultTab, branchId, activeSubTab]);
+    }, [defaultTab, branchId, activeSubTab, fromDate, toDate]);
 
     const fetchLedgerData = async () => {
         setLoading(true);
         try {
             const [entriesData, summaryData] = await Promise.all([
-                accountingAPI.getLedger({ branchId, accountType: activeSubTab }),
+                accountingAPI.getLedger({ branchId, accountType: activeSubTab, startDate: fromDate, endDate: toDate }),
                 accountingAPI.getSummary({ branchId })
             ]);
             setEntries(entriesData);
@@ -136,21 +147,143 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
         }
     };
 
+    const todayIso = new Date().toISOString().split('T')[0];
+    const isTodayCashClosed = entries.some(e => {
+        if (!e.transaction_date || e.account_type !== 'cash') return false;
+        const d = e.transaction_date.split('T')[0];
+        const isClosed = (e.voucher_no && e.voucher_no.startsWith('EOD-')) || 
+                         (e.particulars && e.particulars.includes('🔒 Day Closed'));
+        return d === todayIso && isClosed;
+    });
+
+    const handleOpenCloseDayModal = () => {
+        if (isTodayCashClosed) {
+            popup.showError('Cashbook for today is already closed.');
+            return;
+        }
+        setClosingRemarks('');
+        setShowCloseDayModal(true);
+    };
+
+    const handleSaveCloseDay = async (e) => {
+        e.preventDefault();
+        setCloseDaySaving(true);
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            // Record Day-End Closing Stamp Entry in Ledger (using receipt of 0.00 / 0 or standard parameters)
+            await accountingAPI.addEntry({
+                branch_id: branchId || 1,
+                account_type: 'cash',
+                transaction_type: 'initial',
+                voucher_no: `EOD-${Date.now().toString().slice(-4)}`,
+                particulars: `🔒 Day Closed. Closing Balance: ₹${summary.cashBalance.toLocaleString()}${closingRemarks ? ` - ${closingRemarks}` : ''}`,
+                amount: '0.0001',
+                transaction_date: todayStr
+            });
+
+            popup.showSuccess('Cashbook closed for the day successfully!');
+            setShowCloseDayModal(false);
+            await fetchLedgerData();
+        } catch (error) {
+            popup.showError('Error closing cashbook: ' + error.message);
+        } finally {
+            setCloseDaySaving(false);
+        }
+    };
+
     const renderLedger = () => (
         <div className="crm-content">
             <div className="view-selector" style={{ marginBottom: '16px' }}>
                 <button className={activeSubTab === 'cash' ? 'active' : ''} onClick={() => setActiveSubTab('cash')}>💵 Cash Register</button>
                 <button className={activeSubTab === 'bank' ? 'active' : ''} onClick={() => setActiveSubTab('bank')}>🏦 Bank Register</button>
             </div>
+
+            {/* If today's cashbook is closed, show warning banner */}
+            {activeSubTab === 'cash' && isTodayCashClosed && (
+                <div style={{
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    marginBottom: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    color: '#991b1b',
+                    fontSize: '0.85rem'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+                        <span>🔒</span>
+                        <span>Cashbook for today ({new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}) is closed. New cash entries are locked.</span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', background: '#dc2626', color: '#fff', padding: '3px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                        LOCKED
+                    </span>
+                </div>
+            )}
+
             <div className="crm-filters">
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div className={`balance-pill ${activeSubTab === 'bank' ? 'blue' : ''}`}>
                         <span className="label">Current {activeSubTab === 'cash' ? 'Cash' : 'Bank'} Balance:</span>
                         <span className="value">₹{activeSubTab === 'cash' ? summary.cashBalance.toLocaleString() : summary.bankBalance.toLocaleString()}</span>
                     </div>
-                    <input type="date" className="search-input" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>From:</span>
+                        <input 
+                            type="date" 
+                            className="search-input" 
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            style={{ padding: '5px 8px', fontSize: '0.8rem' }}
+                        />
+                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>To:</span>
+                        <input 
+                            type="date" 
+                            className="search-input" 
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            style={{ padding: '5px 8px', fontSize: '0.8rem' }}
+                        />
+                    </div>
                 </div>
-                <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add {activeSubTab === 'cash' ? 'Cash' : 'Bank'} Entry</button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {activeSubTab === 'cash' && (
+                        <button 
+                            className="btn-primary" 
+                            style={{ 
+                                background: isTodayCashClosed ? '#94a3b8' : '#7c3aed', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 5,
+                                cursor: isTodayCashClosed ? 'not-allowed' : 'pointer'
+                            }}
+                            onClick={handleOpenCloseDayModal}
+                            disabled={isTodayCashClosed}
+                            title={isTodayCashClosed ? "Cashbook is already closed for today" : "Close cash register for today"}
+                        >
+                            {isTodayCashClosed ? '✓ Cash Closed for Today' : '🔒 Close Day Cash'}
+                        </button>
+                    )}
+                    <button 
+                        className="btn-primary" 
+                        onClick={() => {
+                            if (activeSubTab === 'cash' && isTodayCashClosed) {
+                                popup.showError('Cannot add cash entry because today\'s cashbook has already been closed.');
+                                return;
+                            }
+                            setShowAddModal(true);
+                        }}
+                        disabled={activeSubTab === 'cash' && isTodayCashClosed}
+                        style={{
+                            opacity: (activeSubTab === 'cash' && isTodayCashClosed) ? 0.6 : 1,
+                            cursor: (activeSubTab === 'cash' && isTodayCashClosed) ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        + Add {activeSubTab === 'cash' ? 'Cash' : 'Bank'} Entry
+                    </button>
+                </div>
             </div>
             <table className="crm-table single-line-table">
                 <thead>
@@ -165,19 +298,28 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {entries.length > 0 ? entries.map(entry => (
-                        <tr key={entry.id}>
-                            <td>{new Date(entry.transaction_date).toLocaleDateString()}</td>
-                            <td>{entry.voucher_no || '-'}</td>
-                            <td>{entry.particulars}</td>
-                            <td style={{ textTransform: 'capitalize' }}>{entry.transaction_type}</td>
-                            <td style={{ color: '#10b981' }}>{entry.transaction_type === 'receipt' || entry.transaction_type === 'initial' ? `₹${parseFloat(entry.amount).toLocaleString()}` : '-'}</td>
-                            <td style={{ color: '#ef4444' }}>{entry.transaction_type === 'payment' ? `₹${parseFloat(entry.amount).toLocaleString()}` : '-'}</td>
-                            <td style={{ fontWeight: 'bold' }}>₹{parseFloat(entry.balance).toLocaleString()}</td>
-                        </tr>
-                    )) : (
-                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: '24px' }}>No entries found</td></tr>
-                    )}
+                    {(() => {
+                        const filteredEntries = entries.filter(e => {
+                            if (!e.transaction_date) return true;
+                            const d = e.transaction_date.split('T')[0];
+                            if (fromDate && d < fromDate) return false;
+                            if (toDate && d > toDate) return false;
+                            return true;
+                        });
+                        return filteredEntries.length > 0 ? filteredEntries.map(entry => (
+                            <tr key={entry.id}>
+                                <td>{new Date(entry.transaction_date).toLocaleDateString()}</td>
+                                <td>{entry.voucher_no || '-'}</td>
+                                <td>{entry.particulars}</td>
+                                <td style={{ textTransform: 'capitalize' }}>{entry.transaction_type}</td>
+                                <td style={{ color: '#10b981' }}>{entry.transaction_type === 'receipt' || entry.transaction_type === 'initial' ? `₹${parseFloat(entry.amount).toLocaleString()}` : '-'}</td>
+                                <td style={{ color: '#ef4444' }}>{entry.transaction_type === 'payment' ? `₹${parseFloat(entry.amount).toLocaleString()}` : '-'}</td>
+                                <td style={{ fontWeight: 'bold' }}>₹{parseFloat(entry.balance).toLocaleString()}</td>
+                            </tr>
+                        )) : (
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '24px' }}>No entries found for the selected date range</td></tr>
+                        );
+                    })()}
                 </tbody>
             </table>
         </div>
@@ -373,6 +515,77 @@ const AccountingScreen = ({ defaultTab = 'ledger', branchId }) => {
                             <div className="modal-footer">
                                 <button type="button" className="btn-secondary" onClick={() => setShowExpenseModal(false)}>Cancel</button>
                                 <button type="submit" className="btn-primary">Save Expense</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Close Cashbook for the Day Modal (Clean & Simple) ── */}
+            {showCloseDayModal && (
+                <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                    <div className="modal-content" style={{ maxWidth: '440px', width: '92%' }}>
+                        <div className="modal-header" style={{ background: '#7c3aed', color: '#fff', padding: '12px 18px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                                <h3 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>Close Cashbook for the Day</h3>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={() => setShowCloseDayModal(false)}
+                                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveCloseDay}>
+                            <div className="modal-body" style={{ padding: '20px' }}>
+                                <div style={{
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    padding: '16px',
+                                    textAlign: 'center',
+                                    marginBottom: '16px'
+                                }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                                        Final Closing Cash Balance
+                                    </div>
+                                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#7c3aed', marginTop: '4px' }}>
+                                        ₹{summary.cashBalance.toLocaleString()}
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                                        Date: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                                        Closing Note / Remark (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. Day closed by Subbu"
+                                        value={closingRemarks}
+                                        onChange={(e) => setClosingRemarks(e.target.value)}
+                                        style={{ width: '100%', padding: '8px 12px', fontSize: '0.82rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="modal-footer" style={{ padding: '12px 18px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+                                <button type="button" className="btn-secondary" onClick={() => setShowCloseDayModal(false)}>
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn-primary"
+                                    style={{ background: '#7c3aed', padding: '7px 20px', fontWeight: 700 }}
+                                    disabled={closeDaySaving}
+                                >
+                                    {closeDaySaving ? 'Closing…' : '🔒 Confirm & Close Day'}
+                                </button>
                             </div>
                         </form>
                     </div>

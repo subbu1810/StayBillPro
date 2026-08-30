@@ -1,0 +1,134 @@
+{/* Timeline */}
+          <div className="jd-card">
+            <div className="jd-card-header">
+              <div className="jd-card-icon icon-blue">⏱️</div>
+              <h3>Timeline</h3>
+            </div>
+            <div className="jd-card-body">
+              <div className="jd-timeline">
+                {timeline.length > 0 ? timeline.map((entry, idx) => (
+                  <div key={idx} className="jd-timeline-entry">
+                    <div className="jd-timeline-dot"></div>
+                    <div className="jd-timeline-content">
+                      <div className="jd-timeline-event">{entry.label}</div>
+                      <div className="jd-timeline-time">{formatDateTime(entry.time)}</div>
+                    </div>
+                  </div>
+                )) : (
+                  <>
+                    <div className="jd-timeline-entry">
+                      <div className="jd-timeline-dot"></div>
+                      <div className="jd-timeline-content">
+                        <div className="jd-timeline-event">Job created</div>
+                        <div className="jd-timeline-time">29 Jul 2026, 11:59 pm</div>
+                      </div>
+                    </div>
+                    <div className="jd-timeline-entry">
+                      <div className="jd-timeline-dot"></div>
+                      <div className="jd-timeline-content">
+                        <div className="jd-timeline-event">Service scheduled</div>
+                        <div className="jd-timeline-time">30 Jul 2026, 12:00 am</div>
+                      </div>
+                    </div>
+                    <div className="jd-timeline-entry">
+                      <div className="jd-timeline-dot"></div>
+                      <div className="jd-timeline-content">
+                        <div className="jd-timeline-event">Last updated</div>
+                        <div className="jd-timeline-time">30 Jul 2026, 12:01 am</div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="jd-card col-span-1">
+          <div className="jd-card-header">
+            <div className="jd-card-icon icon-yellow">📝</div>
+            <h3>Notes</h3>
+          </div>
+          <div className="jd-card-body">
+            {renderedNotes.length > 0 ? (
+              <div className="jd-notes-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {renderedNotes.map((note, idx) => (
+                  <div key={idx} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px' }}>{formatDateTime(note.timestamp)}</div>
+                    <div style={{ fontSize: '0.95rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{note.text}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="jd-empty-state">
+                <span className="icon">📄</span>
+                <p>No notes added yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ROW 4 */}
+        {/* Tabs section */}
+        <div className="jd-card col-span-2 jd-tabs-container" style={{ padding: 0 }}>
+          <div className="jd-tabs-header" style={{ paddingTop: '16px' }}>
+            <div 
+              className={`jd-tab ${activeTab === 'Notes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('Notes')}
+            >
+              Notes
+            </div>
+            <div 
+              className={`jd-tab ${activeTab === 'Invoice' ? 'active' : ''}`}
+              onClick={() => setActiveTab('Invoice')}
+            >
+              Invoice
+            </div>
+          </div>
+          <div className="jd-tab-content" style={{ padding: '0 24px 24px 24px' }}>
+            {activeTab === 'Notes' && (
+              <>
+                <input 
+                  type="text" 
+                  placeholder="Write a note..." 
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+                  disabled={isAddingNote}
+                />
+                <button 
+                  onClick={handleAddNote} 
+                  disabled={!newNote.trim() || isAddingNote}
+                  style={{ opacity: (!newNote.trim() || isAddingNote) ? 0.6 : 1 }}
+                >
+                  {isAddingNote ? 'Adding...' : 'Add Note'}
+                </button>
+              </>
+            )}
+            {activeTab === 'Invoice' && (
+              <div className="jd-invoice-tab">
+                <h4>Invoice Summary</h4>
+                <div className="jd-billing-list" style={{ marginTop: '12px' }}>
+                  {billingItems.map((item, idx) => (
+                    <div key={idx} className={`jd-billing-item ${item.isTotal ? 'jd-billing-total' : ''}`}>
+                      <span>{item.label}</span>
+                      <span>Rs {item.amount}</span>
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  onClick={handlePrint}
+                  style={{ marginTop: '16px', background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer' }}
+                >
+                  🖨️ Print Invoice PDF
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      

@@ -56,6 +56,12 @@ const quotationRoutes = require('./routes/quotationRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const technicianRoutes = require('./routes/technicianRoutes');
 const applianceRoutes = require('./routes/applianceRoutes');
+const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
+const jobRoutes = require('./routes/jobRoutes');
+const servicePaymentRoutes = require('./routes/servicePaymentRoutes');
+
+// Auto-create service_job_payments table if not exists
+require('./controllers/servicePaymentController').ensureTable();
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/branches', branchRoutes);
@@ -85,6 +91,9 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/appliances', applianceRoutes);
+app.use('/api/service-requests', serviceRequestRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/service-payments', servicePaymentRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

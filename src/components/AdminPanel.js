@@ -5,6 +5,7 @@ import { useService } from '../hooks/useService';
 import Dashboard from './Dashboard';
 import JobsList from './JobsList';
 import NewJob from './NewJob';
+import EditJob from './EditJob';
 import JobDetail from './JobDetail';
 import CustomersScreen from './CustomersScreen';
 import SuppliersScreen from './SuppliersScreen';
@@ -24,6 +25,8 @@ import InvoiceHistory from './InvoiceHistory';
 import SupportScreen from './SupportScreen';
 import QuotationScreen from './QuotationScreen';
 import SubscriptionScreen from './SubscriptionScreen';
+import ServicePaymentsScreen from './ServicePaymentsScreen';
+import ServiceCashbookScreen from './ServiceCashbookScreen';
 import { usePopup } from './ui/PopupProvider';
 import '../styles/StaffScreen.css';
 import '../styles/AccountingScreen.css';
@@ -111,7 +114,7 @@ export default function AdminPanel({ onLogout }) {
 		if ((userRole === 'SUPERADMIN' || userRole === 'superadmin') && permissions.length === 0) return true;
 		// Guard: SUPERADMIN should always access dashboard and settings to avoid lock-out
 		if (userRole === 'SUPERADMIN' || userRole === 'superadmin') {
-			if (screenId === 'dashboard' || screenId.startsWith('settings-') || screenId === 'pos-settings') {
+			if (screenId === 'dashboard' || screenId.startsWith('settings-') || screenId === 'pos-settings' || screenId === 'jobs-payments') {
 				return true;
 			}
 		}
@@ -291,6 +294,7 @@ export default function AdminPanel({ onLogout }) {
 		let title = screen.charAt(0).toUpperCase() + screen.slice(1);
 		if (screen === 'pos') title = `POS: ${finalSubScreen}`;
 		if (screen === 'newJob') title = 'New Job';
+		if (screen === 'editJob') title = `Edit Job`;
 		if (screen === 'jobDetail') title = `Job #${jobId}`;
 		if (screen === 'calendar') title = 'Schedule';
 		if (screen === 'invoicing') title = 'Invoices';
@@ -335,6 +339,7 @@ export default function AdminPanel({ onLogout }) {
 			else if (finalSubScreen === 'balance') title = 'A/C: Balance Sheet';
 			else if (finalSubScreen === 'gst') title = 'A/C: GST Compliance';
 			else if (finalSubScreen === 'journal') title = 'A/C: Journal';
+			else if (finalSubScreen === 'service-ledger') title = 'A/C: Service Cashbook';
 			else title = `A/C: ${finalSubScreen || 'Ledger'}`;
 		}
 		if (screen === 'branch') {
@@ -591,6 +596,9 @@ export default function AdminPanel({ onLogout }) {
 							)}
 							{hasPermission('jobs-invoicing') && (
 								<button className={`sub-nav-item ${currentScreen === 'invoicing' ? 'active' : ''}`} onClick={() => handleScreenChange('invoicing')}><span>🧾</span> Invoicing Hub</button>
+							)}
+							{hasPermission('jobs-payments') && (
+								<button className={`sub-nav-item ${currentScreen === 'payments' ? 'active' : ''}`} onClick={() => handleScreenChange('payments')}><span>💰</span> Payments</button>
 							)}
 						</div>
 					)}
@@ -878,7 +886,7 @@ export default function AdminPanel({ onLogout }) {
 							)}
 						</div>
 					)}
-					{(hasPermission('accounting-ledger') || hasPermission('accounting-gst') || hasPermission('accounting-expenses') || hasPermission('accounting-pl')) && (
+					{(hasPermission('accounting-ledger') || hasPermission('accounting-service-ledger') || hasPermission('accounting-gst') || hasPermission('accounting-expenses') || hasPermission('accounting-pl')) && (
 						<button
 							className={currentScreen === 'accounting' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('accounting')}
@@ -893,6 +901,9 @@ export default function AdminPanel({ onLogout }) {
 						<div className="sub-nav-group">
 							{hasPermission('accounting-ledger') && (
 								<button className={`sub-nav-item ${currentScreen === 'accounting' && currentSubScreen === 'ledger' ? 'active' : ''}`} onClick={() => handleScreenChange('accounting', 'ledger')}><span>⚖️</span> Ledger & Cashbook</button>
+							)}
+							{hasPermission('accounting-service-ledger') && (
+								<button className={`sub-nav-item ${currentScreen === 'accounting' && currentSubScreen === 'service-ledger' ? 'active' : ''}`} onClick={() => handleScreenChange('accounting', 'service-ledger')}><span>🛠️</span> Service Cashbook</button>
 							)}
 							{hasPermission('accounting-gst') && (
 								<button className={`sub-nav-item ${currentScreen === 'accounting' && currentSubScreen === 'gst' ? 'active' : ''}`} onClick={() => handleScreenChange('accounting', 'gst')}><span>📜</span> GST Filling Report</button>
@@ -1016,9 +1027,6 @@ export default function AdminPanel({ onLogout }) {
 						</div>
 					</div>
 					<div className="topbar-right">
-						<div className="global-search">
-							<input type="text" placeholder="Global Search (Ctrl+K)..." />
-						</div>
 						<div className="notification-bell">🔔<span className="badge">3</span></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px' }}>
                             <div style={{ background: '#f8fafc', padding: '4px 12px', borderRadius: '4px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }} title="AI Scan Wallet Balance">
@@ -1092,10 +1100,12 @@ export default function AdminPanel({ onLogout }) {
 															currentScreen === 'purchase' ? (`purchase-${currentSubScreen === 'grn-new' ? 'grn' : currentSubScreen}`) :
 																currentScreen === 'reports' ? (`reports-${currentSubScreen}`) :
 																	currentScreen === 'newJob' ? 'jobs-new' :
-																		currentScreen === 'calendar' ? 'jobs-calendar' :
-																			currentScreen === 'invoicing' ? 'jobs-invoicing' :
-																				currentScreen === 'jobDetail' ? 'jobs' :
-																					currentScreen === 'invoice-history' ? 'invoice-history' :
+																		currentScreen === 'editJob' ? 'jobs' :
+																			currentScreen === 'calendar' ? 'jobs-calendar' :
+																				currentScreen === 'invoicing' ? 'jobs-invoicing' :
+																					currentScreen === 'jobDetail' ? 'jobs' :
+																						currentScreen === 'payments' ? 'jobs-payments' :
+																						currentScreen === 'invoice-history' ? 'invoice-history' :
 																						currentScreen === 'wholesale-history' ? 'wholesale-history' :
 																							currentScreen
 					) && currentScreen !== 'dashboard' && currentScreen !== 'support' ? (
@@ -1122,8 +1132,9 @@ export default function AdminPanel({ onLogout }) {
 									onLogout={onLogout}
 								/>
 							)}
-							{currentScreen === 'jobs' && <JobsList key={activeTabId} onViewJob={handleViewJob} onCreateJob={() => handleScreenChange('newJob')} />}
+							{currentScreen === 'jobs' && <JobsList key={activeTabId} onViewJob={handleViewJob} onCreateJob={() => handleScreenChange('newJob')} onEditJob={(id) => handleScreenChange('editJob', null, id)} />}
 							{currentScreen === 'newJob' && <NewJob key={activeTabId} onBack={() => handleScreenChange('jobs')} onSuccess={handleNewJobCreated} />}
+							{currentScreen === 'editJob' && selectedJobId && <EditJob key={activeTabId} jobId={selectedJobId} onBack={() => handleScreenChange('jobs')} onSuccess={() => handleScreenChange('jobs')} />}
 							{currentScreen === 'jobDetail' && selectedJobId && <JobDetail key={activeTabId} jobId={selectedJobId} onBack={handleBackFromJobDetail} />}
 							{currentScreen === 'quotation' && <QuotationScreen key={activeTabId} />}
 							{currentScreen === 'reports' && <ReportsScreen key={activeTabId} defaultTab={currentSubScreen} />}
@@ -1137,10 +1148,12 @@ export default function AdminPanel({ onLogout }) {
 							{currentScreen === 'purchase' && <PurchaseScreen key={activeTabId} defaultTab={currentSubScreen === 'grn-new' ? 'grn' : currentSubScreen} autoOpenModal={currentSubScreen === 'grn-new'} />}
 							{currentScreen === 'staff' && <StaffScreen key={activeTabId} defaultTab={currentSubScreen} />}
 							{currentScreen === 'accounting' && currentSubScreen === 'gst' && <GSTScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
-							{currentScreen === 'accounting' && currentSubScreen !== 'gst' && <AccountingScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
+							{currentScreen === 'accounting' && currentSubScreen === 'service-ledger' && <ServiceCashbookScreen key={activeTabId} branchId={activeBranchId} />}
+							{currentScreen === 'accounting' && currentSubScreen !== 'gst' && currentSubScreen !== 'service-ledger' && <AccountingScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
 							{currentScreen === 'branch' && <BranchScreen key={activeTabId} defaultTab={currentSubScreen} branchId={activeBranchId} />}
 							{currentScreen === 'calendar' && <CalendarScreen key={activeTabId} />}
 							{currentScreen === 'invoicing' && <InvoicingScreen key={activeTabId} />}
+							{currentScreen === 'payments' && <ServicePaymentsScreen key={activeTabId} onViewJob={handleViewJob} />}
 							{currentScreen === 'support' && <SupportScreen key={activeTabId} />}
 							{currentScreen === 'technicians' && <TechniciansScreen key={activeTabId} />}
 							{currentScreen === 'settings' && currentSubScreen === 'subscription' && <SubscriptionScreen key={activeTabId} />}

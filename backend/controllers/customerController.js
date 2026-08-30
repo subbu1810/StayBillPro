@@ -45,6 +45,7 @@ exports.createCustomer = async (req, res) => {
         const {
             firstName, first_name,
             lastName, last_name,
+            name,
             email,
             mobile, phone,
             category, customerType, customer_type,
@@ -53,7 +54,7 @@ exports.createCustomer = async (req, res) => {
         } = req.body;
 
         // Accept both camelCase (from frontend) and snake_case
-        const resolvedName       = (firstName || first_name || '') + ' ' + (lastName || last_name || '');
+        const resolvedName       = name || (firstName || first_name || '') + ' ' + (lastName || last_name || '');
         const resolvedMobile     = mobile || phone;
         const resolvedType       = customerType || customer_type || 'Consumer';
 
@@ -175,6 +176,169 @@ exports.deleteCustomer = async (req, res) => {
     } catch (error) {
         console.error('Error deleting customer:', error);
         res.status(500).json({ message: 'Error deleting customer', error: error.message });
+    }
+};
+
+// POST/PUT update customer dues / opening balance directly or add dues entry with items & description
+exports.updateCustomerDues = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+        const { openingBalance, balanceType, asOfDate, description, items } = req.body;
+
+        const [existing] = await db.query(
+            'SELECT * FROM customers WHERE id = ? AND admin_id = ?',
+            [id, adminId]
+        );
+        if (existing.length === 0) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        const customer = existing[0];
+
+        // If items are provided, create an invoice record for these due items
+        if (Array.isArray(items) && items.length > 0) {
+            const validItems = items.filter(item => item && (item.name || item.item_name));
+            if (validItems.length > 0) {
+                const totalAmount = validItems.reduce((sum, item) => {
+                    const qty = parseFloat(item.quantity || item.qty) || 1;
+                    const price = parseFloat(item.price || item.unit_price) || 0;
+                    return sum + (qty * price);
+                }, 0);
+
+                const branchId = customer.branch_id || 1;
+                const invDate = asOfDate ? new Date(asOfDate) : new Date();
+
+                const [invResult] = await db.query(
+                    `INSERT INTO invoices 
+                     (admin_id, branch_id, customer_name, customer_phone, total_amount, gst_amount, discount_amount, payment_method, status, invoice_type, created_at)
+                     VALUES (?, ?, ?, ?, ?, 0.00, 0.00, 'credit', 'pending', 'dues_entry', ?)`,
+                    [
+                        adminId,
+                        branchId,
+                        customer.name,
+                        customer.mobile,
+                        totalAmount,
+                        invDate
+                    ]
+                );
+
+                const invoiceId = invResult.insertId;
+
+                for (const item of validItems) {
+                    const itemName = item.name || item.item_name || 'Item';
+                    const qty = parseFloat(item.quantity || item.qty) || 1;
+                    const price = parseFloat(item.price || item.unit_price) || 0;
+                    const totalPrice = qty * price;
+
+                    await db.query(
+                        `INSERT INTO invoice_items 
+                         (invoice_id, product_id, item_name, quantity, unit_price, total_price, gst_rate)
+                         VALUES (?, NULL, ?, ?, ?, ?, 0.00)`,
+                        [
+                            invoiceId,
+                            itemName + (description ? ` (${description})` : ''),
+                            qty,
+                            price,
+                            totalPrice
+                        ]
+                    );
+                }
+
+                return res.json({ message: 'Dues with items added successfully', invoiceId });
+            }
+        }
+
+        // Direct Opening balance update
+        await db.query(
+            `UPDATE customers SET 
+             openingBalance = ?, 
+             balanceType = ?, 
+             asOfDate = ? 
+             WHERE id = ? AND admin_id = ?`,
+            [
+                parseFloat(openingBalance) || 0.00,
+                balanceType || 'receivable',
+                nullIfEmpty(asOfDate) || new Date().toISOString().split('T')[0],
+                id,
+                adminId
+            ]
+        );
+
+        res.json({ message: 'Customer dues updated successfully' });
+    } catch (error) {
+        console.error('Error updating customer dues:', error);
+        res.status(500).json({ message: 'Error updating customer dues', error: error.message });
+    }
+};
+
+// POST record a customer payment (settles dues / reduces ledger balance)
+exports.recordCustomerPayment = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const { id } = req.params;
+        const { amount, paymentMethod, paymentDate, note } = req.body;
+
+        const payAmount = parseFloat(amount);
+        if (!payAmount || payAmount <= 0) {
+            return res.status(400).json({ message: 'Payment amount must be greater than 0' });
+        }
+
+        const [existing] = await db.query(
+            'SELECT * FROM customers WHERE id = ? AND admin_id = ?',
+            [id, adminId]
+        );
+        if (existing.length === 0) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        const customer = existing[0];
+        const branchId = customer.branch_id || 1;
+        const pDate = paymentDate ? new Date(paymentDate) : new Date();
+
+        // 1. Create a paid invoice with payment_receipt type
+        const [invResult] = await db.query(
+            `INSERT INTO invoices 
+             (admin_id, branch_id, customer_name, customer_phone, total_amount, gst_amount, discount_amount, payment_method, status, invoice_type, created_at)
+             VALUES (?, ?, ?, ?, ?, 0.00, 0.00, ?, 'paid', 'payment_receipt', ?)`,
+            [
+                adminId,
+                branchId,
+                customer.name,
+                customer.mobile,
+                payAmount,
+                paymentMethod || 'cash',
+                pDate
+            ]
+        );
+
+        const invoiceId = invResult.insertId;
+
+        // 2. Insert item record for payment details
+        await db.query(
+            `INSERT INTO invoice_items 
+             (invoice_id, product_id, item_name, quantity, unit_price, total_price, gst_rate)
+             VALUES (?, NULL, ?, 1, ?, ?, 0.00)`,
+            [
+                invoiceId,
+                `Payment Received${note ? ` - ${note}` : ''}`,
+                payAmount,
+                payAmount
+            ]
+        );
+
+        // 3. Update customer opening balance if balance is positive
+        const currentBal = Number(customer.openingBalance || 0);
+        if (currentBal > 0) {
+            const newBal = Math.max(0, currentBal - payAmount);
+            await db.query(
+                'UPDATE customers SET openingBalance = ? WHERE id = ? AND admin_id = ?',
+                [newBal, id, adminId]
+            );
+        }
+
+        res.json({ message: 'Payment recorded successfully', invoiceId });
+    } catch (error) {
+        console.error('Error recording payment:', error);
+        res.status(500).json({ message: 'Error recording customer payment', error: error.message });
     }
 };
 

@@ -21,9 +21,14 @@ export default function ReportsScreen({ defaultTab }) {
     const [reportError, setReportError] = useState('');
     
     const [salesData, setSalesData] = useState({ summary: {}, recentInvoices: [], lineItems: [] });
+    const [expandedInvoices, setExpandedInvoices] = useState({});
+    const toggleInvoice = (inv) => setExpandedInvoices(prev => ({...prev, [inv]: !prev[inv]}));
+
     const [expensesData, setExpensesData] = useState({ summary: {}, recentExpenses: [] });
     const [profitData, setProfitData] = useState({ summary: {} });
     const [inventoryData, setInventoryData] = useState([]);
+    const [stockPage, setStockPage] = useState(1);
+    const [stockPerPage, setStockPerPage] = useState(10);
     const [topCustomersData, setTopCustomersData] = useState({ customers: [] });
     const [firmDetails, setFirmDetails] = useState(null);
 
@@ -70,6 +75,36 @@ export default function ReportsScreen({ defaultTab }) {
         fetchReportData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeReport]);
+
+    // Group sales data by invoice
+    const groupedSalesData = React.useMemo(() => {
+        if (!salesData.lineItems) return [];
+        const map = {};
+        salesData.lineItems.forEach(item => {
+            if (!map[item.invoice_no]) {
+                map[item.invoice_no] = {
+                    invoice_no: item.invoice_no,
+                    invoice_date: item.invoice_date,
+                    customer_name: item.customer_name,
+                    payment_method: item.payment_method,
+                    items: [],
+                    taxable_val: 0,
+                    cgst: 0,
+                    sgst: 0,
+                    gst_amount: 0,
+                    line_total: 0
+                };
+            }
+            const g = map[item.invoice_no];
+            g.items.push(item);
+            g.taxable_val += parseFloat(item.taxable_val || 0);
+            g.cgst += parseFloat(item.cgst || 0);
+            g.sgst += parseFloat(item.sgst || 0);
+            g.gst_amount += parseFloat(item.gst_amount || 0);
+            g.line_total += parseFloat(item.line_total || 0);
+        });
+        return Object.values(map).sort((a,b) => new Date(b.invoice_date) - new Date(a.invoice_date) || b.invoice_no.localeCompare(a.invoice_no));
+    }, [salesData.lineItems]);
 
     // Build the firm header HTML block for PDF/print
     const buildFirmHeaderHTML = () => {
@@ -253,49 +288,47 @@ export default function ReportsScreen({ defaultTab }) {
 
     return (
         <div className="reports-screen">
-            <div className="reports-header">
-                <h1>Reports &amp; Analytics</h1>
-                {firmDetails && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                        <span style={{ fontWeight: '800', fontSize: '0.9rem', color: '#1e293b' }}>{firmDetails.businessName}</span>
-                        <span style={{ fontSize: '0.72rem', color: '#3b82f6', fontWeight: '700' }}>GSTIN: {firmDetails.gstin}</span>
-                        <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{firmDetails.city}, {firmDetails.state} · {firmDetails.phone}</span>
-                    </div>
-                )}
-                <div className="export-buttons">
-                    <button className="btn-secondary" onClick={() => handlePrintOrPDF('pdf')} title="Save as PDF via print dialog">
-                        📄 Export PDF
-                    </button>
-                    <button className="btn-secondary" onClick={handleExportCSV} title="Download as CSV (opens in Excel)">
-                        📊 Export Excel
-                    </button>
-                    <button className="btn-secondary" onClick={() => handlePrintOrPDF('print')} title="Print report">
-                        🖨️ Print
-                    </button>
-                </div>
+            <div className="reports-header" style={{ marginBottom: '2px' }}>
+                <h1 style={{ margin: 0, padding: 0 }}>Reports &amp; Analytics</h1>
             </div>
 
             {/* Filters Section */}
-            <div className="report-filters">
-                <div className="filter-group">
-                    <label>From Date</label>
-                    <input
-                        type="date"
-                        value={dateRange.from}
-                        onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-                    />
+            <div className="report-filters" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0', padding: '4px 16px', flexWrap: 'nowrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div className="filter-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: '600', margin: 0, whiteSpace: 'nowrap' }}>From Date</label>
+                        <input
+                            type="date"
+                            value={dateRange.from}
+                            onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        />
+                    </div>
+                    <div className="filter-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: '600', margin: 0, whiteSpace: 'nowrap' }}>To Date</label>
+                        <input
+                            type="date"
+                            value={dateRange.to}
+                            onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        />
+                    </div>
+                    <button className="btn-primary" style={{ padding: '6px 12px', height: 'fit-content' }} onClick={fetchReportData} disabled={reportLoading}>
+                        {reportLoading ? 'Generating...' : 'Generate Report'}
+                    </button>
                 </div>
-                <div className="filter-group">
-                    <label>To Date</label>
-                    <input
-                        type="date"
-                        value={dateRange.to}
-                        onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-                    />
+                
+                <div className="export-buttons" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button className="btn-secondary" onClick={() => handlePrintOrPDF('pdf')} title="Save as PDF via print dialog" style={{ padding: '4px 10px', fontSize: '0.75rem', height: '100%', margin: 0 }}>
+                        📄 Export PDF
+                    </button>
+                    <button className="btn-secondary" onClick={handleExportCSV} title="Download as CSV (opens in Excel)" style={{ padding: '4px 10px', fontSize: '0.75rem', height: '100%', margin: 0 }}>
+                        📊 Export Excel
+                    </button>
+                    <button className="btn-secondary" onClick={() => handlePrintOrPDF('print')} title="Print report" style={{ padding: '4px 10px', fontSize: '0.75rem', height: '100%', margin: 0 }}>
+                        🖨️ Print
+                    </button>
                 </div>
-                <button className="btn-primary" style={{ marginTop: '20px' }} onClick={fetchReportData} disabled={reportLoading}>
-                    {reportLoading ? 'Generating...' : 'Generate Report'}
-                </button>
             </div>
 
             {/* Report Content */}
@@ -308,7 +341,7 @@ export default function ReportsScreen({ defaultTab }) {
                 
                 {activeReport === 'sales' && !reportError && (
                     <div className="report-section">
-                        <h2>Sales Performance Report</h2>
+                        {/* <h2>Sales Performance Report</h2> */}
                         <div className="summary-cards">
                             <div className="summary-card">
                                 <h3>Gross Sales</h3>
@@ -351,40 +384,64 @@ export default function ReportsScreen({ defaultTab }) {
                                             <th>Payment</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {salesData.lineItems && salesData.lineItems.length > 0 ? (
-                                            salesData.lineItems.map((row, i) => (
-                                                <tr key={i}>
-                                                    <td style={{ color: '#94a3b8', fontWeight: '600' }}>{row.sno || i + 1}</td>
-                                                    <td style={{ fontWeight: '800', color: '#3b82f6' }}>{row.invoice_no}</td>
-                                                    <td>{formatDate(row.invoice_date)}</td>
-                                                    <td>{row.customer_name || '-'}</td>
-                                                    <td style={{ fontWeight: '600' }}>{row.product_name}</td>
-                                                    <td>
-                                                        <span style={{ background: row.hsn_code !== 'N/A' ? '#eff6ff' : '#f8fafc', color: row.hsn_code !== 'N/A' ? '#1d4ed8' : '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700' }}>
-                                                            {row.hsn_code || 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ color: '#64748b', fontSize: '0.72rem' }}>{row.sku || '-'}</td>
-                                                    <td style={{ color: '#64748b', fontSize: '0.72rem' }}>{row.serial_number || '-'}</td>
-                                                    <td style={{ textAlign: 'right' }}>{row.quantity}</td>
-                                                    <td style={{ textAlign: 'right' }}>{formatCurrency(row.unit_price)}</td>
-                                                    <td style={{ textAlign: 'right', color: '#475569' }}>{formatCurrency(row.taxable_val)}</td>
-                                                    <td style={{ textAlign: 'right' }}>
-                                                        <span style={{ background: '#fef9c3', color: '#854d0e', padding: '1px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
-                                                            {parseFloat(row.gst_rate) || 0}%
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ textAlign: 'right', color: '#7c3aed' }}>{formatCurrency(row.cgst)}</td>
-                                                    <td style={{ textAlign: 'right', color: '#7c3aed' }}>{formatCurrency(row.sgst)}</td>
-                                                    <td style={{ textAlign: 'right', fontWeight: '700', color: '#f59e0b' }}>{formatCurrency(row.gst_amount)}</td>
-                                                    <td style={{ textAlign: 'right', fontWeight: '800' }}>{formatCurrency(row.line_total)}</td>
-                                                    <td>
-                                                        <span style={{ background: row.payment_method === 'cash' ? '#dcfce7' : row.payment_method === 'upi' ? '#dbeafe' : '#fef9c3', color: row.payment_method === 'cash' ? '#15803d' : row.payment_method === 'upi' ? '#1d4ed8' : '#854d0e', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase' }}>
-                                                            {row.payment_method || 'cash'}
-                                                        </span>
-                                                    </td>
-                                                </tr>
+                                     <tbody>
+                                        {groupedSalesData && groupedSalesData.length > 0 ? (
+                                            groupedSalesData.map((group, i) => (
+                                                <React.Fragment key={i}>
+                                                    <tr style={{ background: '#f8fafc', cursor: 'pointer' }} onClick={() => toggleInvoice(group.invoice_no)}>
+                                                        <td style={{ color: '#0f172a', fontWeight: '800' }}>
+                                                            {expandedInvoices[group.invoice_no] ? '▼' : '▶'} {i + 1}
+                                                        </td>
+                                                        <td style={{ fontWeight: '800', color: '#3b82f6' }}>{group.invoice_no}</td>
+                                                        <td>{formatDate(group.invoice_date)}</td>
+                                                        <td>{group.customer_name || '-'}</td>
+                                                        <td colSpan="4" style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.75rem' }}>
+                                                            {group.items.length} item(s)
+                                                        </td>
+                                                        <td style={{ textAlign: 'right' }}>-</td>
+                                                        <td style={{ textAlign: 'right' }}>-</td>
+                                                        <td style={{ textAlign: 'right', color: '#475569', fontWeight: 'bold' }}>{formatCurrency(group.taxable_val)}</td>
+                                                        <td style={{ textAlign: 'right' }}>-</td>
+                                                        <td style={{ textAlign: 'right', color: '#7c3aed', fontWeight: 'bold' }}>{formatCurrency(group.cgst)}</td>
+                                                        <td style={{ textAlign: 'right', color: '#7c3aed', fontWeight: 'bold' }}>{formatCurrency(group.sgst)}</td>
+                                                        <td style={{ textAlign: 'right', fontWeight: '800', color: '#f59e0b' }}>{formatCurrency(group.gst_amount)}</td>
+                                                        <td style={{ textAlign: 'right', fontWeight: '900' }}>{formatCurrency(group.line_total)}</td>
+                                                        <td>
+                                                            <span style={{ background: group.payment_method === 'cash' ? '#dcfce7' : group.payment_method === 'upi' ? '#dbeafe' : '#fef9c3', color: group.payment_method === 'cash' ? '#15803d' : group.payment_method === 'upi' ? '#1d4ed8' : '#854d0e', padding: '2px 8px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase' }}>
+                                                                {group.payment_method || 'cash'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    {expandedInvoices[group.invoice_no] && group.items.map((row, j) => (
+                                                        <tr key={`${i}-${j}`} style={{ background: '#ffffff' }}>
+                                                            <td></td>
+                                                            <td></td>
+                                                            <td></td>
+                                                            <td></td>
+                                                            <td style={{ fontWeight: '600' }}>{row.product_name}</td>
+                                                            <td>
+                                                                <span style={{ background: row.hsn_code !== 'N/A' ? '#eff6ff' : '#f8fafc', color: row.hsn_code !== 'N/A' ? '#1d4ed8' : '#94a3b8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700' }}>
+                                                                    {row.hsn_code || 'N/A'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ color: '#64748b', fontSize: '0.72rem' }}>{row.sku || '-'}</td>
+                                                            <td style={{ color: '#64748b', fontSize: '0.72rem' }}>{row.serial_number || '-'}</td>
+                                                            <td style={{ textAlign: 'right' }}>{row.quantity}</td>
+                                                            <td style={{ textAlign: 'right' }}>{formatCurrency(row.unit_price)}</td>
+                                                            <td style={{ textAlign: 'right', color: '#475569' }}>{formatCurrency(row.taxable_val)}</td>
+                                                            <td style={{ textAlign: 'right' }}>
+                                                                <span style={{ background: '#fef9c3', color: '#854d0e', padding: '1px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '700' }}>
+                                                                    {parseFloat(row.gst_rate) || 0}%
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ textAlign: 'right', color: '#7c3aed' }}>{formatCurrency(row.cgst)}</td>
+                                                            <td style={{ textAlign: 'right', color: '#7c3aed' }}>{formatCurrency(row.sgst)}</td>
+                                                            <td style={{ textAlign: 'right', fontWeight: '700', color: '#f59e0b' }}>{formatCurrency(row.gst_amount)}</td>
+                                                            <td style={{ textAlign: 'right', fontWeight: '800' }}>{formatCurrency(row.line_total)}</td>
+                                                            <td></td>
+                                                        </tr>
+                                                    ))}
+                                                </React.Fragment>
                                             ))
                                         ) : (
                                             <tr><td colSpan="17" style={{textAlign: 'center', padding: '20px'}}>No sales data found for the selected period.</td></tr>
@@ -499,15 +556,15 @@ export default function ReportsScreen({ defaultTab }) {
 
                 {activeReport === 'stock' && !reportError && (
                     <div className="report-section">
-                        <h2>Stock Analysis Report</h2>
-                        <div className="summary-cards" style={{ marginBottom: '20px' }}>
-                            <div className="summary-card">
+                        {/* <h2>Stock Analysis Report</h2> */}
+                        <div className="summary-cards" style={{ marginBottom: '12px' }}>
+                            <div className="summary-card" style={{ padding: '4px 12px' }}>
                                 <h3>Total SKU Count</h3>
-                                <p className="big-number">{inventoryData.length}</p>
+                                <p className="big-number" style={{ fontSize: '1.1rem' }}>{inventoryData.length}</p>
                             </div>
-                            <div className="summary-card" style={{ borderLeft: '4px solid #ef4444' }}>
+                            <div className="summary-card" style={{ borderLeft: '4px solid #ef4444', padding: '4px 12px' }}>
                                 <h3>Low Stock Alert</h3>
-                                <p className="big-number" style={{ color: '#ef4444' }}>{inventoryData.filter(i => i.remaining < 5).length}</p>
+                                <p className="big-number" style={{ color: '#ef4444', fontSize: '1.1rem' }}>{inventoryData.filter(i => i.remaining < 5).length}</p>
                             </div>
                         </div>
                         {reportLoading ? (
@@ -517,45 +574,87 @@ export default function ReportsScreen({ defaultTab }) {
                             <table className="report-table" style={{ minWidth: '1000px', fontSize: '0.85rem' }}>
                                 <thead>
                                     <tr>
-                                        <th>Item Identifier</th>
-                                        <th>Brand</th>
-                                        <th>SKU</th>
-                                        <th>HSN Code</th>
-                                        <th>Unit</th>
-                                        <th>GST %</th>
-                                        <th style={{ textAlign: 'right' }}>Current Hand</th>
-                                        <th style={{ textAlign: 'right' }}>Purchase Price</th>
-                                        <th style={{ textAlign: 'right' }}>Selling Price</th>
-                                        <th>Inventory Status</th>
-                                        <th>Expiry Date</th>
+                                        <th style={{ padding: '6px 12px' }}>S.No</th>
+                                        <th style={{ padding: '6px 12px' }}>Item Identifier</th>
+                                        <th style={{ padding: '6px 12px' }}>Brand</th>
+                                        <th style={{ padding: '6px 12px' }}>SKU</th>
+                                        <th style={{ padding: '6px 12px' }}>HSN Code</th>
+                                        <th style={{ padding: '6px 12px' }}>Unit</th>
+                                        <th style={{ padding: '6px 12px' }}>GST %</th>
+                                        <th style={{ textAlign: 'right', padding: '6px 12px' }}>Current Hand</th>
+                                        <th style={{ textAlign: 'right', padding: '6px 12px' }}>Purchase Price</th>
+                                        <th style={{ textAlign: 'right', padding: '6px 12px' }}>Selling Price</th>
+                                        <th style={{ padding: '6px 12px' }}>Inventory Status</th>
+                                        <th style={{ padding: '6px 12px' }}>Expiry Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {inventoryData.length > 0 ? (
-                                        inventoryData.map((item) => (
+                                        inventoryData.slice((stockPage - 1) * stockPerPage, stockPage * stockPerPage).map((item, index) => (
                                             <tr key={item.id ?? item.item}>
-                                                <td style={{ fontWeight: '600' }}>{item.item}</td>
-                                                <td>{item.brand || '-'}</td>
-                                                <td style={{ color: '#64748b' }}>{item.sku || '-'}</td>
-                                                <td style={{ color: '#64748b' }}>{item.hsn_code || '-'}</td>
-                                                <td style={{ color: '#64748b' }}>{item.unit || '-'}</td>
-                                                <td>{item.gst_rate || 0}%</td>
-                                                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.remaining}</td>
-                                                <td style={{ textAlign: 'right', color: '#64748b' }}>{formatCurrency(item.purchase_price)}</td>
-                                                <td style={{ textAlign: 'right', fontWeight: '600' }}>{formatCurrency(item.price)}</td>
-                                                <td>
-                                                    <span className={`status-badge ${item.remaining < 5 ? 'cancelled' : 'completed'}`}>
+                                                <td style={{ padding: '6px 12px', color: '#94a3b8', fontWeight: '600' }}>{(stockPage - 1) * stockPerPage + index + 1}</td>
+                                                <td style={{ padding: '6px 12px', fontWeight: '600' }}>{item.item}</td>
+                                                <td style={{ padding: '6px 12px' }}>{item.brand || '-'}</td>
+                                                <td style={{ padding: '6px 12px', color: '#64748b' }}>{item.sku || '-'}</td>
+                                                <td style={{ padding: '6px 12px', color: '#64748b' }}>{item.hsn_code || '-'}</td>
+                                                <td style={{ padding: '6px 12px', color: '#64748b' }}>{item.unit || '-'}</td>
+                                                <td style={{ padding: '6px 12px' }}>{item.gst_rate || 0}%</td>
+                                                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 'bold' }}>{item.remaining}</td>
+                                                <td style={{ padding: '6px 12px', textAlign: 'right', color: '#64748b' }}>{formatCurrency(item.purchase_price)}</td>
+                                                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '600' }}>{formatCurrency(item.price)}</td>
+                                                <td style={{ padding: '6px 12px' }}>
+                                                    <span className={`status-badge ${item.remaining < 5 ? 'cancelled' : 'completed'}`} style={{ padding: '2px 8px' }}>
                                                         {item.remaining < 5 ? 'Low' : 'Available'}
                                                     </span>
                                                 </td>
-                                                <td style={{ color: '#64748b' }}>{formatDate(item.expiry_date)}</td>
+                                                <td style={{ padding: '6px 12px', color: '#64748b' }}>{formatDate(item.expiry_date)}</td>
                                             </tr>
                                         ))
                                     ) : (
-                                        <tr><td colSpan="11" style={{textAlign: 'center', padding: '20px'}}>No stock data available.</td></tr>
+                                        <tr><td colSpan="12" style={{textAlign: 'center', padding: '20px'}}>No stock data available.</td></tr>
                                     )}
                                 </tbody>
                             </table>
+                            
+                            {/* Pagination Footer */}
+                            {inventoryData.length > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 8px 8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Records per page:</span>
+                                        <select 
+                                            value={stockPerPage} 
+                                            onChange={(e) => { setStockPerPage(Number(e.target.value)); setStockPage(1); }}
+                                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={20}>20</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>
+                                        <span>
+                                            Showing {(stockPage - 1) * stockPerPage + 1} to {Math.min(stockPage * stockPerPage, inventoryData.length)} of {inventoryData.length} records
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button 
+                                                onClick={() => setStockPage(Math.max(1, stockPage - 1))}
+                                                disabled={stockPage === 1}
+                                                style={{ padding: '4px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', background: stockPage === 1 ? '#f1f5f9' : '#ffffff', color: stockPage === 1 ? '#94a3b8' : '#334155', cursor: stockPage === 1 ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+                                            >
+                                                Prev
+                                            </button>
+                                            <button 
+                                                onClick={() => setStockPage(Math.min(Math.ceil(inventoryData.length / stockPerPage), stockPage + 1))}
+                                                disabled={stockPage === Math.ceil(inventoryData.length / stockPerPage) || inventoryData.length === 0}
+                                                style={{ padding: '4px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', background: (stockPage === Math.ceil(inventoryData.length / stockPerPage) || inventoryData.length === 0) ? '#f1f5f9' : '#ffffff', color: (stockPage === Math.ceil(inventoryData.length / stockPerPage) || inventoryData.length === 0) ? '#94a3b8' : '#334155', cursor: (stockPage === Math.ceil(inventoryData.length / stockPerPage) || inventoryData.length === 0) ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         )}
                     </div>

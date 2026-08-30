@@ -13,7 +13,6 @@ export default function NewJob({ onBack, onSuccess }) {
 	const [loadingProducts, setLoadingProducts] = useState(true);
 	const [productsLoadError, setProductsLoadError] = useState('');
 	const [submitting, setSubmitting] = useState(false);
-	const [submitError, setSubmitError] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState('');
 	const [formData, setFormData] = useState({
 		// Customer
@@ -145,7 +144,6 @@ export default function NewJob({ onBack, onSuccess }) {
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
-		setSubmitError('');
 		if (!formData.customerName || !formData.mobile || !selectedProduct || !formData.problemType) {
 			popup.showError('Please fill all required fields');
 			return;
@@ -160,7 +158,7 @@ export default function NewJob({ onBack, onSuccess }) {
 			await addJob(newJobData);
 			onSuccess();
 		} catch (err) {
-			setSubmitError(err?.message || 'Failed to create job');
+			popup.showError(err?.message || 'Failed to create job. Please check your inputs.');
 		} finally {
 			setSubmitting(false);
 		}
@@ -554,9 +552,6 @@ export default function NewJob({ onBack, onSuccess }) {
 
 					{/* Form Actions */}
 					<div className="form-actions sticky-actions">
-						{submitError && (
-							<div className="nj-help-text">{submitError}</div>
-						)}
 						<button type="button" className="btn-secondary" onClick={onBack}>
 							Cancel
 						</button>

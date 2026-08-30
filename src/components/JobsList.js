@@ -3,38 +3,12 @@ import '../styles/JobsList.css';
 import { useService } from '../hooks/useService';
 import { usePopup } from './ui/PopupProvider';
 
-export default function JobsList({ onViewJob, onCreateJob }) {
+export default function JobsList({ onViewJob, onCreateJob, onEditJob }) {
 	const popup = usePopup();
 	const { jobs, jobsLoaded, technicians, availableProducts, allSpares, updateJob, deleteJob, jobsAPI } = useService();
 	const [filters, setFilters] = useState({ status: 'all', product: 'all', technician: 'all', search: '' });
-	const [editingJob, setEditingJob] = useState(null);
-	const [editFormData, setEditFormData] = useState({
-		status: 'pending',
-		priority: 'medium',
-		scheduledDate: '',
-		problem: '',
-		technician: '',
-		// Customer fields
-		customerName: '',
-		customerMobile: '',
-		customerEmail: '',
-		address: '',
-		// Product fields
-		category: '',
-		brand: '',
-		model: '',
-		serial: '',
-		purchaseDate: '',
-		warranty: 'no',
-		// Service fields
-		serviceType: 'repair',
-		laborCost: '',
-		partsCost: '',
-		serviceCharge: '',
-		selectedSpares: [], // Array of {id, name, price, quantity}
-	});
-	const [isFetchingJob, setIsFetchingJob] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
+	const [pageSize, setPageSize] = useState(10);
+	const [currentPage, setCurrentPage] = useState(1);
 
 	const normalizeStatus = (value) => {
 		const raw = (value || '').toLowerCase().trim();
@@ -78,6 +52,13 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 		});
 	}, [jobs, filters]);
 
+	const totalRecords = filteredJobs.length;
+	const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+	const safePage = Math.min(currentPage, totalPages);
+	const pagedJobs = filteredJobs.slice((safePage - 1) * pageSize, safePage * pageSize);
+	const startRecord = totalRecords === 0 ? 0 : (safePage - 1) * pageSize + 1;
+	const endRecord = Math.min(safePage * pageSize, totalRecords);
+
 	const statusOptions = [
 		{ label: 'New', value: 'pending' },
 		{ label: 'Scheduled', value: 'scheduled' },
@@ -93,172 +74,6 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 		{ label: 'High', value: 'high' },
 		{ label: 'Urgent', value: 'urgent' },
 	];
-
-	const openEditModal = async (jobSnippet) => {
-		setEditingJob(jobSnippet);
-		setIsFetchingJob(true);
-		try {
-			const fullJob = await jobsAPI.get(jobSnippet.id);
-			const sr = fullJob.service_request || {};
-			const appliance = sr.appliance || {};
-			
-			setEditFormData({
-				status: fullJob.status || 'pending',
-				priority: fullJob.priority || 'medium',
-				scheduledDate: fullJob.scheduled_date ? String(fullJob.scheduled_date).slice(0, 10) : '',
-				problem: fullJob.job_description || sr.issue_description || '',
-				technician: fullJob.technician?.name || sr.technician_name || '',
-				customerName: appliance.customer_name || '',
-				customerMobile: appliance.phone || appliance.mobile || '',
-				customerEmail: appliance.email || '',
-				address: appliance.location || appliance.address || '',
-				category: appliance.category || '',
-				brand: appliance.brand || '',
-				model: appliance.model || '',
-				serial: appliance.serial_number || '',
-				purchaseDate: appliance.purchase_date ? String(appliance.purchase_date).slice(0, 10) : '',
-				warranty: appliance.warranty_status || 'no',
-				serviceType: sr.service_type || 'repair',
-				laborCost: fullJob.labor_cost || '',
-				partsCost: fullJob.parts_cost || '',
-				serviceCharge: sr.cost || '',
-			});
-		} catch (error) {
-			console.error('Failed to fetch job details:', error);
-			// Fallback to snippet data if full fetch fails
-			setEditFormData(prev => ({
-				...prev,
-				status: statusOptions.find((option) => option.label === jobSnippet.status)?.value || 'pending',
-				priority: priorityOptions.find((option) => option.label.toLowerCase() === jobSnippet.priority)?.value || 'medium',
-				scheduledDate: jobSnippet.dueDate,
-				problem: jobSnippet.problem || '',
-				customerName: jobSnippet.customer,
-				customerMobile: jobSnippet.customerMobile,
-			}));
-		} finally {
-			setIsFetchingJob(false);
-		}
-	};
-
-	const checkRepeatJob = () => {
-		if (!editFormData.customerMobile) return null;
-		const thirtyDaysAgo = new Date();
-		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-		const previousJobs = jobs.filter(j => 
-			j.id !== editingJob?.id && 
-			j.customerMobile === editFormData.customerMobile &&
-			normalizeStatus(j.status) === 'completed' &&
-			new Date(j.createdDate) >= thirtyDaysAgo
-		);
-
-		return previousJobs.length > 0 ? previousJobs : null;
-	};
-
-	const repeatJobs = editingJob ? checkRepeatJob() : null;
-
-	const closeEditModal = () => {
-		setEditingJob(null);
-	};
-
-	const handleSaveEdit = async () => {
-		if (!editingJob) return;
-		setIsSaving(true);
-		
-		const totalCost = (Number(editFormData.laborCost || 0) + Number(editFormData.partsCost || 0) + Number(editFormData.serviceCharge || 0));
-
-		const jobPayload = {
-			status: editFormData.status,
-			priority: editFormData.priority,
-			scheduled_date: editFormData.scheduledDate ? `${editFormData.scheduledDate}T09:00:00` : undefined,
-			job_description: editFormData.problem,
-			labor_cost: editFormData.laborCost ? Number(editFormData.laborCost) : null,
-			parts_cost: editFormData.partsCost ? Number(editFormData.partsCost) : null,
-			total_cost: totalCost,
-			work_done: editFormData.problem // Overloaded for now
-		};
-
-		try {
-			await updateJob(editingJob.id, jobPayload);
-			setEditingJob(null);
-		} catch (error) {
-			popup.showError(error.message || 'Failed to update job');
-		} finally {
-			setIsSaving(false);
-		}
-	};
-
-	const printInvoice = () => {
-		const total = (Number(editFormData.laborCost || 0) + Number(editFormData.partsCost || 0) + Number(editFormData.serviceCharge || 0));
-		const printWindow = window.open('', '_blank');
-		printWindow.document.write(`
-			<html>
-				<head>
-					<title>Invoice - ${editingJob.ticketNo}</title>
-					<style>
-						body { font-family: sans-serif; padding: 40px; color: #333; }
-						.header { display: flex; justify-content: space-between; border-bottom: 2px solid #14b8a6; padding-bottom: 20px; }
-						.invoice-info { text-align: right; }
-						.section { margin-top: 30px; }
-						table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-						th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
-						th { background: #fafafa; }
-						.total { text-align: right; font-size: 1.5rem; font-weight: bold; margin-top: 30px; }
-						.footer { margin-top: 50px; font-size: 0.8rem; color: #999; text-align: center; }
-					</style>
-				</head>
-				<body>
-					<div class="header">
-						<div>
-							<h1>SERVICE INVOICE</h1>
-							<p><strong>Service Manager Pro</strong><br/>123 Tech Avenue, Silicon Valley</p>
-						</div>
-						<div class="invoice-info">
-							<p><strong>Ticket No:</strong> ${editingJob.ticketNo}</p>
-							<p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-						</div>
-					</div>
-					
-					<div class="section">
-						<h3>Customer Details</h3>
-						<p>${editFormData.customerName}<br/>${editFormData.customerMobile}<br/>${editFormData.address}</p>
-					</div>
-
-					<div class="section">
-						<h3>Job Details</h3>
-						<table>
-							<thead>
-								<tr>
-									<th>Description</th>
-									<th>Amount (₹)</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>Service Charge (${editFormData.serviceType})</td>
-									<td>${editFormData.serviceCharge || 0}</td>
-								</tr>
-								<tr>
-									<td>Labor Charges</td>
-									<td>${editFormData.laborCost || 0}</td>
-								</tr>
-								<tr>
-									<td>Parts/Spares Total</td>
-									<td>${editFormData.partsCost || 0}</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-
-					<div class="total">Total Amount: ₹ ${total}</div>
-					
-					<div class="footer">Thank you for choosing our service. All repairs carry a 30-day warranty.</div>
-					<script>window.print();</script>
-				</body>
-			</html>
-		`);
-		printWindow.document.close();
-	};
 
 	const handleDelete = async (jobId) => {
 		const ok = await popup.confirm('Are you sure you want to delete this job?');
@@ -322,7 +137,7 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 				<table className="jobs-table">
 					<thead>
 						<tr>
-							<th><input type="checkbox" /></th>
+							<th style={{width:'40px', textAlign:'center'}}>#</th>
 							<th>Ticket No</th>
 							<th>Created Date</th>
 							<th>Customer Name</th>
@@ -335,9 +150,9 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 						</tr>
 					</thead>
 					<tbody>
-						{filteredJobs.map((job) => (
+						{pagedJobs.map((job, index) => (
 							<tr key={job.id}>
-								<td><input type="checkbox" /></td>
+								<td style={{textAlign:'center', color:'#9ca3af', fontSize:'0.78rem'}}>{(safePage - 1) * pageSize + index + 1}</td>
 								<td className="ticket-link" onClick={() => onViewJob(job.id)}>{job.ticketNo}</td>
 								<td>{job.createdDate}</td>
 								<td>{job.customer}</td>
@@ -347,177 +162,55 @@ export default function JobsList({ onViewJob, onCreateJob }) {
 								<td>{job.technician}</td>
 								<td>{job.dueDate}</td>
 								<td>
-									<button className="btn-small" onClick={() => onViewJob(job.id)}>View</button>
-									<button className="btn-small" onClick={() => openEditModal(job)}>Edit</button>
-									<button className="btn-small danger" onClick={() => handleDelete(job.id)}>Delete</button>
+									<div className="jl-actions">
+										<button className="jl-icon-btn" title="View" onClick={() => onViewJob(job.id)}>
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+												<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+												<circle cx="12" cy="12" r="3"/>
+											</svg>
+										</button>
+										<button className="jl-icon-btn edit" title="Edit" onClick={() => onEditJob(job.id)}>
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+												<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+												<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+											</svg>
+										</button>
+										<button className="jl-icon-btn delete" title="Delete" onClick={() => handleDelete(job.id)}>
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+												<polyline points="3 6 5 6 21 6"/>
+												<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+												<path d="M10 11v6M14 11v6"/>
+												<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+											</svg>
+										</button>
+									</div>
 								</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
-			</section>
-			{editingJob && (
-				<div className="jobs-modal-backdrop">
-					<div className="jobs-modal">
-						<div className="jobs-modal-header">
-							<h3>Edit Ticket: {editingJob.ticketNo}</h3>
-							<button className="btn-close" onClick={closeEditModal}>✕</button>
-						</div>
-
-						<div className="jobs-modal-body">
-							{isFetchingJob ? (
-								<div className="nj-loading-container">Loading job details...</div>
-							) : (
-								<>
-									{repeatJobs && (
-										<div className="repeat-job-warning alert-card">
-											<div className="alert-content">
-												<span className="alert-icon">⚠️</span>
-												<div>
-													<p className="alert-title">Potential Repeat Job / Service Warranty</p>
-													<p className="alert-desc">This customer had <strong>{repeatJobs.length} completed repair(s)</strong> in the last 30 days. Check previous work logs for warranty eligibility.</p>
-												</div>
-											</div>
-										</div>
-									)}
-
-									{/* Customer Section */}
-									<div className="modal-section">
-										<h4>👤 Customer Details</h4>
-										<div className="jobs-modal-row">
-											<label>Customer Name</label>
-											<input type="text" value={editFormData.customerName} onChange={(e) => setEditFormData({...editFormData, customerName: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Mobile</label>
-											<input type="text" maxLength="10" value={editFormData.customerMobile} onChange={(e) => setEditFormData({...editFormData, customerMobile: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Address</label>
-											<textarea rows={2} value={editFormData.address} onChange={(e) => setEditFormData({...editFormData, address: e.target.value})} />
-										</div>
-									</div>
-
-									{/* Product Section */}
-									<div className="modal-section">
-										<h4>📦 Product Details</h4>
-										<div className="jobs-modal-row">
-											<label>Brand & Category</label>
-											<input type="text" value={`${editFormData.brand} ${editFormData.category}`} disabled />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Model</label>
-											<input type="text" value={editFormData.model} onChange={(e) => setEditFormData({...editFormData, model: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Serial Number</label>
-											<input type="text" value={editFormData.serial} onChange={(e) => setEditFormData({...editFormData, serial: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Warranty</label>
-											<select value={editFormData.warranty} onChange={(e) => setEditFormData({...editFormData, warranty: e.target.value})}>
-												<option value="yes">In Warranty</option>
-												<option value="no">Out of Warranty</option>
-												<option value="expired">Expired</option>
-											</select>
-										</div>
-									</div>
-
-									{/* Job Status Section */}
-									<div className="modal-section">
-										<h4>⚡ Job Status & Assignment</h4>
-										<div className="jobs-modal-row">
-											<label>Status</label>
-											<select value={editFormData.status} onChange={(e) => setEditFormData({...editFormData, status: e.target.value})}>
-												{statusOptions.map((option) => (
-													<option key={option.value} value={option.value}>{option.label}</option>
-												))}
-											</select>
-										</div>
-										<div className="jobs-modal-row">
-											<label>Priority</label>
-											<select value={editFormData.priority} onChange={(e) => setEditFormData({...editFormData, priority: e.target.value})}>
-												{priorityOptions.map((option) => (
-													<option key={option.value} value={option.value}>{option.label}</option>
-												))}
-											</select>
-										</div>
-										<div className="jobs-modal-row">
-											<label>Due Date</label>
-											<input type="date" value={editFormData.scheduledDate} onChange={(e) => setEditFormData({...editFormData, scheduledDate: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Technician</label>
-											<select value={editFormData.technician} onChange={(e) => setEditFormData({...editFormData, technician: e.target.value})}>
-												<option value="">Unassigned</option>
-												{technicians.map(t => (
-													<option key={t.id} value={t.name}>{t.name}</option>
-												))}
-											</select>
-										</div>
-									</div>
-
-									{/* Billing Section */}
-									<div className="modal-section">
-										<div className="billing-header">
-											<h4>💰 Billing & Invoicing</h4>
-											<div className="billing-total">
-												Total: ₹ {(Number(editFormData.laborCost || 0) + Number(editFormData.partsCost || 0) + Number(editFormData.serviceCharge || 0))}
-											</div>
-										</div>
-										<div className="jobs-modal-row">
-											<label>Service Charge (₹)</label>
-											<input type="number" value={editFormData.serviceCharge} onChange={(e) => setEditFormData({...editFormData, serviceCharge: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Labor Cost (₹)</label>
-											<input type="number" value={editFormData.laborCost} onChange={(e) => setEditFormData({...editFormData, laborCost: e.target.value})} />
-										</div>
-										
-										<div className="spares-section">
-											<label>Add Spares/Equipments</label>
-											<div className="spares-selector">
-												<select onChange={(e) => {
-													const spare = allSpares.find(s => s.id === Number(e.target.value));
-													if (spare) {
-														setEditFormData({
-															...editFormData,
-															partsCost: Number(editFormData.partsCost || 0) + Number(spare.price)
-														});
-													}
-												}}>
-													<option value="">Select Spare Part...</option>
-													{allSpares.map(s => (
-														<option key={s.id} value={s.id}>{s.name} - ₹{s.price}</option>
-													))}
-												</select>
-											</div>
-										</div>
-
-										<div className="jobs-modal-row">
-											<label>Adjusted Parts Cost (₹)</label>
-											<input type="number" value={editFormData.partsCost} onChange={(e) => setEditFormData({...editFormData, partsCost: e.target.value})} />
-										</div>
-										<div className="jobs-modal-row">
-											<label>Work Done / Problem Description</label>
-											<textarea rows={3} value={editFormData.problem} onChange={(e) => setEditFormData({...editFormData, problem: e.target.value})} />
-										</div>
-									</div>
-								</>
-							)}
-						</div>
-
-						<div className="jobs-modal-actions">
-							<button className="btn-secondary" onClick={printInvoice} disabled={isSaving || isFetchingJob}>🖨 Print Invoice</button>
-							<div className="spacer" style={{ flex: 1 }}></div>
-							<button className="btn-secondary" onClick={closeEditModal} disabled={isSaving}>Cancel</button>
-							<button className="btn-primary" onClick={handleSaveEdit} disabled={isSaving || isFetchingJob}>
-								{isSaving ? 'Saving...' : 'Save Changes'}
-							</button>
+				{/* Pagination Footer */}
+				<div className="jl-pagination">
+					<div className="jl-page-info">
+						Showing <strong>{startRecord}–{endRecord}</strong> of <strong>{totalRecords}</strong> records
+					</div>
+					<div className="jl-page-controls">
+						<span className="jl-page-label">Rows:</span>
+						{[10, 25, 50, 100].map(n => (
+							<button
+								key={n}
+								className={`jl-page-size-btn${pageSize === n ? ' active' : ''}`}
+								onClick={() => { setPageSize(n); setCurrentPage(1); }}
+							>{n}</button>
+						))}
+						<div className="jl-page-nav">
+							<button className="jl-nav-btn" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>‹</button>
+							<span className="jl-page-num">{safePage} / {totalPages}</span>
+							<button className="jl-nav-btn" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>›</button>
 						</div>
 					</div>
 				</div>
-			)}
+			</section>
 		</div>
 	);
 }

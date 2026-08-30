@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/StaffScreen.css';
 import '../styles/SettingsScreen.css';
-import { staffAPI, branchesAPI, staffManagementAPI, usersAPI } from '../services/api';
+import { staffAPI, branchesAPI, staffManagementAPI, usersAPI, accountingAPI } from '../services/api';
 import UsersRolesScreen from './UsersRolesScreen';
 import { usePopup } from './ui/PopupProvider';
 
@@ -37,6 +37,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         { id: 'jobs-new', label: 'Create New Job', icon: '➕', group: 'Service Jobs' },
         { id: 'jobs-calendar', label: 'Service Calendar', icon: '📅', group: 'Service Jobs' },
         { id: 'jobs-invoicing', label: 'Invoicing Hub', icon: '🧾', group: 'Service Jobs' },
+        { id: 'jobs-payments', label: 'Payments', icon: '💰', group: 'Service Jobs' },
         
         // Store Stock
         { id: 'inventory-sales-stock', label: 'Current Stock', icon: '📦', group: 'Store Stock' },
@@ -95,6 +96,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         
         // Accounting
         { id: 'accounting-ledger', label: 'Ledger & Cashbook', icon: '⚖️', group: 'Accounting Hub' },
+        { id: 'accounting-service-ledger', label: 'Service Cashbook', icon: '🛠️', group: 'Accounting Hub' },
         { id: 'accounting-gst', label: 'GST Filling Report', icon: '📜', group: 'Accounting Hub' },
         { id: 'accounting-expenses', label: 'Business Expenses', icon: '💸', group: 'Accounting Hub' },
         { id: 'accounting-pl', label: 'Profit & Loss', icon: '📈', group: 'Accounting Hub' },
@@ -118,6 +120,34 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
     // Payroll state
     const [payrollMonth, setPayrollMonth] = useState(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
     const [payrollList, setPayrollList] = useState([]);
+
+    // Advance Salary state
+    const [showAdvanceModal, setShowAdvanceModal] = useState(false);
+    const [advanceSaving, setAdvanceSaving] = useState(false);
+    const [advanceForm, setAdvanceForm] = useState({
+        staff_id: '',
+        staff_name: '',
+        amount: '',
+        payment_mode: 'cash',
+        date: new Date().toISOString().split('T')[0],
+        remarks: ''
+    });
+
+    // Pay Salary Modal state
+    const [showPaySalaryModal, setShowPaySalaryModal] = useState(false);
+    const [paySalarySaving, setPaySalarySaving] = useState(false);
+    const [paySalaryForm, setPaySalaryForm] = useState({
+        staff_id: '',
+        staff_name: '',
+        month: '',
+        base_salary: 0,
+        allowances: 0,
+        deductions: 0,
+        net_payable: 0,
+        payment_mode: 'bank',
+        payment_date: new Date().toISOString().split('T')[0],
+        remarks: ''
+    });
 
     // Payment History state
     const [historyList, setHistoryList] = useState([]);
@@ -479,6 +509,160 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
         }
     };
 
+    const handleOpenAdvanceModal = (p) => {
+        setAdvanceForm({
+            staff_id: p.staff_id,
+            staff_name: p.name,
+            amount: '',
+            payment_mode: 'cash',
+            date: new Date().toISOString().split('T')[0],
+            remarks: ''
+        });
+        setShowAdvanceModal(true);
+    };
+
+    const handleSaveAdvance = async (e) => {
+        e.preventDefault();
+        const advAmt = parseFloat(advanceForm.amount);
+        if (!advAmt || advAmt <= 0) {
+            popup.showError('Please enter a valid advance amount.');
+            return;
+        }
+        // Check if cashbook is closed for today if cash is chosen
+        if (advanceForm.payment_mode === 'cash') {
+            try {
+                const ledgerEntries = await accountingAPI.getLedger({ accountType: 'cash', startDate: advanceForm.date, endDate: advanceForm.date });
+                const isClosed = (Array.isArray(ledgerEntries) ? ledgerEntries : []).some(e => 
+                    (e.voucher_no && e.voucher_no.startsWith('EOD-')) || (e.particulars && e.particulars.includes('🔒 Day Closed'))
+                );
+                if (isClosed) {
+                    popup.showError(`Cashbook for ${advanceForm.date} is already closed. Please choose Bank Transfer/UPI or record on the next open day.`);
+                    return;
+                }
+            } catch (chkErr) {
+                console.warn('Cash closure check bypassed:', chkErr);
+            }
+        }
+
+        setAdvanceSaving(true);
+        try {
+            // 1. Record expense / cash outflow in accounting
+            try {
+                await accountingAPI.addEntry({
+                    branch_id: 1,
+                    account_type: advanceForm.payment_mode === 'cash' ? 'cash' : 'bank',
+                    transaction_type: 'payment',
+                    voucher_no: `ADV-${Date.now().toString().slice(-4)}`,
+                    particulars: `Salary Advance to ${advanceForm.staff_name} (${payrollMonth})${advanceForm.remarks ? ` - ${advanceForm.remarks}` : ''}`,
+                    amount: advAmt,
+                    transaction_date: advanceForm.date
+                });
+            } catch (accErr) {
+                console.warn("Accounting entry warning:", accErr);
+            }
+
+            // 2. Automatically update deduction in payroll for this staff & month
+            const currentStaffPayroll = payrollList.find(item => item.staff_id === advanceForm.staff_id);
+            if (currentStaffPayroll) {
+                const updatedDeductions = (parseFloat(currentStaffPayroll.deductions) || 0) + advAmt;
+                const baseSal = parseFloat(currentStaffPayroll.base_salary) || 0;
+                const allow = parseFloat(currentStaffPayroll.allowances) || 0;
+                const newNet = Math.max(0, baseSal + allow - updatedDeductions);
+
+                await staffManagementAPI.savePayrollDraft({
+                    staff_id: advanceForm.staff_id,
+                    month: payrollMonth,
+                    base_salary: baseSal,
+                    allowances: allow,
+                    deductions: updatedDeductions,
+                    net_payable: newNet
+                });
+            }
+
+            popup.showSuccess(`₹${advAmt.toLocaleString()} advance given to ${advanceForm.staff_name} and deducted from payroll.`);
+            setShowAdvanceModal(false);
+            fetchPayroll();
+        } catch (err) {
+            popup.showError('Error recording salary advance: ' + err.message);
+        } finally {
+            setAdvanceSaving(false);
+        }
+    };
+
+    const handleOpenPaySalaryModal = (p) => {
+        setPaySalaryForm({
+            staff_id: p.staff_id,
+            staff_name: p.name,
+            month: payrollMonth,
+            base_salary: parseFloat(p.base_salary) || 0,
+            allowances: parseFloat(p.allowances) || 0,
+            deductions: parseFloat(p.deductions) || 0,
+            net_payable: parseFloat(p.net_payable) || 0,
+            payment_mode: 'bank',
+            payment_date: new Date().toISOString().split('T')[0],
+            remarks: ''
+        });
+        setShowPaySalaryModal(true);
+    };
+
+    const handleConfirmPaySalary = async (e) => {
+        e.preventDefault();
+
+        // Check if cashbook is closed for today if cash is chosen
+        if (paySalaryForm.payment_mode === 'cash' && paySalaryForm.net_payable > 0) {
+            try {
+                const ledgerEntries = await accountingAPI.getLedger({ accountType: 'cash', startDate: paySalaryForm.payment_date, endDate: paySalaryForm.payment_date });
+                const isClosed = (Array.isArray(ledgerEntries) ? ledgerEntries : []).some(e => 
+                    (e.voucher_no && e.voucher_no.startsWith('EOD-')) || (e.particulars && e.particulars.includes('🔒 Day Closed'))
+                );
+                if (isClosed) {
+                    popup.showError(`Cashbook for ${paySalaryForm.payment_date} is already closed. Please choose Bank Transfer/UPI or select the next open date.`);
+                    return;
+                }
+            } catch (chkErr) {
+                console.warn('Cash closure check bypassed:', chkErr);
+            }
+        }
+
+        setPaySalarySaving(true);
+        try {
+            // 1. Process salary payment in payroll
+            await staffManagementAPI.processPayment({
+                staff_id: paySalaryForm.staff_id,
+                month: paySalaryForm.month,
+                base_salary: paySalaryForm.base_salary,
+                allowances: paySalaryForm.allowances,
+                deductions: paySalaryForm.deductions,
+                net_payable: paySalaryForm.net_payable
+            });
+
+            // 2. Record salary payout in accounting cash / bank register
+            if (paySalaryForm.net_payable > 0) {
+                try {
+                    await accountingAPI.addEntry({
+                        branch_id: 1,
+                        account_type: paySalaryForm.payment_mode === 'cash' ? 'cash' : 'bank',
+                        transaction_type: 'payment',
+                        voucher_no: `SAL-${Date.now().toString().slice(-4)}`,
+                        particulars: `Salary Disbursed to ${paySalaryForm.staff_name} for ${paySalaryForm.month}${paySalaryForm.remarks ? ` (${paySalaryForm.remarks})` : ''}`,
+                        amount: paySalaryForm.net_payable,
+                        transaction_date: paySalaryForm.payment_date
+                    });
+                } catch (accErr) {
+                    console.warn('Accounting entry sync note:', accErr);
+                }
+            }
+
+            popup.showSuccess(`Salary of ₹${Number(paySalaryForm.net_payable).toLocaleString('en-IN')} paid to ${paySalaryForm.staff_name} successfully!`);
+            setShowPaySalaryModal(false);
+            fetchPayroll();
+        } catch (err) {
+            popup.showError('Error paying salary: ' + err.message);
+        } finally {
+            setPaySalarySaving(false);
+        }
+    };
+
     const renderSalary = () => {
         const totalPayroll = payrollList.reduce((acc, p) => acc + Number(p.net_payable), 0);
         const pendingCount = payrollList.filter(p => p.status === 'Pending').length;
@@ -571,7 +755,9 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                     </div>
 
                                     <div className="salary-field">
-                                        <span className="salary-field-label">Deductions</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                            <span className="salary-field-label">Deductions / Advances</span>
+                                        </div>
                                         {p.status === 'Paid' ? (
                                             <span className="salary-field-value" style={{color:'#ef4444'}}>− ₹{Number(p.deductions).toLocaleString('en-IN')}</span>
                                         ) : (
@@ -594,39 +780,47 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                                         </span>
                                     </div>
                                     
-                                    {p.status !== 'Paid' && (
-                                        <div className="salary-actions">
-                                            <button 
-                                                className="salary-btn salary-btn-save"
-                                                onClick={() => handleSavePayrollDraft(p)}
-                                            >
-                                                Save Draft
-                                            </button>
-                                            <button 
-                                                className="salary-btn salary-btn-pay"
-                                                onClick={async () => {
-                                                    try {
-                                                        await staffManagementAPI.processPayment({
-                                                            staff_id: p.staff_id,
-                                                            month: payrollMonth,
-                                                            base_salary: p.base_salary,
-                                                            allowances: p.allowances,
-                                                            deductions: p.deductions,
-                                                            net_payable: p.net_payable
-                                                        });
-                                                        setSuccess('Salary processed successfully!');
-                                                        setTimeout(() => setSuccess(null), 3000);
-                                                        fetchPayroll();
-                                                    } catch (err) {
-                                                        setError('Error processing salary: ' + err.message);
-                                                        setTimeout(() => setError(null), 3000);
-                                                    }
-                                                }}
-                                            >
-                                                Process Payment
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="salary-actions">
+                                        <button 
+                                            className="salary-btn"
+                                            style={{ background: '#f59e0b', color: '#fff' }}
+                                            onClick={() => handleOpenAdvanceModal(p)}
+                                            title="Give advance payment to staff"
+                                        >
+                                            ➕ Give Advance
+                                        </button>
+                                        
+                                        {p.status !== 'Paid' ? (
+                                            <>
+                                                <button 
+                                                    className="salary-btn salary-btn-save"
+                                                    onClick={() => handleSavePayrollDraft(p)}
+                                                >
+                                                    Save Draft
+                                                </button>
+                                                <button 
+                                                    className="salary-btn salary-btn-pay"
+                                                    onClick={() => handleOpenPaySalaryModal(p)}
+                                                >
+                                                    💰 Pay Salary
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button 
+                                                    className="salary-btn"
+                                                    style={{ background: '#2563eb', color: '#fff' }}
+                                                    onClick={() => handleOpenPaySalaryModal(p)}
+                                                    title="Disburse / Pay remaining balance"
+                                                >
+                                                    💰 Pay Salary
+                                                </button>
+                                                <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 700, padding: '4px 8px', background: '#dcfce7', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    ✓ Paid
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -634,6 +828,234 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
                         <div className="payroll-empty-state">No payroll records found for this month.</div>
                     )}
                 </div>
+
+                {/* ── Pay Salary Confirmation Modal ── */}
+                {showPaySalaryModal && (
+                    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                        <div className="modal-content" style={{ maxWidth: '480px', width: '92%' }}>
+                            <div className="modal-header" style={{ background: '#2563eb', color: '#fff', padding: '12px 18px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '1.2rem' }}>💰</span>
+                                    <h3 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
+                                        Pay Salary ({paySalaryForm.staff_name})
+                                    </h3>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowPaySalaryModal(false)}
+                                    style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <form onSubmit={handleConfirmPaySalary}>
+                                <div className="modal-body" style={{ padding: '20px' }}>
+                                    {/* Breakdown summary card */}
+                                    <div style={{
+                                        background: '#f8fafc',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '8px',
+                                        padding: '14px',
+                                        marginBottom: '16px'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.8rem', color: '#475569' }}>
+                                            <span>Base Salary:</span>
+                                            <span style={{ fontWeight: 600 }}>₹{paySalaryForm.base_salary.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.8rem', color: '#059669' }}>
+                                            <span>Allowances (+):</span>
+                                            <span style={{ fontWeight: 600 }}>+₹{paySalaryForm.allowances.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: '#dc2626' }}>
+                                            <span>Deductions / Advances (−):</span>
+                                            <span style={{ fontWeight: 600 }}>−₹{paySalaryForm.deductions.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <div style={{
+                                            borderTop: '1px dashed #cbd5e1',
+                                            paddingTop: '8px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>Net Amount to Pay:</span>
+                                            <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#2563eb' }}>
+                                                ₹{paySalaryForm.net_payable.toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Disbursement Payment Mode
+                                        </label>
+                                        <select
+                                            className="form-input"
+                                            value={paySalaryForm.payment_mode}
+                                            onChange={(e) => setPaySalaryForm({ ...paySalaryForm, payment_mode: e.target.value })}
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value="bank">Bank Transfer / NEFT / IMPS / UPI</option>
+                                            <option value="cash">Cash in Hand (Register)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Payment Date
+                                        </label>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            value={paySalaryForm.payment_date}
+                                            onChange={(e) => setPaySalaryForm({ ...paySalaryForm, payment_date: e.target.value })}
+                                            required
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        />
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Payment Note / Transaction Reference (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="e.g. UTR #12345678 / Paid in full"
+                                            value={paySalaryForm.remarks}
+                                            onChange={(e) => setPaySalaryForm({ ...paySalaryForm, remarks: e.target.value })}
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.82rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="modal-footer" style={{ padding: '12px 18px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+                                    <button type="button" className="btn-secondary" onClick={() => setShowPaySalaryModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="btn-primary"
+                                        style={{ background: '#2563eb', padding: '7px 20px', fontWeight: 700 }}
+                                        disabled={paySalarySaving}
+                                    >
+                                        {paySalarySaving ? 'Disbursing…' : '💰 Confirm & Disburse Salary'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Give Advance Modal ── */}
+                {showAdvanceModal && (
+                    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+                        <div className="modal-content" style={{ maxWidth: '440px', width: '92%' }}>
+                            <div className="modal-header" style={{ background: '#f59e0b', color: '#fff', padding: '12px 18px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '1.2rem' }}>💵</span>
+                                    <h3 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
+                                        Give Salary Advance ({advanceForm.staff_name})
+                                    </h3>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowAdvanceModal(false)}
+                                    style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <form onSubmit={handleSaveAdvance}>
+                                <div className="modal-body" style={{ padding: '20px' }}>
+                                    <div style={{
+                                        background: '#fffbeb',
+                                        border: '1px solid #fef3c7',
+                                        borderRadius: '8px',
+                                        padding: '12px',
+                                        marginBottom: '16px',
+                                        fontSize: '0.78rem',
+                                        color: '#92400e'
+                                    }}>
+                                        💡 This advance will automatically record a cash payment entry in your accounting ledger and subtract from this month's net payable salary.
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Advance Amount (₹) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            placeholder="e.g. 2000"
+                                            className="form-input"
+                                            value={advanceForm.amount}
+                                            onChange={(e) => setAdvanceForm({ ...advanceForm, amount: e.target.value })}
+                                            required
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        />
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Payment Mode
+                                        </label>
+                                        <select
+                                            className="form-input"
+                                            value={advanceForm.payment_mode}
+                                            onChange={(e) => setAdvanceForm({ ...advanceForm, payment_mode: e.target.value })}
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value="cash">Cash in Hand</option>
+                                            <option value="bank">Bank Transfer / UPI</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Date
+                                        </label>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            value={advanceForm.date}
+                                            onChange={(e) => setAdvanceForm({ ...advanceForm, date: e.target.value })}
+                                            required
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        />
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                                            Remarks / Note (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="e.g. Festival advance / Medical"
+                                            value={advanceForm.remarks}
+                                            onChange={(e) => setAdvanceForm({ ...advanceForm, remarks: e.target.value })}
+                                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.82rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="modal-footer" style={{ padding: '12px 18px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+                                    <button type="button" className="btn-secondary" onClick={() => setShowAdvanceModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="btn-primary"
+                                        style={{ background: '#f59e0b', padding: '7px 20px', fontWeight: 700 }}
+                                        disabled={advanceSaving}
+                                    >
+                                        {advanceSaving ? 'Recording…' : '💵 Pay & Record Advance'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };

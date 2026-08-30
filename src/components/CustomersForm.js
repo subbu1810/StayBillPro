@@ -29,9 +29,18 @@ function CustomerFormModal({ onClose, onSuccess, editData }) {
 
   useEffect(() => {
     if (editData) {
+      // Split full name if individual first/last name are missing
+      let fName = editData.firstName || editData.first_name || "";
+      let lName = editData.lastName || editData.last_name || "";
+      if (!fName && editData.name) {
+        const parts = editData.name.trim().split(" ");
+        fName = parts[0] || "";
+        lName = parts.slice(1).join(" ") || "";
+      }
+
       setCustomer({
-        firstName: editData.firstName || editData.first_name || "",
-        lastName: editData.lastName || editData.last_name || "",
+        firstName: fName,
+        lastName: lName,
         email: editData.email || "",
         mobile: editData.mobile || "",
         category: editData.category || "Retail",
@@ -43,7 +52,7 @@ function CustomerFormModal({ onClose, onSuccess, editData }) {
         sameAsBilling: editData.sameAsBilling !== undefined ? editData.sameAsBilling : true,
         openingBalance: editData.openingBalance || 0,
         balanceType: editData.balanceType || "receivable",
-        asOfDate: editData.asOfDate || "",
+        asOfDate: editData.asOfDate ? editData.asOfDate.split("T")[0] : "",
         creditLimit: editData.creditLimit || "",
       });
     }
@@ -65,7 +74,9 @@ function CustomerFormModal({ onClose, onSuccess, editData }) {
     try {
       const token = localStorage.getItem("token");
 
+      const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
       const payload = {
+        name: fullName,
         firstName: customer.firstName,
         lastName: customer.lastName,
         email: customer.email || null,
@@ -79,7 +90,7 @@ function CustomerFormModal({ onClose, onSuccess, editData }) {
         sameAsBilling: customer.sameAsBilling,
         openingBalance: customer.openingBalance || 0,
         balanceType: customer.balanceType || "receivable",
-        asOfDate: customer.asOfDate || null,
+        asOfDate: customer.asOfDate ? customer.asOfDate.split('T')[0] : null,
         creditLimit: customer.creditLimit || null,
       };
 

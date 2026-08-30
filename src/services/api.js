@@ -320,3 +320,15 @@ export const staffManagementAPI = {
   savePayrollDraft: (data) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_SAVE_DRAFT, HTTP_METHODS.POST, data),
   processPayment: (paymentData) => apiRequest(API_ENDPOINTS.STAFF_MGMT.PAYROLL_PAY, HTTP_METHODS.POST, paymentData),
 };
+
+// ========== SERVICE JOB PAYMENTS API ==========
+export const servicePaymentsAPI = {
+  getAll: () => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.GET_ALL, HTTP_METHODS.GET),
+  getLedger: () => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.GET_LEDGER, HTTP_METHODS.GET),
+  getServiceLedgerEntries: (params) => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.LEDGER_ENTRIES, HTTP_METHODS.GET, null, params),
+  getServiceLedgerSummary: (params) => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.LEDGER_SUMMARY, HTTP_METHODS.GET, null, params),
+  getByJob: (jobId) => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.BY_JOB(jobId), HTTP_METHODS.GET),
+  create: (jobId, data) => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.CREATE(jobId), HTTP_METHODS.POST, data),
+  update: (id, data) => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.UPDATE(id), HTTP_METHODS.PUT, data),
+  remove: (id) => apiRequest(API_ENDPOINTS.SERVICE_PAYMENTS.DELETE(id), HTTP_METHODS.DELETE),
+};

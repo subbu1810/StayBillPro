@@ -34,6 +34,7 @@ export default function UsersRolesScreen() {
 		{ id: 'jobs-new', label: 'Create New Job', icon: '➕', group: 'Service Jobs' },
 		{ id: 'jobs-calendar', label: 'Service Calendar', icon: '📅', group: 'Service Jobs' },
 		{ id: 'jobs-invoicing', label: 'Invoicing Hub', icon: '🧾', group: 'Service Jobs' },
+		{ id: 'jobs-payments', label: 'Payments', icon: '💰', group: 'Service Jobs' },
 		
 		// Store Stock
 		{ id: 'inventory-sales-stock', label: 'Current Stock', icon: '📦', group: 'Store Stock' },
@@ -92,6 +93,7 @@ export default function UsersRolesScreen() {
 		
 		// Accounting
 		{ id: 'accounting-ledger', label: 'Ledger & Cashbook', icon: '⚖️', group: 'Accounting Hub' },
+		{ id: 'accounting-service-ledger', label: 'Service Cashbook', icon: '🛠️', group: 'Accounting Hub' },
 		{ id: 'accounting-gst', label: 'GST Filling Report', icon: '📜', group: 'Accounting Hub' },
 		{ id: 'accounting-expenses', label: 'Business Expenses', icon: '💸', group: 'Accounting Hub' },
 		{ id: 'accounting-pl', label: 'Profit & Loss', icon: '📈', group: 'Accounting Hub' },

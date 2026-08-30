@@ -489,7 +489,7 @@
 /* Main Content Area */
 .admin-content {
 	flex: 1;
-	padding: 8px;
+	padding: 0;
 	overflow-y: auto;
 	scroll-behavior: smooth;
 }

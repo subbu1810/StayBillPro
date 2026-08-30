@@ -125,6 +125,18 @@ export const API_ENDPOINTS = {
     DELETE: (id) => `${API_BASE_URL}/customers/${id}`,
   },
 
+  // Service Job Payments
+  SERVICE_PAYMENTS: {
+    GET_ALL: `${API_BASE_URL}/service-payments`,
+    GET_LEDGER: `${API_BASE_URL}/service-payments/ledger`,
+    LEDGER_ENTRIES: `${API_BASE_URL}/service-payments/ledger-entries`,
+    LEDGER_SUMMARY: `${API_BASE_URL}/service-payments/ledger-summary`,
+    BY_JOB: (jobId) => `${API_BASE_URL}/service-payments/job/${jobId}`,
+    CREATE: (jobId) => `${API_BASE_URL}/service-payments/job/${jobId}`,
+    UPDATE: (id) => `${API_BASE_URL}/service-payments/${id}`,
+    DELETE: (id) => `${API_BASE_URL}/service-payments/${id}`,
+  },
+
   // Payment
   PAYMENT: {
     CREATE_ORDER: `${API_BASE_URL}/payment/create-order`,

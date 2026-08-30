@@ -51,7 +51,7 @@ exports.addEntry = async (req, res) => {
     
     const adminId = req.user.id;
 
-    if (!branch_id || !account_type || !transaction_type || !amount) {
+    if (!account_type || !transaction_type || amount === undefined || amount === null || amount === '') {
         return res.status(400).json({ message: 'Missing required fields' });
     }
 

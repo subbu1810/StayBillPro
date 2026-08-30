@@ -25,14 +25,7 @@ export default function InvoicingScreen() {
 
 	return (
 		<div className="admin-screen fade-in">
-			<div className="screen-header">
-				<div>
-					<h2 className="section-title">
-						<span className="title-icon">🧾</span> Invoices & Estimates
-					</h2>
-					<p className="dashboard-subtitle">Generate final repair bills and track payment statuses.</p>
-				</div>
-			</div>
+
 
 			<div className="table-wrapper" style={{ marginTop: '24px' }}>
 				{loading ? (

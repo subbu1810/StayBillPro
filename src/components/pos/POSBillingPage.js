@@ -136,6 +136,20 @@ export default function POSBillingPage({ mode = 'billing' }) {
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const [showHeldCartsModal, setShowHeldCartsModal] = useState(false);
+  const [heldCarts, setHeldCarts] = useState([]);
+
+  useEffect(() => {
+    const storedHeldCarts = localStorage.getItem('pos_held_carts');
+    if (storedHeldCarts) {
+      try {
+        setHeldCarts(JSON.parse(storedHeldCarts));
+      } catch (err) {
+        console.error('Failed to parse held carts:', err);
+      }
+    }
+  }, []);
+
   const toggleFullscreen = () => {
     const elem = document.querySelector('.pos-wrapper');
     if (!document.fullscreenElement) {
@@ -774,6 +788,60 @@ export default function POSBillingPage({ mode = 'billing' }) {
     }
   };
 
+  const handleHoldCart = () => {
+    if (cart.length === 0) {
+      showToast('Cannot hold an empty cart.', 'error');
+      return;
+    }
+
+    const newHeldCart = {
+      id: Date.now(),
+      date: new Date().toLocaleString(),
+      cart,
+      customer: selectedCustomer || (customerName ? { name: customerName, phone: customerPhone } : { name: 'Walk-in Customer' }),
+      discount,
+      notes,
+    };
+
+    const updatedCarts = [...heldCarts, newHeldCart];
+    setHeldCarts(updatedCarts);
+    localStorage.setItem('pos_held_carts', JSON.stringify(updatedCarts));
+
+    setCart([]);
+    setSelectedCustomer(null);
+    setCustomerName('');
+    setCustomerPhone('');
+    setDiscount('');
+    setNotes('');
+    showToast('Cart put on hold.', 'success');
+  };
+
+  const resumeHeldCart = (heldCart) => {
+    setCart(heldCart.cart || []);
+    if (heldCart.customer && heldCart.customer.name !== 'Walk-in Customer') {
+      setSelectedCustomer(heldCart.customer);
+      setCustomerName(heldCart.customer.name || '');
+      setCustomerPhone(heldCart.customer.phone || '');
+    } else {
+      setSelectedCustomer(null);
+      setCustomerName('');
+      setCustomerPhone('');
+    }
+    setDiscount(heldCart.discount || '');
+    setNotes(heldCart.notes || '');
+
+    const updatedCarts = heldCarts.filter(c => c.id !== heldCart.id);
+    setHeldCarts(updatedCarts);
+    localStorage.setItem('pos_held_carts', JSON.stringify(updatedCarts));
+    setShowHeldCartsModal(false);
+  };
+
+  const deleteHeldCart = (cartId) => {
+    const updatedCarts = heldCarts.filter(c => c.id !== cartId);
+    setHeldCarts(updatedCarts);
+    localStorage.setItem('pos_held_carts', JSON.stringify(updatedCarts));
+  };
+
   const showToast = (message, type) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -1199,11 +1267,15 @@ export default function POSBillingPage({ mode = 'billing' }) {
 
             {/* BUTTONS */}
 
-            <div className="actions">
+            <div className="actions" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '10px' }}>
 
-              <button className="hold-btn">
+              <button className="hold-btn" onClick={handleHoldCart}>
                 <PauseCircle size={18} />
                 Hold
+              </button>
+
+              <button className="hold-btn" onClick={() => setShowHeldCartsModal(true)} style={{ background: '#f1f5f9', color: '#0f172a' }}>
+                Held ({heldCarts.length})
               </button>
 
               <button
@@ -1374,6 +1446,46 @@ export default function POSBillingPage({ mode = 'billing' }) {
                   {addingCustomer ? 'Saving...' : 'Save Customer'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HELD CARTS MODAL */}
+      {showHeldCartsModal && (
+        <div className="modal-overlay">
+          <div className="payment-modal" style={{ maxWidth: '600px', width: '90%', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '8px' }}>
+            <div className="modal-header">
+              <h2>Held Carts</h2>
+              <button onClick={() => setShowHeldCartsModal(false)}>×</button>
+            </div>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '60vh', overflowY: 'auto' }}>
+              {heldCarts.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#64748b' }}>No held carts available.</div>
+              ) : (
+                heldCarts.map((c) => (
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#0f172a' }}>{c.customer?.name || 'Walk-in Customer'}</div>
+                      <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>{c.date} • {c.cart?.length || 0} items</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button 
+                        onClick={() => deleteHeldCart(c.id)}
+                        style={{ padding: '8px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        Delete
+                      </button>
+                      <button 
+                        onClick={() => resumeHeldCart(c)}
+                        style={{ padding: '8px 12px', background: '#e0f2fe', color: '#0284c7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        Resume
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

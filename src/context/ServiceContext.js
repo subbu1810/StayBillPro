@@ -160,7 +160,15 @@ export function ServiceProvider({ children, isAuthenticated }) {
 
 	const addJob = useCallback(async (jobData) => {
 		const now = new Date();
-		const jobNumber = `JOB-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${now.getTime()}`;
+		// Generate sequential ticket number: SRV01, SRV02, ...
+		const existingJobs = jobs || [];
+		let maxSrv = 0;
+		existingJobs.forEach(j => {
+			const m = (j.ticketNo || j.job_number || '').match(/^SRV(\d+)$/i);
+			if (m) maxSrv = Math.max(maxSrv, parseInt(m[1], 10));
+		});
+		const jobNumber = `SRV${String(maxSrv + 1).padStart(2, '0')}`;
+
 		const visitDateTime = jobData?.visitDate
 			? new Date(`${jobData.visitDate}T${jobData.visitTime || '00:00'}:00`)
 			: now;
@@ -180,14 +188,33 @@ export function ServiceProvider({ children, isAuthenticated }) {
 			Inspection: 'inspection',
 			Other: 'other',
 		};
-		const warrantyStatusMap = {
-			yes: 'active',
-			no: 'expired',
-			unknown: 'unknown',
-		};
 
+		// Fetch or create customer
+		let customerId = null;
+		try {
+			// First search for customer by mobile
+			const customersResp = await customersAPI.getAll({ branch_id: selectedBranchId });
+			let customer = (customersResp || []).find(c => c.mobile === jobData.mobile);
+			
+			if (!customer) {
+				// Create new customer
+				const newCustomer = await customersAPI.create({
+					name: jobData.customerName,
+					mobile: jobData.mobile,
+					email: jobData.email || '',
+					billingAddress: [jobData.address1, jobData.address2, jobData.city, jobData.pincode].filter(Boolean).join(', ') || null,
+					branch_id: selectedBranchId
+				});
+				customerId = newCustomer.id || newCustomer.insertId || null;
+			} else {
+				customerId = customer.id;
+			}
+		} catch (e) {
+			console.error("Failed to associate customer", e);
+		}
 
 		const serviceRequestPayload = {
+			customer_id: customerId,
 			appliance_id: Number(jobData.productId),
 			issue_description: jobData.problemDescription || jobData.problemType || '',
 			service_date: scheduledDateIso,
@@ -247,6 +274,7 @@ export function ServiceProvider({ children, isAuthenticated }) {
 			labor_cost: updates.labor_cost,
 			parts_cost: updates.parts_cost,
 			total_cost: updates.total_cost,
+			location: updates.address,
 		};
 		await jobsAPI.update(jobId, jobUpdates);
 
@@ -261,17 +289,28 @@ export function ServiceProvider({ children, isAuthenticated }) {
 			}
 		}
 
+		const customerId = currentJob.service_request?.appliance?.customer_id;
+
 		// 3. Update Appliance if fields provided
 		if (applianceId) {
 			const applianceUpdates = {};
-			if (updates.customerName) applianceUpdates.customer_name = updates.customerName;
-			if (updates.customerMobile) applianceUpdates.phone = updates.customerMobile;
-			if (updates.address) applianceUpdates.location = updates.address;
 			if (updates.model) applianceUpdates.model = updates.model;
 			if (updates.serial) applianceUpdates.serial_number = updates.serial;
 			if (updates.warranty) applianceUpdates.warranty_status = updates.warranty;
 			if (Object.keys(applianceUpdates).length > 0) {
 				await appliancesAPI.update(applianceId, applianceUpdates);
+			}
+		}
+        
+		// 4. Update Customer if fields provided
+		if (customerId) {
+			const customerUpdates = {};
+			if (updates.customerName) customerUpdates.name = updates.customerName;
+			if (updates.customerMobile) customerUpdates.mobile = updates.customerMobile;
+			// We handle address update on the job location (in 1. Update Job), but we can also update customer billingAddress
+			if (updates.address) customerUpdates.billingAddress = updates.address;
+			if (Object.keys(customerUpdates).length > 0) {
+				await customersAPI.update(customerId, customerUpdates);
 			}
 		}
 
