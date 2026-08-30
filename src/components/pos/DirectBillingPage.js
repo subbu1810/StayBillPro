@@ -935,8 +935,7 @@ export default function DirectBillingPage() {
                             </span>
                           )}
                         </div>
-                      ))
-                    )}
+                      ))}
                   </div>
                 )}
               </div>
