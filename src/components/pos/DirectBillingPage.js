@@ -873,8 +873,8 @@ export default function DirectBillingPage() {
                   )}
                 </div>
 
-                {/* Dropdown Results */}
-                {showCustDropdown && (
+                {/* Dropdown Results - Only visible if there are matching customers or clicking on empty input */}
+                {showCustDropdown && (!custSearch.trim() || filteredCustomers.length > 0) && (
                   <div style={{
                     position: 'absolute',
                     top: '100%',
@@ -889,29 +889,26 @@ export default function DirectBillingPage() {
                     zIndex: 1000,
                     boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)'
                   }}>
-                    <div
-                      onClick={() => handleSelectCustomer(null)}
-                      style={{
-                        padding: '9px 12px',
-                        cursor: 'pointer',
-                        fontSize: '0.82rem',
-                        fontWeight: 'bold',
-                        borderBottom: '1px solid #f1f5f9',
-                        color: '#64748b',
-                        backgroundColor: '#f8fafc',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <span>👤</span> Walk-in Customer (General)
-                    </div>
-                    {filteredCustomers.length === 0 ? (
-                      <div style={{ padding: '9px 12px', fontSize: '0.78rem', color: '#94a3b8' }}>
-                        No saved customer matches. Typed name will be used.
+                    {!custSearch.trim() && (
+                      <div
+                        onClick={() => handleSelectCustomer(null)}
+                        style={{
+                          padding: '9px 12px',
+                          cursor: 'pointer',
+                          fontSize: '0.82rem',
+                          fontWeight: 'bold',
+                          borderBottom: '1px solid #f1f5f9',
+                          color: '#64748b',
+                          backgroundColor: '#f8fafc',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <span>👤</span> Walk-in Customer (General)
                       </div>
-                    ) : (
-                      filteredCustomers.slice(0, 15).map(c => (
+                    )}
+                    {filteredCustomers.slice(0, 15).map(c => (
                         <div
                           key={c.id}
                           onClick={() => handleSelectCustomer(c)}
