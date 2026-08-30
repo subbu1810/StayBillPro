@@ -470,21 +470,21 @@ export default function DirectBillingPage() {
   };
 
   return (
-    <div className="direct-billing-container" style={{ padding: '24px', background: '#f8fafc', minHeight: '100%', overflowY: 'auto' }}>
+    <div className="direct-billing-container" style={{ padding: '8px 12px', background: '#f8fafc', minHeight: '100%', overflowY: 'auto' }}>
       
       {/* Header Banner */}
       <div style={{
         background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
-        borderRadius: '16px',
-        padding: '22px 28px',
+        borderRadius: '12px',
+        padding: '14px 20px',
         color: '#fff',
-        marginBottom: '24px',
+        marginBottom: '14px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 10px 25px -5px rgba(20, 184, 166, 0.3)'
+        boxShadow: '0 4px 15px -3px rgba(20, 184, 166, 0.25)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             background: 'rgba(255, 255, 255, 0.2)',
             padding: '12px',

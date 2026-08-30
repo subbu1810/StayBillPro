@@ -745,7 +745,7 @@
 /* Ensure inner screens have dedicated padding and no overlap with tabs */
 .admin-content {
 	flex: 1;
-	padding: 20px;
+	padding: 10px 14px;
 	overflow-y: auto;
 	scroll-behavior: smooth;
 	background: var(--bg-light);
