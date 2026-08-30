@@ -314,7 +314,8 @@ export default function AdminPanel({ onLogout }) {
 			else title = `Report: ${finalSubScreen || 'Sales'}`;
 		}
 		if (screen === 'pos') {
-			if (finalSubScreen === 'billing') title = 'POS: Quick Sale';
+			if (finalSubScreen === 'billing') title = 'POS: Counter Sale';
+			if (finalSubScreen === 'direct') title = '⚡ Direct Open Bill';
 			if (finalSubScreen === 'wholesale') title = 'Wholesale Billing';
 			if (finalSubScreen === 'returns') title = 'POS: Returns & Refunds';
 			else title = `POS: ${finalSubScreen || 'Sale'}`;
@@ -528,6 +529,14 @@ export default function AdminPanel({ onLogout }) {
 									onClick={() => handleScreenChange('pos', 'billing')}
 								>
 									<span>💳</span> POS
+								</button>
+							)}
+							{(hasPermission('pos-direct') || hasPermission('pos-billing')) && (
+								<button
+									className={`sub-nav-item ${currentScreen === 'pos' && currentSubScreen === 'direct' ? 'active' : ''}`}
+									onClick={() => handleScreenChange('pos', 'direct')}
+								>
+									<span>⚡</span> Direct Bill (Open)
 								</button>
 							)}
 							{hasPermission('pos-quotation') && (

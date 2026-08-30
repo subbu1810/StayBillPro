@@ -27,6 +27,7 @@ const StaffScreen = ({ defaultTab = 'manage' }) => {
 
         // Sales (POS)
         { id: 'pos-billing', label: 'POS', icon: '💳', group: 'Sales (POS)' },
+        { id: 'pos-direct', label: 'Direct Bill (Open)', icon: '⚡', group: 'Sales (POS)' },
         { id: 'pos-wholesale', label: 'Wholesale Bill', icon: '📦', group: 'Sales (POS)' },
         { id: 'pos-returns', label: 'Returns & Refunds', icon: '↩️', group: 'Sales (POS)' },
         { id: 'invoice-history', label: 'POS History', icon: '📋', group: 'Sales (POS)' },

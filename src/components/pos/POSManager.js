@@ -1,6 +1,7 @@
 import React from 'react';
 import '../../styles/pos/POSTokens.css';
 import POSBillingPage from './POSBillingPage';
+import DirectBillingPage from './DirectBillingPage';
 import WholesaleBillingPage from './WholesaleBillingPage';
 import InvoiceHistoryPage from './InvoiceHistoryPage';
 import ReturnsRefundPage from './ReturnsRefundPage';
@@ -17,6 +18,7 @@ export default function POSManager({ activeTab = 'billing' }) {
   const renderContent = () => {
     switch (activeTab) {
       case 'billing': return <POSBillingPage />;
+      case 'direct': return <DirectBillingPage />;
       case 'wholesale': return <WholesaleBillingPage />;
       case 'history': return <InvoiceHistoryPage />;
       case 'returns': return <ReturnsRefundPage />;
