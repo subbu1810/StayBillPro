@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Zap, 
   Receipt, 
@@ -6,7 +6,6 @@ import {
   Phone, 
   CreditCard, 
   Printer, 
-  CheckCircle2, 
   Plus, 
   RotateCcw,
   QrCode,
@@ -14,12 +13,15 @@ import {
   Hash,
   Sparkles,
   Percent,
-  FileCheck,
   Building2,
   Wallet,
   Smartphone,
   CreditCard as CardIcon,
-  Clock
+  Clock,
+  Search,
+  Check,
+  UserCheck,
+  AlertCircle
 } from 'lucide-react';
 import API_BASE from '../../config/serverConfig';
 import { usePopup } from '../ui/PopupProvider';
@@ -38,9 +40,16 @@ const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 export default function DirectBillingPage() {
   const popup = usePopup();
 
-  // Basic Form State
+  // Customer Management & Auto-complete
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [custSearch, setCustSearch] = useState('');
+  const [showCustDropdown, setShowCustDropdown] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const custDropdownRef = useRef(null);
+
+  // Bill Config
   const [isCustomBillNo, setIsCustomBillNo] = useState(false);
   const [customBillNo, setCustomBillNo] = useState('');
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
@@ -68,7 +77,7 @@ export default function DirectBillingPage() {
   const [loading, setLoading] = useState(false);
   const [lastBill, setLastBill] = useState(null);
 
-  // Load Business info & saved UPI accounts from localStorage
+  // Load Customers, Business info & saved UPI accounts
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('adminUser');
@@ -85,6 +94,22 @@ export default function DirectBillingPage() {
     } catch (e) {
       console.error(e);
     }
+
+    const fetchCustomersList = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE}/customers`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const list = Array.isArray(data) ? data : (data.customers || []);
+          setCustomers(list);
+        }
+      } catch (err) {
+        console.error('Failed to load customers:', err);
+      }
+    };
 
     const fetchBranchAndPosSettings = async () => {
       try {
@@ -116,7 +141,19 @@ export default function DirectBillingPage() {
       }
     };
 
+    fetchCustomersList();
     fetchBranchAndPosSettings();
+  }, []);
+
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (custDropdownRef.current && !custDropdownRef.current.contains(e.target)) {
+        setShowCustDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Calculation breakdown
@@ -126,6 +163,21 @@ export default function DirectBillingPage() {
   const taxRate = parseFloat(taxPercent) || 0;
   const calculatedTax = (baseTaxable * taxRate) / 100;
   const grandTotal = Math.round((baseTaxable + calculatedTax) * 100) / 100;
+
+  const handleSelectCustomer = (c) => {
+    if (!c) {
+      setSelectedCustomer(null);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustSearch('');
+    } else {
+      setSelectedCustomer(c);
+      setCustomerName(c.name || '');
+      setCustomerPhone(c.phone || '');
+      setCustSearch(c.name || '');
+    }
+    setShowCustDropdown(false);
+  };
 
   const handleAddNewUpiAccount = (e) => {
     e.preventDefault();
@@ -150,8 +202,10 @@ export default function DirectBillingPage() {
   };
 
   const handleResetForm = () => {
+    setSelectedCustomer(null);
     setCustomerName('');
     setCustomerPhone('');
+    setCustSearch('');
     setIsCustomBillNo(false);
     setCustomBillNo('');
     setDescription('Counter Sale / General Purchase');
@@ -173,6 +227,11 @@ export default function DirectBillingPage() {
 
     if (rawAmt <= 0) {
       popup.showError('Please enter a valid bill amount greater than 0');
+      return;
+    }
+
+    if (paymentMode === 'credit' && !customerName.trim() && !selectedCustomer) {
+      popup.showError('Please select or enter a Customer Name to record a Credit / Due bill');
       return;
     }
 
@@ -198,8 +257,9 @@ export default function DirectBillingPage() {
         : `DB-${Date.now().toString().slice(-6)}`;
 
       const payload = {
-        customerName: customerName.trim() || 'Walk-in Customer',
-        customerPhone: customerPhone.trim() || '',
+        customerId: selectedCustomer ? selectedCustomer.id : null,
+        customerName: customerName.trim() || (selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'),
+        customerPhone: customerPhone.trim() || (selectedCustomer ? selectedCustomer.phone : ''),
         items: [
           {
             id: null,
@@ -215,7 +275,7 @@ export default function DirectBillingPage() {
         paymentMethod: paymentMode,
         invoiceType: 'pos',
         customInvoiceNo: finalBillNumber,
-        notes: `[Direct Bill] ${paymentMode.toUpperCase()}${chosenAccountLabel ? ` - ${chosenAccountLabel}` : ''}${notes ? ` | ${notes}` : ''}`
+        notes: `[Direct Bill] ${paymentMode.toUpperCase()}${chosenAccountLabel ? ` - ${chosenAccountLabel}` : ''}${paymentMode === 'credit' ? ' [CREDIT DUE]' : ''}${notes ? ` | ${notes}` : ''}`
       };
 
       const res = await fetch(`${API_BASE}/billing`, {
@@ -236,8 +296,9 @@ export default function DirectBillingPage() {
       const billData = {
         invoiceNumber: isCustomBillNo ? finalBillNumber : (data.invoiceId ? `POSINV${String(data.invoiceId).padStart(2, '0')}` : finalBillNumber),
         date: billDate,
-        customerName: customerName.trim() || 'Walk-in Customer',
-        customerPhone: customerPhone.trim() || '',
+        customerName: customerName.trim() || (selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'),
+        customerPhone: customerPhone.trim() || (selectedCustomer ? selectedCustomer.phone : ''),
+        customerId: selectedCustomer ? selectedCustomer.id : null,
         description: description.trim() || 'Direct Counter Sale',
         amount: rawAmt,
         discount: discAmt,
@@ -250,7 +311,12 @@ export default function DirectBillingPage() {
       };
 
       setLastBill(billData);
-      popup.showSuccess(`Bill #${billData.invoiceNumber} recorded successfully!`);
+      
+      if (paymentMode === 'credit') {
+        popup.showSuccess(`Bill #${billData.invoiceNumber} recorded as CREDIT DUE on ${billData.customerName}'s account balance!`);
+      } else {
+        popup.showSuccess(`Bill #${billData.invoiceNumber} recorded & received in ${paymentMode.toUpperCase()}!`);
+      }
 
       // Trigger Print
       printDirectBill(billData);
@@ -285,7 +351,7 @@ export default function DirectBillingPage() {
             .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px; }
             .shop-title { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }
             .meta-box { text-align: right; }
-            .invoice-tag { font-size: 18px; font-weight: 800; color: #0d9488; margin: 0 0 4px 0; }
+            .invoice-tag { font-size: 18px; font-weight: 800; color: ${bill.paymentMode === 'credit' ? '#d97706' : '#0d9488'}; margin: 0 0 4px 0; }
             .cust-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 12px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
@@ -307,10 +373,10 @@ export default function DirectBillingPage() {
               <p style="margin: 2px 0; color: #64748b; font-size: 13px;">Tel: ${branchDetails.phone || '—'}</p>
             </div>
             <div class="meta-box">
-              <div class="invoice-tag">RETAIL BILL / RECEIPT</div>
+              <div class="invoice-tag">${bill.paymentMode === 'credit' ? 'CREDIT BILL (UNPAID)' : 'RETAIL BILL / RECEIPT'}</div>
               <p style="margin: 2px 0;"><strong>Bill No:</strong> ${bill.invoiceNumber}</p>
               <p style="margin: 2px 0;"><strong>Date:</strong> ${bill.date}</p>
-              <p style="margin: 2px 0;"><strong>Payment:</strong> <span style="text-transform: uppercase; color: #0d9488; font-weight: bold;">${bill.paymentMode}</span></p>
+              <p style="margin: 2px 0;"><strong>Payment:</strong> <span style="text-transform: uppercase; color: ${bill.paymentMode === 'credit' ? '#d97706' : '#0d9488'}; font-weight: bold;">${bill.paymentMode === 'credit' ? 'DUE / CREDIT' : bill.paymentMode}</span></p>
               ${bill.upiAccount ? `<p style="margin: 2px 0; font-size: 12px; color: #64748b;">A/C: ${bill.upiAccount}</p>` : ''}
             </div>
           </div>
@@ -362,7 +428,7 @@ export default function DirectBillingPage() {
                 </tr>
               ` : ''}
               <tr class="grand-total">
-                <td>Grand Total:</td>
+                <td>${bill.paymentMode === 'credit' ? 'Credit Due Amount:' : 'Grand Total:'}</td>
                 <td style="text-align: right; font-weight: 800; color: #0f172a;">₹${bill.total.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
               </tr>
             </table>
@@ -422,7 +488,7 @@ export default function DirectBillingPage() {
           </div>
           ${bill.customerPhone ? `<div class="row"><span>Ph: ${bill.customerPhone}</span></div>` : ''}
           <div class="row">
-            <span>Mode: <strong style="text-transform: uppercase;">${bill.paymentMode}</strong></span>
+            <span>Status: <strong style="text-transform: uppercase;">${bill.paymentMode === 'credit' ? '*** CREDIT DUE ***' : bill.paymentMode}</strong></span>
           </div>
           ${bill.upiAccount ? `<div style="font-size: 10px; color: #444;">A/C: ${bill.upiAccount}</div>` : ''}
 
@@ -453,14 +519,14 @@ export default function DirectBillingPage() {
           ` : ''}
 
           <div class="row large" style="margin-top: 4px;">
-            <span>TOTAL:</span>
+            <span>${bill.paymentMode === 'credit' ? 'DUE AMOUNT:' : 'TOTAL:'}</span>
             <span>₹${bill.total.toFixed(2)}</span>
           </div>
 
           <div class="divider"></div>
 
           <div class="footer">
-            <div>Thank You! Visit Again</div>
+            <div>${bill.paymentMode === 'credit' ? 'Credit Recorded on Account' : 'Thank You! Visit Again'}</div>
           </div>
           <script>window.onload = function() { window.print(); };</script>
         </body>
@@ -472,6 +538,12 @@ export default function DirectBillingPage() {
     printWin.document.write(receiptHtml);
     printWin.document.close();
   };
+
+  const filteredCustomers = customers.filter(c => {
+    if (!custSearch.trim()) return true;
+    const q = custSearch.toLowerCase();
+    return (c.name && c.name.toLowerCase().includes(q)) || (c.phone && c.phone.includes(q));
+  });
 
   return (
     <div style={{
@@ -515,7 +587,7 @@ export default function DirectBillingPage() {
               </span>
             </div>
             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              Quick open billing without catalog selection
+              Quick direct billing with customer credit & multi-bank ledger integration
             </div>
           </div>
         </div>
@@ -654,7 +726,7 @@ export default function DirectBillingPage() {
             {/* Item Particulars / Title */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
-                Item / Service Particulars (Shown on Printed Receipt)
+                Item / Service Particulars (Printed on Receipt)
               </label>
               <input
                 type="text"
@@ -725,7 +797,7 @@ export default function DirectBillingPage() {
             </div>
           </div>
 
-          {/* STEP 2: Customer & Bill Mode Card */}
+          {/* STEP 2: Customer Selection (Searchable Database + Walk-in) & Invoice Mode */}
           <div style={{
             background: '#ffffff',
             borderRadius: '12px',
@@ -735,7 +807,7 @@ export default function DirectBillingPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <User size={15} color="#0d9488" /> Customer & Invoice Number
+                <User size={15} color="#0d9488" /> Customer Details & Credit Balance
               </span>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 700, color: '#0d9488', cursor: 'pointer' }}>
                 <input
@@ -748,33 +820,138 @@ export default function DirectBillingPage() {
               </label>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isCustomBillNo ? '1fr 1fr 1fr' : '1.2fr 1fr', gap: '12px' }}>
-              <div>
+            {/* Customer Search Auto-Suggest Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: isCustomBillNo ? '1.4fr 1fr 1fr' : '1.5fr 1fr', gap: '12px', position: 'relative' }} ref={custDropdownRef}>
+              
+              {/* Searchable Customer Input */}
+              <div style={{ position: 'relative' }}>
                 <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
-                  Customer Name
+                  Customer Name / Search Database
                 </label>
-                <input
-                  type="text"
-                  placeholder="Walk-in Customer"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Search existing customer (or type name)..."
+                    value={selectedCustomer ? selectedCustomer.name : custSearch || customerName}
+                    onChange={(e) => {
+                      setSelectedCustomer(null);
+                      setCustSearch(e.target.value);
+                      setCustomerName(e.target.value);
+                      setShowCustDropdown(true);
+                    }}
+                    onFocus={() => setShowCustDropdown(true)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 30px 8px 12px',
+                      borderRadius: '8px',
+                      border: selectedCustomer ? '1.5px solid #0d9488' : '1.5px solid #cbd5e1',
+                      background: selectedCustomer ? '#f0fdfa' : '#fff',
+                      fontSize: '0.85rem',
+                      fontWeight: selectedCustomer ? 700 : 500
+                    }}
+                  />
+                  {selectedCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCustomer(null)}
+                      title="Clear selection"
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown Results */}
+                {showCustDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#ffffff',
                     border: '1.5px solid #cbd5e1',
-                    fontSize: '0.85rem'
-                  }}
-                />
+                    borderRadius: '8px',
+                    marginTop: '4px',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)'
+                  }}>
+                    <div
+                      onClick={() => handleSelectCustomer(null)}
+                      style={{
+                        padding: '9px 12px',
+                        cursor: 'pointer',
+                        fontSize: '0.82rem',
+                        fontWeight: 'bold',
+                        borderBottom: '1px solid #f1f5f9',
+                        color: '#64748b',
+                        backgroundColor: '#f8fafc',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>👤</span> Walk-in Customer (General)
+                    </div>
+                    {filteredCustomers.length === 0 ? (
+                      <div style={{ padding: '9px 12px', fontSize: '0.78rem', color: '#94a3b8' }}>
+                        No saved customer matches. Typed name will be used.
+                      </div>
+                    ) : (
+                      filteredCustomers.slice(0, 15).map(c => (
+                        <div
+                          key={c.id}
+                          onClick={() => handleSelectCustomer(c)}
+                          style={{
+                            padding: '9px 12px',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem',
+                            borderBottom: '1px solid #f1f5f9',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            transition: 'background 0.1s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0fdfa'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                        >
+                          <div>
+                            <strong style={{ color: '#0f172a' }}>{c.name}</strong>
+                            {c.phone && <span style={{ color: '#64748b', marginLeft: '6px', fontSize: '0.76rem' }}>({c.phone})</span>}
+                          </div>
+                          {parseFloat(c.balance) > 0 && (
+                            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#dc2626', background: '#fef2f2', padding: '2px 6px', borderRadius: '4px' }}>
+                              Due: ₹{parseFloat(c.balance).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
+              {/* Phone Input */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
                   Mobile / Phone
                 </label>
                 <input
                   type="tel"
-                  placeholder="Optional phone"
+                  placeholder="Optional mobile"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   style={{
@@ -787,6 +964,7 @@ export default function DirectBillingPage() {
                 />
               </div>
 
+              {/* Custom Bill No Input */}
               {isCustomBillNo && (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#0d9488', marginBottom: '4px' }}>
@@ -810,6 +988,33 @@ export default function DirectBillingPage() {
                 </div>
               )}
             </div>
+
+            {/* Selected Customer Due Balance Info Pill */}
+            {selectedCustomer && (
+              <div style={{
+                marginTop: '10px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.78rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#334155' }}>
+                  <UserCheck size={14} color="#0d9488" />
+                  <span>Selected: <strong>{selectedCustomer.name}</strong></span>
+                  {selectedCustomer.city && <span style={{ color: '#64748b' }}>({selectedCustomer.city})</span>}
+                </div>
+                <div>
+                  <span style={{ color: '#64748b' }}>Current Account Due: </span>
+                  <strong style={{ color: parseFloat(selectedCustomer.balance) > 0 ? '#dc2626' : '#16a34a' }}>
+                    ₹{parseFloat(selectedCustomer.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </strong>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* STEP 3: Payment Modes & UPI Selector */}
@@ -824,6 +1029,11 @@ export default function DirectBillingPage() {
               <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Wallet size={15} color="#0d9488" /> Payment Mode & Settlement
               </span>
+              {paymentMode === 'credit' && (
+                <span style={{ fontSize: '0.74rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fef3c7', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                  ⏳ Credit Due Selected (No immediate cash/UPI received)
+                </span>
+              )}
             </div>
 
             {/* Mode selection buttons */}
@@ -832,17 +1042,18 @@ export default function DirectBillingPage() {
                 { id: 'cash', label: 'Cash', icon: Wallet, desc: 'Cash Register' },
                 { id: 'upi', label: 'UPI / QR', icon: Smartphone, desc: 'Multi-Account QR' },
                 { id: 'card', label: 'Card / POS', icon: CardIcon, desc: 'Card Swipe' },
-                { id: 'credit', label: 'Credit / Due', icon: Clock, desc: 'Customer Due' }
+                { id: 'credit', label: 'Credit / Due', icon: Clock, desc: 'Add to Customer Due' }
               ].map(m => {
                 const Icon = m.icon;
                 const isSelected = paymentMode === m.id;
+                const isCredit = m.id === 'credit';
                 return (
                   <div
                     key={m.id}
                     onClick={() => setPaymentMode(m.id)}
                     style={{
-                      border: isSelected ? '2px solid #0d9488' : '1px solid #cbd5e1',
-                      background: isSelected ? '#f0fdfa' : '#f8fafc',
+                      border: isSelected ? (isCredit ? '2px solid #d97706' : '2px solid #0d9488') : '1px solid #cbd5e1',
+                      background: isSelected ? (isCredit ? '#fffbeb' : '#f0fdfa') : '#f8fafc',
                       borderRadius: '8px',
                       padding: '10px 8px',
                       cursor: 'pointer',
@@ -850,17 +1061,38 @@ export default function DirectBillingPage() {
                       transition: 'all 0.15s'
                     }}
                   >
-                    <Icon size={18} color={isSelected ? '#0d9488' : '#64748b'} style={{ margin: '0 auto 4px auto', display: 'block' }} />
-                    <div style={{ fontWeight: 800, fontSize: '0.82rem', color: isSelected ? '#0d9488' : '#1e293b' }}>
+                    <Icon size={18} color={isSelected ? (isCredit ? '#d97706' : '#0d9488') : '#64748b'} style={{ margin: '0 auto 4px auto', display: 'block' }} />
+                    <div style={{ fontWeight: 800, fontSize: '0.82rem', color: isSelected ? (isCredit ? '#b45309' : '#0d9488') : '#1e293b' }}>
                       {m.label}
                     </div>
-                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.68rem', color: isSelected ? (isCredit ? '#92400e' : '#0f766e') : '#64748b', marginTop: '2px' }}>
                       {m.desc}
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* When CREDIT is selected, show helpful reminder */}
+            {paymentMode === 'credit' && (
+              <div style={{
+                background: '#fffbeb',
+                border: '1px solid #fef3c7',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '12px',
+                fontSize: '0.78rem',
+                color: '#92400e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertCircle size={16} color="#d97706" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Credit Bill:</strong> This amount (₹{grandTotal.toLocaleString()}) will automatically increase <strong>{customerName || (selectedCustomer ? selectedCustomer.name : 'the customer')}</strong>'s outstanding ledger balance. You can collect payment later in Customer Due / Receipts.
+                </span>
+              </div>
+            )}
 
             {/* Multi-UPI Account Selector (When UPI is selected) */}
             {paymentMode === 'upi' && (
@@ -929,7 +1161,7 @@ export default function DirectBillingPage() {
             <div>
               <input
                 type="text"
-                placeholder="Optional internal remark (e.g. Paid via GPay Ref #8291)"
+                placeholder="Optional internal remark (e.g. Paid via GPay Ref #8291 / Due for 15 days)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 style={{
@@ -973,8 +1205,15 @@ export default function DirectBillingPage() {
                 <Receipt size={16} color="#2dd4bf" />
                 <span style={{ fontWeight: 800, fontSize: '0.88rem' }}>Live Bill Receipt</span>
               </div>
-              <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.15)', padding: '2px 8px', borderRadius: '4px', color: '#e2e8f0' }}>
-                Print Ready
+              <span style={{
+                fontSize: '0.72rem',
+                background: paymentMode === 'credit' ? '#d97706' : 'rgba(255,255,255,0.15)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                color: '#fff',
+                fontWeight: 700
+              }}>
+                {paymentMode === 'credit' ? 'CREDIT BILL' : 'PRINT READY'}
               </span>
             </div>
 
@@ -1001,12 +1240,16 @@ export default function DirectBillingPage() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ color: '#64748b' }}>Customer:</span>
-                  <span>{customerName.trim() || 'Walk-in'}</span>
+                  <span style={{ fontWeight: selectedCustomer ? 700 : 500, color: selectedCustomer ? '#0f172a' : '#334155' }}>
+                    {customerName.trim() || (selectedCustomer ? selectedCustomer.name : 'Walk-in')}
+                  </span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span style={{ color: '#64748b' }}>Mode:</span>
-                  <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0d9488' }}>{paymentMode}</span>
+                  <span style={{ fontWeight: 800, textTransform: 'uppercase', color: paymentMode === 'credit' ? '#d97706' : '#0d9488' }}>
+                    {paymentMode === 'credit' ? 'CREDIT / DUE' : paymentMode}
+                  </span>
                 </div>
 
                 <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '6px' }}>
@@ -1039,8 +1282,12 @@ export default function DirectBillingPage() {
                   justifyContent: 'space-between',
                   alignItems: 'baseline'
                 }}>
-                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>TOTAL PAYABLE:</span>
-                  <span style={{ fontWeight: 900, fontSize: '1.25rem', color: '#0f766e' }}>₹{grandTotal.toFixed(2)}</span>
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
+                    {paymentMode === 'credit' ? 'TOTAL DUE:' : 'TOTAL PAYABLE:'}
+                  </span>
+                  <span style={{ fontWeight: 900, fontSize: '1.25rem', color: paymentMode === 'credit' ? '#d97706' : '#0f766e' }}>
+                    ₹{grandTotal.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1055,13 +1302,15 @@ export default function DirectBillingPage() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: '8px',
-                  background: rawAmt > 0 ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' : '#94a3b8',
+                  background: rawAmt > 0 
+                    ? (paymentMode === 'credit' ? 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' : 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)')
+                    : '#94a3b8',
                   color: '#fff',
                   border: 'none',
                   fontSize: '0.95rem',
                   fontWeight: 800,
                   cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
-                  boxShadow: rawAmt > 0 ? '0 4px 14px rgba(13, 148, 136, 0.4)' : 'none',
+                  boxShadow: rawAmt > 0 ? (paymentMode === 'credit' ? '0 4px 14px rgba(217, 119, 6, 0.4)' : '0 4px 14px rgba(13, 148, 136, 0.4)') : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1074,7 +1323,7 @@ export default function DirectBillingPage() {
                   'Processing...'
                 ) : (
                   <>
-                    <Printer size={17} /> Generate & Print Bill (₹{grandTotal.toFixed(2)})
+                    <Printer size={17} /> {paymentMode === 'credit' ? 'Generate Credit Bill' : 'Generate & Print Bill'} (₹{grandTotal.toFixed(2)})
                   </>
                 )}
               </button>
