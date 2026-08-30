@@ -1052,7 +1052,7 @@ export default function DirectBillingPage() {
               {[
                 { id: 'cash', label: 'Cash', icon: Wallet, desc: 'Cash Register' },
                 { id: 'upi', label: 'UPI / QR', icon: Smartphone, desc: 'Multi-Account QR' },
-                { id: 'card', label: 'Card / POS', icon: CardIcon, desc: 'Card Swipe' },
+                { id: 'bank', label: 'Bank Transfer', icon: Building2, desc: 'NEFT / RTGS / IMPS' },
                 { id: 'credit', label: 'Credit / Due', icon: Clock, desc: 'Add to Customer Due' }
               ].map(m => {
                 const Icon = m.icon;

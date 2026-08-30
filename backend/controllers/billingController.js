@@ -86,8 +86,8 @@ exports.createInvoice = async (req, res) => {
                 );
             }
 
-            // Record entry in ledger if paid via cash, upi, or card
-            if (['cash', 'upi', 'card'].includes(paymentMethod.toLowerCase())) {
+            // Record entry in ledger if paid via cash, upi, card, or bank transfer
+            if (['cash', 'upi', 'card', 'bank', 'bank_transfer'].includes(paymentMethod.toLowerCase())) {
                 const accountType = paymentMethod.toLowerCase() === 'cash' ? 'cash' : 'bank';
                 
                 // Get current balance
