@@ -1293,12 +1293,12 @@ export default function DirectBillingPage() {
             {/* Actions Card Footer */}
             <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               
-              {/* Dual Action Buttons: Side-by-Side */}
+              {/* Dual Action Buttons: Side-by-Side (Save Only Highlighted as Primary) */}
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
-                {/* Save & Print Bill */}
+                {/* Primary: Save Only (Highlighted Solid Fill) */}
                 <button
                   type="button"
-                  onClick={(e) => handleGenerateDirectBill(e, true)}
+                  onClick={(e) => handleGenerateDirectBill(e, false)}
                   disabled={loading || rawAmt <= 0}
                   style={{
                     padding: '12px 10px',
@@ -1308,7 +1308,7 @@ export default function DirectBillingPage() {
                       : '#94a3b8',
                     color: '#fff',
                     border: 'none',
-                    fontSize: '0.86rem',
+                    fontSize: '0.88rem',
                     fontWeight: 800,
                     cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
                     boxShadow: rawAmt > 0 ? (paymentMode === 'credit' ? '0 4px 14px rgba(217, 119, 6, 0.4)' : '0 4px 14px rgba(13, 148, 136, 0.4)') : 'none',
@@ -1321,18 +1321,18 @@ export default function DirectBillingPage() {
                   }}
                 >
                   {loading ? (
-                    'Processing...'
+                    'Saving...'
                   ) : (
                     <>
-                      <Printer size={16} /> {paymentMode === 'credit' ? 'Print Credit Bill' : 'Save & Print'} (₹{grandTotal.toFixed(2)})
+                      💾 {paymentMode === 'credit' ? 'Save Credit Bill' : 'Save Bill'} (₹{grandTotal.toFixed(2)})
                     </>
                   )}
                 </button>
 
-                {/* Save Bill (No Print) */}
+                {/* Secondary: Save & Print (Clean Outlined Style) */}
                 <button
                   type="button"
-                  onClick={(e) => handleGenerateDirectBill(e, false)}
+                  onClick={(e) => handleGenerateDirectBill(e, true)}
                   disabled={loading || rawAmt <= 0}
                   style={{
                     padding: '12px 10px',
@@ -1340,7 +1340,7 @@ export default function DirectBillingPage() {
                     background: rawAmt > 0 ? '#ffffff' : '#f8fafc',
                     color: rawAmt > 0 ? (paymentMode === 'credit' ? '#b45309' : '#0f766e') : '#94a3b8',
                     border: rawAmt > 0 ? (paymentMode === 'credit' ? '1.5px solid #d97706' : '1.5px solid #0d9488') : '1.5px solid #cbd5e1',
-                    fontSize: '0.85rem',
+                    fontSize: '0.84rem',
                     fontWeight: 700,
                     cursor: rawAmt > 0 && !loading ? 'pointer' : 'not-allowed',
                     display: 'flex',
@@ -1351,7 +1351,7 @@ export default function DirectBillingPage() {
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  💾 Save Only
+                  <Printer size={15} /> Save & Print
                 </button>
               </div>
 
