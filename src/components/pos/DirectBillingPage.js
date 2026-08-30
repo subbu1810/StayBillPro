@@ -310,15 +310,14 @@ export default function DirectBillingPage() {
         notes: notes.trim()
       };
 
-      setLastBill(billData);
-      
       if (paymentMode === 'credit') {
         popup.showSuccess(`Bill #${billData.invoiceNumber} saved as CREDIT DUE on ${billData.customerName}'s account!`);
       } else {
         popup.showSuccess(`Bill #${billData.invoiceNumber} saved & recorded successfully in ${paymentMode.toUpperCase()}!`);
       }
 
-      // Automatically clear and reset form fields for next sale
+      // Automatically clear and reset everything on screen for next sale
+      setLastBill(null);
       setSelectedCustomer(null);
       setCustomerName('');
       setCustomerPhone('');
