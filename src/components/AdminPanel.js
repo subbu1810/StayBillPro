@@ -510,7 +510,7 @@ export default function AdminPanel({ onLogout }) {
 				</div>
 
 				<nav className="sidebar-nav">
-					{(hasPermission('pos-billing') || hasPermission('pos-quotation') || hasPermission('pos-wholesale') || hasPermission('pos-returns') || hasPermission('invoice-history') || hasPermission('wholesale-history')) && (
+					{(hasPermission('pos-billing') || hasPermission('pos-direct') || hasPermission('pos-quotation') || hasPermission('pos-wholesale') || hasPermission('pos-returns') || hasPermission('invoice-history') || hasPermission('wholesale-history')) && (
 						<button
 							className={currentScreen === 'pos' || currentScreen === 'invoice-history' || currentScreen === 'wholesale-history' ? 'nav-item active' : 'nav-item'}
 							onClick={() => toggleGroup('pos')}
