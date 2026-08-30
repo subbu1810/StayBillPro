@@ -472,59 +472,55 @@ export default function DirectBillingPage() {
   return (
     <div className="direct-billing-container" style={{ padding: '8px 12px', background: '#f8fafc', minHeight: '100%', overflowY: 'auto' }}>
       
-      {/* Header Banner */}
+      {/* Header Banner - Compact Slim Design */}
       <div style={{
         background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)',
-        borderRadius: '12px',
-        padding: '14px 20px',
+        borderRadius: '8px',
+        padding: '8px 14px',
         color: '#fff',
-        marginBottom: '14px',
+        marginBottom: '10px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 4px 15px -3px rgba(20, 184, 166, 0.25)'
+        boxShadow: '0 2px 8px -2px rgba(20, 184, 166, 0.2)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
             background: 'rgba(255, 255, 255, 0.2)',
-            padding: '12px',
-            borderRadius: '12px',
-            backdropFilter: 'blur(8px)',
+            padding: '6px',
+            borderRadius: '6px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <Zap size={30} color="#fff" />
+            <Zap size={18} color="#fff" />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, letterSpacing: '0.3px' }}>
+            <h1 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, letterSpacing: '0.2px' }}>
               ⚡ Direct Open Billing (Quick Sale)
             </h1>
-            <p style={{ margin: '4px 0 0 0', opacity: 0.9, fontSize: '0.85rem' }}>
-              Generate fast counter bills with direct amount entry, custom bill numbers, and multi-UPI account tracking — zero inventory feeding needed!
-            </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             type="button"
             onClick={handleResetForm}
             style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
               color: '#fff',
-              padding: '8px 16px',
-              borderRadius: '8px',
+              padding: '5px 12px',
+              borderRadius: '6px',
               cursor: 'pointer',
               fontWeight: 700,
-              fontSize: '0.82rem',
+              fontSize: '0.78rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '4px'
             }}
           >
-            <RotateCcw size={15} /> Clear Form
+            <RotateCcw size={13} /> Clear Form
           </button>
         </div>
       </div>
