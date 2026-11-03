@@ -1,0 +1,1567 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 9555
+>>
+stream
+0.200025 w
+0 G
+0.06 0.09 0.16 rg
+0. 841.8899999999999864 595.2799999999999727 -90. re
+f
+0.15 0.39 0.92 rg
+0. 751.8899999999999864 595.2799999999999727 -4. re
+f
+BT
+/F2 20 Tf
+23. TL
+1. g
+40. 803.8899999999999864 Td
+(StayBillPro – Internship Project Dossier) Tj
+ET
+BT
+/F1 10.5 Tf
+12.0749999999999993 TL
+0.796 0.835 0.882 rg
+40. 785.8899999999999864 Td
+(Electronics Service Management & POS ERP System | S Square G Tech Solutions) Tj
+ET
+BT
+/F1 10.5 Tf
+12.0749999999999993 TL
+0.796 0.835 0.882 rg
+40. 769.8899999999999864 Td
+(Official Documentation of Intern Involvement, Project Scope & Technical Objectives) Tj
+ET
+0.97 0.98 0.99 rg
+0.89 0.91 0.94 RG
+1. w
+44. 723.8899999999999864 m
+551.2799999999999727 723.8899999999999864 l
+553.4891389993231314 723.8899999999999864 555.2799999999999727 722.0991389993231451 555.2799999999999727 719.8899999999999864 c
+555.2799999999999727 652.8899999999999864 l
+555.2799999999999727 650.6808610006768276 553.070861000676814 648.8899999999999864 551.2799999999999727 648.8899999999999864 c
+44. 648.8899999999999864 l
+41.7908610006768271 648.8899999999999864 40. 651.0991389993231451 40. 652.8899999999999864 c
+40. 719.8899999999999864 l
+40. 722.0991389993231451 42.2091389993231729 723.8899999999999864 44. 723.8899999999999864 c
+h
+B
+BT
+/F2 10.5 Tf
+12.0749999999999993 TL
+0.118 0.161 0.231 rg
+52. 705.8899999999999864 Td
+(Project Overview:) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.2 0.255 0.333 rg
+52. 689.8899999999999864 Td
+(StayBillPro is a specialized, production-ready ERP and billing platform built for electronics service centers, repair) Tj
+T* (workshops, and multi-branch appliance service enterprises. The system centralizes the complete service lifecycle—from) Tj
+T* (customer job-sheet registration and diagnosis tracking to automated GST-compliant POS invoicing, spare-parts inventory,) Tj
+T* (technician allocation, and real-time business analytics.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.145 0.388 0.922 rg
+40. 631.8899999999999864 Td
+(1. INTERNSHIP PROJECT OBJECTIVES) Tj
+ET
+0.15 0.39 0.92 RG
+1.5 w
+40. 627.8899999999999864 m
+80. 627.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+85. 627.8899999999999864 m
+555.2799999999999727 627.8899999999999864 l
+S
+BT
+/F2 9.5 Tf
+10.9249999999999989 TL
+0.118 0.161 0.231 rg
+48. 611.8899999999999864 Td
+(•  Primary Project Objective:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.278 0.333 0.412 rg
+60. 598.8899999999999864 Td
+(To design, develop, and integrate user-centric frontend modules for StayBillPro that automate manual repair shop workflows,) Tj
+T* (reduce administrative turnaround time by 60%, and deliver real-time service visibility.) Tj
+ET
+BT
+/F2 9.5 Tf
+10.9249999999999989 TL
+0.118 0.161 0.231 rg
+48. 575.8899999999999864 Td
+(•  Technical Architecture Objective:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.278 0.333 0.412 rg
+60. 562.8899999999999864 Td
+(Master component-driven development using React 19, modern state synchronization, dynamic client-side PDF document) Tj
+T* (generation \(jsPDF\), barcode automation, and resilient RESTful API integration patterns.) Tj
+ET
+BT
+/F2 9.5 Tf
+10.9249999999999989 TL
+0.118 0.161 0.231 rg
+48. 539.8899999999999864 Td
+(•  ERP & Business Domain Objective:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.278 0.333 0.412 rg
+60. 526.8899999999999864 Td
+(Gain deep practical experience in building enterprise-grade operational systems, including tax-compliant billing \(GST\), inventory) Tj
+T* (reordering workflows \(PO & GRN\), and role-based multi-tier access control.) Tj
+ET
+BT
+/F2 9.5 Tf
+10.9249999999999989 TL
+0.118 0.161 0.231 rg
+48. 503.8899999999999864 Td
+(•  Quality & Scalability Objective:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.278 0.333 0.412 rg
+60. 490.8899999999999864 Td
+(Implement responsive, accessible UI standards across mobile, tablet, and desktop devices, while enforcing clean code modularity,) Tj
+T* (strict form validation, and edge-case testing.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.145 0.388 0.922 rg
+40. 457.8899999999999864 Td
+(2. TECHNOLOGY STACK & IMPLEMENTATION SCOPE) Tj
+ET
+0.15 0.39 0.92 RG
+1.5 w
+40. 453.8899999999999864 m
+80. 453.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+85. 453.8899999999999864 m
+555.2799999999999727 453.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+0.06 0.09 0.16 rg
+0.78 G
+0. w
+0.06 0.09 0.16 rg
+40. 437.8899999999999864 140. -19.7749999999999986 re
+f
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+1. g
+45. 425.6649999999999636 Td
+(Technology / Library) Tj
+ET
+0.06 0.09 0.16 rg
+0.78 G
+0. w
+0.06 0.09 0.16 rg
+180. 437.8899999999999864 204. -19.7749999999999986 re
+f
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+1. g
+185. 425.6649999999999636 Td
+(Role in StayBillPro) Tj
+ET
+0.06 0.09 0.16 rg
+0.78 G
+0. w
+0.06 0.09 0.16 rg
+384. 437.8899999999999864 170. -19.7749999999999986 re
+f
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+1. g
+389. 425.6649999999999636 Td
+(Practical Skills Demonstrated) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+40. 418.1150000000000091 140. -28.3999999999999986 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+45. 406.3149999999999977 Td
+(React 19 & JavaScript \(ES6+\)) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+180. 418.1150000000000091 204. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+185. 406.3149999999999977 Td
+(Core UI architecture, SPA routing & dynamic) Tj
+T* (components) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+384. 418.1150000000000091 170. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+389. 406.3149999999999977 Td
+(Hooks, Component Lifecycle, Reusable UI) Tj
+T* (Patterns) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+40. 389.7150000000000318 140. -28.3999999999999986 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+45. 377.9150000000000205 Td
+(jsPDF & jsPDF-AutoTable) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+180. 389.7150000000000318 204. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+185. 377.9150000000000205 Td
+(Client-side PDF generator for invoices, estimates & job) Tj
+T* (sheets) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+384. 389.7150000000000318 170. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+389. 377.9150000000000205 Td
+(Dynamic layouting, table calculations,) Tj
+T* (printable exports) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+40. 361.3150000000000546 140. -28.3999999999999986 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+45. 349.5150000000000432 Td
+(React Barcode & Scanner Overlay) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+180. 361.3150000000000546 204. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+185. 349.5150000000000432 Td
+(Appliance tracking & item serial labeling) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+384. 361.3150000000000546 170. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+389. 349.5150000000000432 Td
+(Hardware scanner integration, barcode) Tj
+T* (encoding & decoding) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+40. 332.9150000000000773 140. -28.3999999999999986 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+45. 321.1150000000001228 Td
+(Lucide React & CSS3 Modular) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+180. 332.9150000000000773 204. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+185. 321.1150000000001228 Td
+(Consistent iconography, responsive layouts \(Flex/Grid\)) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+384. 332.9150000000000773 170. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+389. 321.1150000000001228 Td
+(Modern UI design, responsive dashboards,) Tj
+T* (dark/light styles) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+40. 304.5150000000001 140. -28.3999999999999986 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+45. 292.7150000000001455 Td
+(Razorpay API / Payment Modals) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+180. 304.5150000000001 204. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+185. 292.7150000000001455 Td
+(Online billing, subscription recharges & wallet) Tj
+T* (management) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+384. 304.5150000000001 170. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+389. 292.7150000000001455 Td
+(Payment gateway webhooks, transaction) Tj
+T* (status tracking) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+40. 276.1150000000001228 140. -28.3999999999999986 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+45. 264.3150000000001683 Td
+(Branch & Role Security) Tj
+T* (Architecture) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+180. 276.1150000000001228 204. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+185. 264.3150000000001683 Td
+(Hierarchical permissions \(Admin, Technician, Staff\)) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+384. 276.1150000000001228 170. -28.3999999999999986 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+389. 264.3150000000001683 Td
+(RBAC principles, route gating, sensitive data) Tj
+T* (isolation) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+0.78 G
+0. w
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+40. 30. m
+555.2799999999999727 30. l
+S
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+40. 18. Td
+(StayBillPro ERP © S Square G Tech Solutions | Confidential & Internal Academic Document) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+505.2799999999999727 18. Td
+(Page 1 of 3) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 9244
+>>
+stream
+0.5 w
+0.89 0.91 0.94 RG
+0.06 0.09 0.16 rg
+0. 841.8899999999999864 595.2799999999999727 -40. re
+f
+0.15 0.39 0.92 rg
+0. 801.8899999999999864 595.2799999999999727 -3. re
+f
+BT
+/F2 12 Tf
+13.7999999999999989 TL
+1. g
+40. 816.8899999999999864 Td
+(StayBillPro – Core Modules & Intern Involvement) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.796 0.835 0.882 rg
+435.2799999999999727 816.8899999999999864 Td
+(S Square G Tech Solutions) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.145 0.388 0.922 rg
+40. 776.8899999999999864 Td
+(3. CORE SYSTEM MODULES DEVELOPED & MAINTAINED) Tj
+ET
+0.15 0.39 0.92 RG
+1.5 w
+40. 772.8899999999999864 m
+80. 772.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+85. 772.8899999999999864 m
+555.2799999999999727 772.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+0.06 0.09 0.16 rg
+0.78 G
+0. w
+0.06 0.09 0.16 rg
+40. 756.8899999999999864 124. -19.7749999999999986 re
+f
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+1. g
+45. 744.6649999999999636 Td
+(Module Name) Tj
+ET
+0.06 0.09 0.16 rg
+0.78 G
+0. w
+0.06 0.09 0.16 rg
+164. 756.8899999999999864 195. -19.7749999999999986 re
+f
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+1. g
+169. 744.6649999999999636 Td
+(Functional Scope) Tj
+ET
+0.06 0.09 0.16 rg
+0.78 G
+0. w
+0.06 0.09 0.16 rg
+359. 756.8899999999999864 195. -19.7749999999999986 re
+f
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+1. g
+364. 744.6649999999999636 Td
+(Intern Involvement / Deliverables) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+40. 737.1150000000000091 124. -39.5999999999999943 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+46. 724.3149999999999409 Td
+(Job Sheet & Service) Tj
+T* (Ticketing) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+164. 737.1150000000000091 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+170. 724.3149999999999409 Td
+(Comprehensive lifecycle tracking of faulty) Tj
+T* (electronics, diagnosis reports, and technician) Tj
+T* (assignments.) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+359. 737.1150000000000091 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+365. 724.3149999999999409 Td
+(Designed New Job intake modal, status filters) Tj
+T* (\(Pending, In Progress, Delivered\), and technician) Tj
+T* (assignment dropdown.) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+40. 697.5149999999999864 124. -39.5999999999999943 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+46. 684.7149999999999181 Td
+(POS & Wholesale Invoicing) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+164. 697.5149999999999864 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+170. 684.7149999999999181 Td
+(Fast billing counter for service charges, spare parts,) Tj
+T* (tax breakdowns \(CGST/SGST\), and discount rules.) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+359. 697.5149999999999864 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+365. 684.7149999999999181 Td
+(Engineered POS cart interface, automatic total/tax) Tj
+T* (calculations, and instant thermal & A4 invoice) Tj
+T* (printing.) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+40. 657.9149999999999636 124. -39.5999999999999943 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+46. 645.1150000000000091 Td
+(Inventory & Procurement) Tj
+T* (\(PO/GRN\)) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+164. 657.9149999999999636 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+170. 645.1150000000000091 Td
+(Stock level tracking, low-inventory alerts, purchase) Tj
+T* (order creation, and goods received note processing.) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+359. 657.9149999999999636 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+365. 645.1150000000000091 Td
+(Created CreatePOModal, GRN entry views, and) Tj
+T* (real-time inventory deduction logic upon job) Tj
+T* (completion.) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+40. 618.3150000000000546 124. -39.5999999999999943 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+46. 605.5149999999999864 Td
+(Barcode Generation &) Tj
+T* (Labeling) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+164. 618.3150000000000546 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+170. 605.5149999999999864 Td
+(Instant barcode label generation for intake) Tj
+T* (appliances to prevent unit mix-ups during multi-day) Tj
+T* (repair.) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+359. 618.3150000000000546 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+365. 605.5149999999999864 Td
+(Integrated react-barcode modal, formatted printable) Tj
+T* (sticker sheets, and built camera-based scan) Tj
+T* (overlays.) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+40. 578.7150000000000318 124. -39.5999999999999943 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+46. 565.9149999999999636 Td
+(Financial Accounting &) Tj
+T* (Cashbook) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+164. 578.7150000000000318 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+170. 565.9149999999999636 Td
+(Daily service cashbook, technician payouts,) Tj
+T* (expense logs, and GST compliance auditing tables.) Tj
+ET
+0.97 0.98 0.99 rg
+0.78 G
+0.1 w
+0.97 0.98 0.99 rg
+359. 578.7150000000000318 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+365. 565.9149999999999636 Td
+(Implemented ServiceCashbookScreen, ledger filter) Tj
+T* (tabs, payment reconciliation screens, and data) Tj
+T* (tables.) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+40. 539.1150000000000091 124. -39.5999999999999943 re
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+46. 526.3150000000000546 Td
+(Customer & Multi-Branch) Tj
+T* (Hub) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+164. 539.1150000000000091 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+170. 526.3150000000000546 Td
+(Centralized CRM storing customer appliance) Tj
+T* (histories, SMS/WhatsApp alerts, and branch-level) Tj
+T* (filters.) Tj
+ET
+1. g
+0.78 G
+0.1 w
+1. g
+359. 539.1150000000000091 195. -39.5999999999999943 re
+B
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.118 0.161 0.231 rg
+365. 526.3150000000000546 Td
+(Constructed customer profile view, service history) Tj
+T* (timeline, and branch switching security guards.) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+0.78 G
+0. w
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.145 0.388 0.922 rg
+40. 474.5149999999999864 Td
+(4. KEY INTERN WORK PROFILES & RESPONSIBILITIES) Tj
+ET
+0.15 0.39 0.92 RG
+1.5 w
+40. 470.5149999999999864 m
+80. 470.5149999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+85. 470.5149999999999864 m
+555.2799999999999727 470.5149999999999864 l
+S
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.145 0.388 0.922 rg
+44. 454.5149999999999864 Td
+(Profile A: Frontend & React Developer Intern) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 442.5149999999999864 Td
+(•  Engineered modular React components adhering to clean architecture and reusable design patterns.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 430.5149999999999864 Td
+(•  Integrated jsPDF and canvas libraries for dynamic invoice generation and barcode label rendering.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 418.5149999999999864 Td
+(•  Optimized client-side rendering performance, state management, and modal interaction speeds.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.145 0.388 0.922 rg
+44. 400.5149999999999864 Td
+(Profile B: UI/UX & Responsive Web Development Intern) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 388.5149999999999864 Td
+(•  Designed responsive UI layouts tested on mobile service technician views and high-res cashier monitors.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 376.5149999999999864 Td
+(•  Built intuitive forms with real-time field validation, error handling, and toast feedback notifications.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 364.5149999999999864 Td
+(•  Standardized color schemes, modern card components, typography, and accessibility features.) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.145 0.388 0.922 rg
+44. 346.5149999999999864 Td
+(Profile C: Quality Assurance & Integration Intern) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 334.5149999999999864 Td
+(•  Formulated end-to-end user test cases spanning job creation, part allocation, and billing checkout.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 322.5149999999999864 Td
+(•  Conducted rigorous cross-browser testing \(Chrome, Edge, Firefox\) and responsive viewport stress testing.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+54. 310.5149999999999864 Td
+(•  Documented edge-case bugs, API payload mismatches, and assisted in production patch deployments.) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+40. 30. m
+555.2799999999999727 30. l
+S
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+40. 18. Td
+(StayBillPro ERP © S Square G Tech Solutions | Confidential & Internal Academic Document) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+505.2799999999999727 18. Td
+(Page 2 of 3) Tj
+ET
+endstream
+endobj
+7 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 8 0 R
+>>
+endobj
+8 0 obj
+<<
+/Length 6918
+>>
+stream
+0.5 w
+0.89 0.91 0.94 RG
+0.06 0.09 0.16 rg
+0. 841.8899999999999864 595.2799999999999727 -40. re
+f
+0.15 0.39 0.92 rg
+0. 801.8899999999999864 595.2799999999999727 -3. re
+f
+BT
+/F2 12 Tf
+13.7999999999999989 TL
+1. g
+40. 816.8899999999999864 Td
+(StayBillPro – Resume Showcase & Verification) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.796 0.835 0.882 rg
+435.2799999999999727 816.8899999999999864 Td
+(S Square G Tech Solutions) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.145 0.388 0.922 rg
+40. 776.8899999999999864 Td
+(5. RESUME READY BULLET POINTS \(FOR INTERN PORTFOLIOS\)) Tj
+ET
+0.15 0.39 0.92 RG
+1.5 w
+40. 772.8899999999999864 m
+80. 772.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+85. 772.8899999999999864 m
+555.2799999999999727 772.8899999999999864 l
+S
+0.97 0.98 0.99 rg
+0.89 0.91 0.94 RG
+44. 756.8899999999999864 m
+551.2799999999999727 756.8899999999999864 l
+553.4891389993231314 756.8899999999999864 555.2799999999999727 755.0991389993231451 555.2799999999999727 752.8899999999999864 c
+555.2799999999999727 635.8899999999999864 l
+555.2799999999999727 633.6808610006768276 553.070861000676814 631.8899999999999864 551.2799999999999727 631.8899999999999864 c
+44. 631.8899999999999864 l
+41.7908610006768271 631.8899999999999864 40. 634.0991389993231451 40. 635.8899999999999864 c
+40. 752.8899999999999864 l
+40. 755.0991389993231451 42.2091389993231729 756.8899999999999864 44. 756.8899999999999864 c
+h
+B
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.118 0.161 0.231 rg
+52. 740.8899999999999864 Td
+(Action & Impact Bullet Points \(Copy & Paste for Resume / LinkedIn\):) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.2 0.255 0.333 rg
+52. 726.8899999999999864 Td
+(•  Contributed to the frontend engineering of "StayBillPro", a multi-tenant ERP platform powering 1000+ service centers and 50k+ managed) Tj
+T* (appliances.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.2 0.255 0.333 rg
+52. 704.8899999999999864 Td
+(•  Architected 15+ reusable React 19 UI components for service request tickets, inventory stock logs, and technician dashboards.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.2 0.255 0.333 rg
+52. 692.3899999999999864 Td
+(•  Integrated automated, client-side PDF invoice and job-sheet rendering using jsPDF and AutoTable, saving ~35 hours of manual billing per) Tj
+T* (month.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.2 0.255 0.333 rg
+52. 670.3899999999999864 Td
+(•  Built instant barcode sticker generation and camera-assisted scanning features, reducing device mix-ups and turnaround time by 40%.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.2 0.255 0.333 rg
+52. 657.8899999999999864 Td
+(•  Collaborated in an agile team environment, conducting Git code reviews, bug fixes, and cross-browser quality assurance.) Tj
+ET
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+0.145 0.388 0.922 rg
+40. 616.8899999999999864 Td
+(6. OFFICIAL INTERNSHIP SIGN-OFF & VERIFICATION DETAILS) Tj
+ET
+0.15 0.39 0.92 RG
+1.5 w
+40. 612.8899999999999864 m
+80. 612.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+85. 612.8899999999999864 m
+555.2799999999999727 612.8899999999999864 l
+S
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+45. 583.3899999999999864 Td
+(Field) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 10 Tf
+11.5 TL
+0.078 g
+185. 583.3899999999999864 Td
+(Details / Intern Record) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 563.6649999999999636 Td
+(Intern Name:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 563.6649999999999636 Td
+(________________________________________________) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 544.8899999999999864 Td
+(College / Institution:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 544.8899999999999864 Td
+(________________________________________________) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 526.1150000000000091 Td
+(Project Assigned:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 526.1150000000000091 Td
+(StayBillPro – Service ERP & POS Platform) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 507.3400000000000318 Td
+(Organization / Company:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 507.3400000000000318 Td
+(S Square G Tech Solutions \(www.ssquareg.com\)) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 488.5650000000000546 Td
+(Internship Duration:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 488.5650000000000546 Td
+(_____ / _____ / 20___   to   _____ / _____ / 20___) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 469.7900000000000773 Td
+(Assigned Role:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 469.7900000000000773 Td
+([ ] React Frontend Dev   [ ] Full-Stack   [ ] QA & Testing) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 451.0150000000001 Td
+(Mentor / Supervisor:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 451.0150000000001 Td
+(Technical Lead, StayBillPro Project Team) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.2 0.255 0.333 rg
+44.5 432.2400000000001228 Td
+(Overall Performance:) Tj
+ET
+0.78 G
+0. w
+0.97 0.98 0.99 rg
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+184.5 432.2400000000001228 Td
+([ ] Outstanding    [ ] Excellent    [ ] Commendable) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+0.78 G
+0. w
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+0.5 w
+0.89 0.91 0.94 RG
+50. 345.1900000000001683 m
+267.6399999999999864 345.1900000000001683 l
+S
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+50. 332.1900000000001683 Td
+(Intern Signature) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+50. 320.1900000000001683 Td
+(Date: ________________________) Tj
+ET
+317.6399999999999864 345.1900000000001683 m
+535.2799999999999727 345.1900000000001683 l
+S
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.118 0.161 0.231 rg
+317.6399999999999864 332.1900000000001683 Td
+(Authorized Signatory / Project Lead) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+317.6399999999999864 320.1900000000001683 Td
+(S Square G Tech Solutions \(Official Seal\)) Tj
+ET
+0.89 0.91 0.94 RG
+0.5 w
+40. 30. m
+555.2799999999999727 30. l
+S
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+40. 18. Td
+(StayBillPro ERP © S Square G Tech Solutions | Confidential & Internal Academic Document) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.392 0.455 0.545 rg
+505.2799999999999727 18. Td
+(Page 3 of 3) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R 7 0 R ]
+/Count 3
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+21 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+22 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 9 0 R
+/F2 10 0 R
+/F3 11 0 R
+/F4 12 0 R
+/F5 13 0 R
+/F6 14 0 R
+/F7 15 0 R
+/F8 16 0 R
+/F9 17 0 R
+/F10 18 0 R
+/F11 19 0 R
+/F12 20 0 R
+/F13 21 0 R
+/F14 22 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+23 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/CreationDate (D:20261103210708+05'30')
+>>
+endobj
+24 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 25
+0000000000 65535 f 
+0000026299 00000 n 
+0000028132 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000009759 00000 n 
+0000009896 00000 n 
+0000019192 00000 n 
+0000019329 00000 n 
+0000026368 00000 n 
+0000026493 00000 n 
+0000026624 00000 n 
+0000026758 00000 n 
+0000026896 00000 n 
+0000027020 00000 n 
+0000027149 00000 n 
+0000027281 00000 n 
+0000027417 00000 n 
+0000027545 00000 n 
+0000027672 00000 n 
+0000027801 00000 n 
+0000027934 00000 n 
+0000028036 00000 n 
+0000028384 00000 n 
+0000028470 00000 n 
+trailer
+<<
+/Size 25
+/Root 24 0 R
+/Info 23 0 R
+/ID [ <21A82C8B7471B2FD5E93502A9DCF5115> <21A82C8B7471B2FD5E93502A9DCF5115> ]
+>>
+startxref
+28574
+%%EOF
